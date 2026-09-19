@@ -107,14 +107,16 @@ function playerRow(p){
   if(started&&live!==null)pts='<b>'+f1(live)+'</b><small>proj '+f1(proj)+'</small>';
   else if(proj!==null)pts='<b>'+f1(proj)+'</b><small>proj</small>';
   const fl=flags(p);
-  return '<div class="row"><div class="slot">'+esc(p.slot)+'</div><div class="main"><div class="name">'+esc(p.player)+'</div><div class="sub">'+statusPill(p.status,p.kickoff)+esc([p.pos,p.team,p.game].filter(x=>!blank(x)).join(' · '))+(fl?'<br>'+fl:'')+'</div></div><div class="pts">'+pts+'</div></div>';
+  const kick=(p.kickoff&&String(p.game||"").indexOf(String(p.kickoff))<0)?p.kickoff:"";
+  return '<div class="row"><div class="slot">'+esc(p.slot)+'</div><div class="main"><div class="name">'+esc(p.player)+'</div><div class="sub">'+statusPill(p.status,kick)+esc([p.pos,p.team,p.game].filter(x=>!blank(x)).join(' · '))+(fl?'<br>'+fl:'')+'</div></div><div class="pts">'+pts+'</div></div>';
 }
 function render(d){
   const st=$("#stamp");
   const t=d.updatedIso?new Date(d.updatedIso):null;
   let age="";
   if(t){const m=Math.round((Date.now()-t.getTime())/60000);age=m<1?"just now":(m<90?m+" min ago":Math.round(m/60)+" h ago");st.classList.toggle("stale",m>40)}
-  st.textContent=(d.week?"Week "+d.week+" · ":"")+(d.updated||"")+(age?" ("+age+")":"");
+  const recs=(d.season||[]).filter(s=>!blank(s.record)).map(s=>String(s.record).replace(/\s/g,""));
+  st.textContent=(d.week?"Week "+d.week+(recs.length?" · "+recs[recs.length-1]:"")+" · ":"")+(d.updated||"")+(age?" ("+age+")":"");
   let h="";
 
   // Action board
@@ -129,12 +131,13 @@ function render(d){
   // Matchup
   const m=d.matchup||{};
   if(m.title||(m.rows||[]).length){
-    const anyLive=(m.rows||[]).some(r=>num(r.myLive)!==null||num(r.theirLive)!==null);
-    const mine=anyLive?num(m.myLive):num(m.myExp), theirs=anyLive?num(m.theirLive):num(m.theirExp);
+    let lv=null; const lm=/LIVE:\s*You\s+([\d.]+)\s*-\s*(.+?)\s+([\d.]+)/.exec(d.live||""); if(lm)lv={me:+lm[1],them:+lm[3]};
+    const anyLive=!!lv||(m.rows||[]).some(r=>num(r.myLive)!==null||num(r.theirLive)!==null);
+    const mine=lv?lv.me:(anyLive?num(m.myLive):num(m.myExp)), theirs=lv?lv.them:(anyLive?num(m.theirLive):num(m.theirExp));
     const mx=Math.max(mine||0,theirs||0,1);
     h+='<section><h2>'+esc(m.title||"Matchup")+'</h2><div class="score">';
-    h+='<div class="lbl">Me'+(anyLive?' (live)':' (expected)')+'</div><div class="num">'+f1(mine)+'</div><div class="bar"><i style="width:'+(100*(mine||0)/mx)+'%"></i></div>';
-    h+='<div class="lbl">'+esc(m.opp||"Them")+'</div><div class="num">'+f1(theirs)+'</div><div class="bar them"><i style="width:'+(100*(theirs||0)/mx)+'%"></i></div></div>';
+    h+='<div class="lbl">Me'+(anyLive?' (live · expected '+f1(m.myExp)+')':' (expected)')+'</div><div class="num">'+f1(mine)+'</div><div class="bar"><i style="width:'+(100*(mine||0)/mx)+'%"></i></div>';
+    h+='<div class="lbl">'+esc(m.opp||"Them")+(anyLive?' (expected '+f1(m.theirExp)+')':'')+'</div><div class="num">'+f1(theirs)+'</div><div class="bar them"><i style="width:'+(100*(theirs||0)/mx)+'%"></i></div></div>';
     h+=(m.rows||[]).map(r=>{
       const e=num(r.edge);const cls=e===null?"":(e>2?"up":(e<-2?"down":""));
       const myv=num(r.myLive)!==null?f1(r.myLive):f1(r.myExp), thv=num(r.theirLive)!==null?f1(r.theirLive):f1(r.theirExp);
@@ -167,7 +170,7 @@ function render(d){
   }
 
   // Season
-  const se=(d.season||[]).filter(s=>!blank(s.opp));
+  const se=(d.season||[]).filter(s=>!blank(s.opp)&&num(s.my)!==null);
   if(se.length){
     h+='<section><h2>Season</h2><table><tr><th>Wk</th><th>Opponent</th><th class="n">Me</th><th class="n">Them</th><th></th></tr>';
     h+=se.map(s=>'<tr><td>'+esc(s.week)+'</td><td>'+esc(s.opp)+'</td><td class="n">'+f1(s.my)+'</td><td class="n">'+f1(s.their)+'</td><td class="'+(/^w/i.test(s.result||"")?'win':(/^l/i.test(s.result||"")?'loss':''))+'">'+esc(s.result||"")+'</td></tr>').join("");
