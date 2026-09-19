@@ -76,6 +76,12 @@ footer{color:var(--mute);font-size:11px;text-align:center;margin-top:16px}
 .ctl button.warn{color:var(--warn)}.ctl button.go{color:var(--acc)}
 .ctlmsg{font-size:12px;color:var(--mute);margin-top:8px;min-height:16px}
 .paused{color:var(--warn);font-weight:600}
+.badge{display:inline-block;font-size:12px;font-weight:800;letter-spacing:.6px;padding:3px 10px;border-radius:9px;color:#fff;background:var(--good);vertical-align:1px}
+.badge.off{background:var(--bad)}
+.ctl button.stop{background:var(--bad);color:#fff;border-color:var(--bad)}
+.ctl button.start{background:var(--good);color:#fff;border-color:var(--good)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--good);margin-right:4px;vertical-align:0}
+.dot.off{background:var(--bad)}
 .logo{width:26px;height:26px;flex:0 0 26px;object-fit:contain;border-radius:6px;background:var(--chip)}
 .mb{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--mute);margin-top:3px}
 .mb i{display:block;height:5px;border-radius:3px;background:var(--barme)}
@@ -160,14 +166,14 @@ function render(d){
     let lv=null; const lm=/LIVE:\s*You\s+([\d.]+)\s*-\s*(.+?)\s+([\d.]+)/.exec(d.live||""); if(lm)lv={me:+lm[1],them:+lm[3]};
     const anyLive=!!lv||(m.rows||[]).some(r=>num(r.myLive)!==null||num(r.theirLive)!==null);
     const mine=lv?lv.me:(anyLive?num(m.myLive):num(m.myExp)), theirs=lv?lv.them:(anyLive?num(m.theirLive):num(m.theirExp));
-    const mx=Math.max(mine||0,theirs||0,1);
+    const mx=Math.max(mine||0,theirs||0,num(m.myExp)||0,num(m.theirExp)||0,1);
     h+='<section><h2>'+esc(m.title||"Matchup")+'</h2><div class="score">';
     h+='<div class="lbl">Me'+(anyLive?' (live · expected '+f1(m.myExp)+')':' (expected)')+'</div><div class="num">'+f1(mine)+'</div><div class="bar"><i style="width:'+(100*(mine||0)/mx)+'%"></i></div>';
     h+='<div class="lbl">'+esc(m.opp||"Them")+(anyLive?' (expected '+f1(m.theirExp)+')':'')+'</div><div class="num">'+f1(theirs)+'</div><div class="bar them"><i style="width:'+(100*(theirs||0)/mx)+'%"></i></div></div>';
     h+=(m.rows||[]).map(r=>{
       const e=num(r.edge);const cls=e===null?"":(e>2?"up":(e<-2?"down":""));
       const myv=num(r.myLive)!==null?f1(r.myLive):f1(r.myExp), thv=num(r.theirLive)!==null?f1(r.theirLive):f1(r.theirExp);
-      const a=num(myv),b=num(thv),mx2=Math.max(a||0,b||0,0.1);
+      const a=num(myv),b=num(thv),mx2=Math.max(a||0,b||0,num(r.myExp)||0,num(r.theirExp)||0,0.1);
       return '<div class="vs"><div class="slot">'+esc(r.slot)+'</div><div class="me">'+esc(r.my)+'<small>'+myv+'</small></div><div class="edge '+cls+'">'+(e===null?"":(e>0?"+":"")+e.toFixed(1))+'</div><div class="them">'+esc(r.their)+'<small>'+thv+'</small></div><div class="pair"><div class="t"><i style="width:'+(100*Math.max(a||0,0)/mx2)+'%"></i></div><div class="t r"><i style="width:'+(100*Math.max(b||0,0)/mx2)+'%"></i></div></div></div>'}).join("");
     h+='</section>';
   }
@@ -220,8 +226,11 @@ function render(d){
   }
   // Controls (talk to the laptop through the command channel)
   if(d.cmd){
-    h+='<section><h2>Laptop</h2><div class="sub" style="white-space:normal">Refresh '+(d.paused?'<span class="paused">paused</span>':'running')+' · last run '+esc(d.updated||"")+'</div><div class="ctl">'
-      +(d.paused?'<button class="go" data-cmd="resume">Resume refresh</button>':'<button class="warn" data-cmd="pause">Pause refresh</button>')
+    const la=num(d.listenerAge); const lOn=la!==null&&la>=0&&la<180;
+    let chk=""; if(d.checkedIso){const cm=Math.round((Date.now()-new Date(d.checkedIso).getTime())/60000);chk=esc(d.checked||"")+(cm<1?" (just now)":" ("+cm+" min ago)");}
+    h+='<section><h2>Laptop</h2><div style="margin:2px 0 6px"><span class="badge'+(d.paused?' off':'')+'">'+(d.paused?'PAUSED':'RUNNING')+'</span></div>'
+      +'<div class="sub" style="white-space:normal">Last check '+(chk||esc(d.updated||""))+' · last data '+esc(d.updated||"")+'<br><span class="dot'+(lOn?'':' off')+'"></span>Buttons '+(lOn?'online':(la===null||la<0?'unknown':'offline'))+'</div><div class="ctl">'
+      +(d.paused?'<button class="start" data-cmd="resume">Resume refresh</button>':'<button class="stop" data-cmd="pause">Pause refresh</button>')
       +'<button class="go" data-cmd="refresh">Refresh now</button><button data-cmd="ping">Ping laptop</button><button onclick="location.reload()">Reload page</button></div><div class="ctlmsg" id="ctlmsg"></div></section>';
   }
   $("#app").innerHTML=h;
