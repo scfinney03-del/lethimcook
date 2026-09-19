@@ -140,8 +140,11 @@ function playerRow(p){
   if(String(p.team)==="0")p.team="";
   let fl=flags(p);
   const nb=num(p.nextBye); if(nb!==null&&d_week!==null&&nb===d_week+1)fl=(fl?fl+' · ':'')+'<span class="flag">Bye next week</span>';
+  let fb="";
+  if(!blank(p.fallback))fb+='If he drops → <b>'+esc(p.fallback)+'</b>'+(num(p.fbWk)!==null?' ('+f1(p.fbWk)+'/wk)':'');
+  if(!blank(p.handcuff))fb+=(fb?' · ':'')+'handcuff <b>'+esc(p.handcuff)+'</b>'+(blank(p.hcStatus)?'':' <span class="'+(/^free/i.test(p.hcStatus)?'form up':'form dn')+'">'+esc(p.hcStatus)+'</span>');
   const kick=(p.kickoff&&String(p.game||"").indexOf(String(p.kickoff))<0)?p.kickoff:"";
-  return '<div class="row"><div class="slot">'+esc(p.slot)+'</div>'+logo(p.team)+'<div class="main"><div class="name">'+esc(p.player)+'</div><div class="sub">'+statusPill(p.status,kick)+esc([p.pos,p.team,p.game].filter(x=>!blank(x)).join(' · '))+(fl?'<br>'+fl:'')+'</div></div><div class="pts">'+pts+'</div></div>';
+  return '<div class="row"><div class="slot">'+esc(p.slot)+'</div>'+logo(p.team)+'<div class="main"><div class="name">'+esc(p.player)+'</div><div class="sub">'+statusPill(p.status,kick)+esc([p.pos,p.team,p.game].filter(x=>!blank(x)).join(' · '))+(fl?'<br>'+fl:'')+(fb?'<br><span style="white-space:normal">'+fb+'</span>':'')+'</div></div><div class="pts">'+pts+'</div></div>';
 }
 let d_week=null;
 function render(d){
