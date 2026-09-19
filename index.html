@@ -187,7 +187,8 @@ function render(d){
       const e=num(r.edge);const cls=e===null?"":(e>2?"up":(e<-2?"down":""));
       const myv=num(r.myLive)!==null?f1(r.myLive):f1(r.myExp), thv=num(r.theirLive)!==null?f1(r.theirLive):f1(r.theirExp);
       const a=num(myv),b=num(thv),mx2=Math.max(a||0,b||0,num(r.myExp)||0,num(r.theirExp)||0,0.1);
-      return '<div class="vs"><div class="slot">'+esc(r.slot)+'</div><div class="me">'+esc(r.my)+'<small>'+myv+'</small></div><div class="edge '+cls+'">'+(e===null?"":(e>0?"+":"")+e.toFixed(1))+'</div><div class="them">'+esc(r.their)+'<small>'+thv+'</small></div><div class="pair"><div class="t"><i style="width:'+(100*Math.max(a||0,0)/mx2)+'%"></i></div><div class="t r"><i style="width:'+(100*Math.max(b||0,0)/mx2)+'%"></i></div></div></div>'}).join("");
+      return '<div class="vs"><div class="slot">'+esc(r.slot)+'</div><div class="me">'+esc(r.my)+'<small>'+myv+'</small></div><div class="edge '+cls+'">'+(e===null?"":(e>0?"+":"")+e.toFixed(1))+'</div><div class="them">'+esc(r.their)+(/ghost/i.test(String(r.ghost||""))?' <span class="pill warn" title="slot not set yet - best bench fit shown">ghost</span>':'')+'<small>'+thv+'</small></div><div class="pair"><div class="t"><i style="width:'+(100*Math.max(a||0,0)/mx2)+'%"></i></div><div class="t r"><i style="width:'+(100*Math.max(b||0,0)/mx2)+'%"></i></div></div></div>'}).join("");
+    if((m.rows||[]).some(r=>/ghost/i.test(String(r.ghost||""))))h+='<div class="sub" style="white-space:normal;margin-top:6px">ghost = a slot they have not set yet, filled with their best bench fit so the total is realistic.</div>';
     h+='</section>';
   }
 
@@ -226,6 +227,12 @@ function render(d){
     const bmx=Math.max.apply(null,bz.map(x=>x.n72||0).concat([1]));
     h+='<section><h2>Keywords going around</h2>'+bz.map(x=>{const sg=num(x.signal)||0,fc=sg<=-1.5?'dn':(sg>=1.5?'up':'');
       return '<div class="fbar"><span style="width:118px;flex:0 0 118px;overflow:hidden;text-overflow:ellipsis">'+esc(x.keyword)+(num(x.mine)>0?' <b>·'+Math.round(x.mine)+' mine</b>':'')+'</span><div class="t"><i class="'+fc+'" style="width:'+(100*(x.n72||0)/bmx)+'%"></i></div><span style="width:52px;flex:0 0 52px;text-align:right">'+Math.round(x.n72)+(num(x.n24)>0?' <small>('+Math.round(x.n24)+' today)</small>':'')+'</span></div>'}).join("")+'</section>';
+  }
+  // Phrases the scanner is learning on its own
+  const lr=(d.learned||[]).filter(x=>!blank(x.phrase));
+  if(lr.length){
+    h+='<section><h2>New phrases it\'s learning</h2>'+lr.map(x=>{const ln=num(x.lean)||0,cls=ln<=-1?' bad':(ln>=1?' good':'');
+      return '<div class="row"><div class="main"><div class="name">'+esc(x.phrase)+' '+(x.status==='auto-added'?'<span class="pill">added</span>':'')+'<small style="color:var(--mute)"> '+Math.round(x.reports)+' reports · lean <span class="flag'+cls+'">'+(ln>0?'+':'')+f1(ln)+'</span></small></div><div class="sub" style="white-space:normal">e.g. '+esc(x.example)+'</div></div></div>'}).join("")+'<div class="sub" style="white-space:normal;margin-top:6px">Recurring 2-3 word phrases from player reports over 14 days. Lean = average signal of the reports they appear in. 8+ reports with a clear lean gets added to the lexicon automatically; a weekly review prunes junk.</div></section>';
   }
   // Sources and their credibility weights
   const so=(d.sources||[]).filter(x=>!blank(x.source));
