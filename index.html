@@ -115,14 +115,14 @@ const blank=v=>v===null||v===undefined||String(v).trim()==="";
 
 const LOGOFIX={JAC:"jax",WAS:"wsh",LA:"lar",OAK:"lv",SD:"lac",STL:"lar"};
 function logo(team){team=String(team||"").toUpperCase();if(!team||team==="0")return '<div class="logo"></div>';const ab=LOGOFIX[team]||team.toLowerCase();return '<img class="logo" alt="" loading="lazy" src="https://a.espncdn.com/i/teamlogos/nfl/500/'+ab+'.png" onerror="this.style.visibility=\'hidden\'">';}
-function gamePill(st){st=String(st||"");if(/progress/i.test(st))return '<span class="pill" style="background:var(--good);color:#fff">LIVE</span>';if(/final/i.test(st))return '<span class="pill" style="background:var(--bad);color:#fff">FINAL</span>';if(/bye/i.test(st))return '<span class="pill" style="background:var(--warn);color:#111">BYE</span>';return '<span class="pill" style="background:var(--warn);color:#111">PENDING</span>';}
+function gamePill(st){st=String(st||"");if(/progress/i.test(st))return '<span class="pill" style="background:var(--good);color:#fff">LIVE</span>';if(/final/i.test(st))return '<span class="pill" style="background:var(--bad);color:#fff">FINAL</span>';if(/bye/i.test(st))return '<span class="pill" style="background:var(--warn);color:#fff">BYE</span>';return '<span class="pill" style="background:var(--warn);color:#fff">PENDING</span>';}
 function statusPill(st,kick){
   st=String(st||"");
   if(/progress/i.test(st))return '<span class="pill" style="background:var(--good);color:#fff">LIVE</span>';
   if(/final/i.test(st))return '<span class="pill" style="background:var(--bad);color:#fff">FINAL</span>';
-  if(/bye/i.test(st))return '<span class="pill" style="background:var(--warn);color:#111">BYE</span>';
-  if(kick)return '<span class="pill" style="background:var(--warn);color:#111">PENDING</span> <span class="pill">'+esc(kick)+'</span>';
-  if(/upcoming/i.test(st))return '<span class="pill" style="background:var(--warn);color:#111">PENDING</span>';
+  if(/bye/i.test(st))return '<span class="pill" style="background:var(--warn);color:#fff">BYE</span>';
+  if(kick)return '<span class="pill" style="background:var(--warn);color:#fff">PENDING</span> <span class="pill">'+esc(kick)+'</span>';
+  if(/upcoming/i.test(st))return '<span class="pill" style="background:var(--warn);color:#fff">PENDING</span>';
   return st?'<span class="pill">'+esc(st)+'</span>':"";
 }
 function flags(p){
@@ -155,14 +155,25 @@ function playerRow(p){
   return '<div class="row"><div class="slot">'+esc(p.slot)+'</div>'+logo(p.team)+'<div class="main"><div class="name">'+esc(p.player)+'</div><div class="sub">'+statusPill(p.status,kick)+esc([p.pos,p.team,p.game].filter(x=>!blank(x)).join(' · '))+(fl?'<br>'+fl:'')+(fb?'<br><span style="white-space:normal">'+fb+'</span>':'')+'</div></div><div class="pts">'+pts+'</div></div>';
 }
 let d_week=null;
+let clockTimer=null;
+function clockText(d){
+  if(!d||!d.nextIso)return '';
+  const n=new Date(d.nextIso),now=new Date(),ms=n-now;
+  const t=n.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+  if(ms>60000)return 'next update ~'+t+' (in '+Math.round(ms/60000)+' min)';
+  if(ms>-180000)return 'updating now… (~'+t+')';
+  return 'next update was due '+t+' — laptop may be asleep';
+}
 function render(d){
+  if(clockTimer)clearInterval(clockTimer);
+  clockTimer=setInterval(()=>{const el=document.getElementById('clock');if(el)el.textContent=clockText(d);},15000);
   d_week=num(d.week);
   const st=$("#stamp");
   const t=d.updatedIso?new Date(d.updatedIso):null;
   let age="";
   if(t){const m=Math.round((Date.now()-t.getTime())/60000);age=m<1?"just now":(m<90?m+" min ago":Math.round(m/60)+" h ago");st.classList.toggle("stale",m>40)}
   const recs=(d.season||[]).filter(s=>!blank(s.record)).map(s=>String(s.record).replace(/\s/g,""));
-  st.textContent=(d.week?"Week "+d.week+(recs.length?" · "+recs[recs.length-1]:"")+" · ":"")+(d.updated||"")+(age?" ("+age+")":"");
+  st.innerHTML=esc((d.week?"Week "+d.week+(recs.length?" · "+recs[recs.length-1]:"")+" · ":"")+(d.updated||"")+(age?" ("+age+")":""))+'<br><span id="clock" style="font-size:11px">'+esc(clockText(d))+'</span>';
   let h="";
 
   // Action board
