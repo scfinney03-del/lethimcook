@@ -70,6 +70,19 @@ th{color:var(--mute);font-weight:600;font-size:11px;text-transform:uppercase;let
 td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .win{color:var(--good);font-weight:700}.loss{color:var(--bad);font-weight:700}
 footer{color:var(--mute);font-size:11px;text-align:center;margin-top:16px}
+.logo{width:26px;height:26px;flex:0 0 26px;object-fit:contain;border-radius:6px;background:var(--chip)}
+.mb{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--mute);margin-top:3px}
+.mb i{display:block;height:5px;border-radius:3px;background:var(--barme)}
+.mb i.them{background:var(--mute)}
+.mb span{min-width:32px;text-align:right;font-variant-numeric:tabular-nums}
+.pair{grid-column:1/5;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 0 4px 46px}
+.pair .t{height:5px;border-radius:3px;background:var(--bar);overflow:hidden}
+.pair .t i{display:block;height:100%;background:var(--barme)}
+.pair .t.r{direction:rtl}.pair .t.r i{background:var(--mute)}
+.fbar{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--mute)}
+.fbar .t{flex:1;height:6px;border-radius:3px;background:var(--bar);overflow:hidden}.fbar .t i{display:block;height:100%;background:var(--barme)}
+.fbar .t i.up{background:var(--good)}.fbar .t i.dn{background:var(--bad)}
+.form{color:var(--mute)}.form.up{color:var(--good)}.form.dn{color:var(--bad)}
 </style>
 </head>
 <body>
@@ -84,6 +97,8 @@ const num=v=>(v===null||v===""||v===undefined||isNaN(+v))?null:+v;
 const f1=v=>{const n=num(v);return n===null?"":n.toFixed(1)};
 const blank=v=>v===null||v===undefined||String(v).trim()==="";
 
+const LOGOFIX={JAC:"jax",WAS:"wsh",LA:"lar",OAK:"lv",SD:"lac",STL:"lar"};
+function logo(team){team=String(team||"").toUpperCase();if(!team||team==="0")return '<div class="logo"></div>';const ab=LOGOFIX[team]||team.toLowerCase();return '<img class="logo" alt="" loading="lazy" src="https://a.espncdn.com/i/teamlogos/nfl/500/'+ab+'.png" onerror="this.style.visibility=\'hidden\'">';}
 function statusPill(st,kick){
   st=String(st||"");
   if(/progress/i.test(st))return '<span class="pill live">LIVE</span>';
@@ -107,11 +122,15 @@ function playerRow(p){
   let pts="";
   if(started&&live!==null)pts='<b>'+f1(live)+'</b><small>proj '+f1(proj)+'</small>';
   else if(proj!==null)pts='<b>'+f1(proj)+'</b><small>proj</small>';
-  const fl=flags(p);
+  if(String(p.team)==="0")p.team="";
+  let fl=flags(p);
+  const nb=num(p.nextBye); if(nb!==null&&d_week!==null&&nb===d_week+1)fl=(fl?fl+' · ':'')+'<span class="flag">Bye next week</span>';
   const kick=(p.kickoff&&String(p.game||"").indexOf(String(p.kickoff))<0)?p.kickoff:"";
-  return '<div class="row"><div class="slot">'+esc(p.slot)+'</div><div class="main"><div class="name">'+esc(p.player)+'</div><div class="sub">'+statusPill(p.status,kick)+esc([p.pos,p.team,p.game].filter(x=>!blank(x)).join(' · '))+(fl?'<br>'+fl:'')+'</div></div><div class="pts">'+pts+'</div></div>';
+  return '<div class="row"><div class="slot">'+esc(p.slot)+'</div>'+logo(p.team)+'<div class="main"><div class="name">'+esc(p.player)+'</div><div class="sub">'+statusPill(p.status,kick)+esc([p.pos,p.team,p.game].filter(x=>!blank(x)).join(' · '))+(fl?'<br>'+fl:'')+'</div></div><div class="pts">'+pts+'</div></div>';
 }
+let d_week=null;
 function render(d){
+  d_week=num(d.week);
   const st=$("#stamp");
   const t=d.updatedIso?new Date(d.updatedIso):null;
   let age="";
@@ -142,7 +161,8 @@ function render(d){
     h+=(m.rows||[]).map(r=>{
       const e=num(r.edge);const cls=e===null?"":(e>2?"up":(e<-2?"down":""));
       const myv=num(r.myLive)!==null?f1(r.myLive):f1(r.myExp), thv=num(r.theirLive)!==null?f1(r.theirLive):f1(r.theirExp);
-      return '<div class="vs"><div class="slot">'+esc(r.slot)+'</div><div class="me">'+esc(r.my)+'<small>'+myv+'</small></div><div class="edge '+cls+'">'+(e===null?"":(e>0?"+":"")+e.toFixed(1))+'</div><div class="them">'+esc(r.their)+'<small>'+thv+'</small></div></div>'}).join("");
+      const a=num(myv),b=num(thv),mx2=Math.max(a||0,b||0,0.1);
+      return '<div class="vs"><div class="slot">'+esc(r.slot)+'</div><div class="me">'+esc(r.my)+'<small>'+myv+'</small></div><div class="edge '+cls+'">'+(e===null?"":(e>0?"+":"")+e.toFixed(1))+'</div><div class="them">'+esc(r.their)+'<small>'+thv+'</small></div><div class="pair"><div class="t"><i style="width:'+(100*Math.max(a||0,0)/mx2)+'%"></i></div><div class="t r"><i style="width:'+(100*Math.max(b||0,0)/mx2)+'%"></i></div></div></div>'}).join("");
     h+='</section>';
   }
 
@@ -153,11 +173,25 @@ function render(d){
   h+='<section><h2>Lineup</h2>'+starters.map(playerRow).join("")+'</section>';
   if(bench.length)h+='<section><h2>Bench</h2>'+bench.map(playerRow).join("")+'</section>';
 
+  // Form & usage (bars = 3-wk avg vs season avg)
+  const fm=(d.form||[]).filter(x=>!blank(x.player)&&(num(x.avg3)!==null||num(x.last)!==null));
+  if(fm.length){
+    const fmx=Math.max.apply(null,fm.map(x=>Math.max(num(x.avg3)||0,num(x.season)||0,num(x.last)||0)).concat([1]));
+    h+='<section><h2>Form &amp; usage</h2>'+fm.map(x=>{
+      const f=String(x.form||""),fc=/ris/i.test(f)?"up":(/fad/i.test(f)?"dn":"");
+      const bits=[];if(num(x.tgt)!==null)bits.push(Math.round(num(x.tgt)*(num(x.tgt)<=1?100:1))+'% tgt');if(num(x.snap)!==null)bits.push(Math.round(num(x.snap)*(num(x.snap)<=1?100:1))+'% snaps');if(num(x.touches)!==null)bits.push(Math.round(num(x.touches))+' touches');if(!blank(x.depth))bits.push(esc(x.depth));if(!blank(x.flag))bits.push(esc(x.flag));
+      return '<div class="row"><div class="slot">'+esc(x.slot)+'</div><div class="main"><div class="name">'+esc(x.player)+' <span class="form '+fc+'" style="font-size:12px;font-weight:600">'+esc(f)+'</span></div>'
+        +'<div class="fbar"><span style="width:44px">last '+f1(x.last)+'</span><div class="t"><i class="'+fc+'" style="width:'+(100*(num(x.last)||0)/fmx)+'%"></i></div></div>'
+        +'<div class="fbar"><span style="width:44px">3-wk '+f1(x.avg3)+'</span><div class="t"><i style="width:'+(100*(num(x.avg3)||0)/fmx)+'%"></i></div></div>'
+        +'<div class="fbar"><span style="width:44px">season '+f1(x.season)+'</span><div class="t"><i style="width:'+(100*(num(x.season)||0)/fmx)+'%;opacity:.55"></i></div></div>'
+        +(bits.length?'<div class="sub" style="white-space:normal">'+bits.join(' · ')+'</div>':'')+'</div></div>'}).join("")+'</section>';
+  }
+
   // Waivers
-  const wv=(d.waivers||[]).filter(w=>!blank(w.player));
+  const wv=(d.waivers||[]).filter(w=>!blank(w.player)&&!/^(gone|taken|rostered)/i.test(String(w.inLeague||"")));
   if(wv.length){
     h+='<section><h2>Waiver watch</h2><table><tr><th>#</th><th>Player</th><th class="n">Wk</th><th class="n">Season</th><th>Status</th></tr>';
-    h+=wv.slice(0,8).map(w=>'<tr><td>'+esc(w.pri)+'</td><td><b>'+esc(w.player)+'</b><br><span class="sub">'+esc([w.pos,w.team,w.inLeague].filter(x=>!blank(x)).join(' · '))+'</span></td><td class="n">'+f1(w.wk)+'</td><td class="n">'+(num(w.season)===null?"":Math.round(num(w.season)))+'</td><td>'+esc(w.status||"")+'</td></tr>').join("");
+    h+=wv.slice(0,8).map(w=>'<tr><td>'+esc(w.pri)+'</td><td><div style="display:flex;gap:8px;align-items:center">'+logo(w.team)+'<div><b>'+esc(w.player)+'</b><br><span class="sub">'+esc([w.pos,w.team,w.inLeague].filter(x=>!blank(x)).join(' · '))+(blank(w.next3)?'':' · next '+esc(w.next3))+'</span></div></div></td><td class="n">'+f1(w.wk)+'</td><td class="n">'+(num(w.season)===null?"":Math.round(num(w.season)))+'</td><td>'+esc(w.status||"")+'</td></tr>').join("");
     h+='</table></section>';
   }
 
@@ -174,7 +208,8 @@ function render(d){
   const se=(d.season||[]).filter(s=>!blank(s.opp)&&num(s.my)!==null);
   if(se.length){
     h+='<section><h2>Season</h2><table><tr><th>Wk</th><th>Opponent</th><th class="n">Me</th><th class="n">Them</th><th></th></tr>';
-    h+=se.map(s=>'<tr><td>'+esc(s.week)+'</td><td>'+esc(s.opp)+'</td><td class="n">'+f1(s.my)+'</td><td class="n">'+f1(s.their)+'</td><td class="'+(/^w/i.test(s.result||"")?'win':(/^l/i.test(s.result||"")?'loss':''))+'">'+esc(s.result||"")+'</td></tr>').join("");
+    const smx=Math.max.apply(null,se.map(s=>Math.max(num(s.my)||0,num(s.their)||0)).concat([1]));
+    h+=se.map(s=>'<tr><td>'+esc(s.week)+'</td><td>'+esc(s.opp)+'<div class="mb"><i style="width:'+(60*(num(s.my)||0)/smx)+'%"></i><span>'+f1(s.my)+'</span></div><div class="mb"><i class="them" style="width:'+(60*(num(s.their)||0)/smx)+'%"></i><span>'+f1(s.their)+'</span></div></td><td class="n">'+f1(s.my)+'</td><td class="n">'+f1(s.their)+'</td><td class="'+(/^w/i.test(s.result||"")?'win':(/^l/i.test(s.result||"")?'loss':''))+'">'+esc(s.result||"")+'</td></tr>').join("");
     h+='</table></section>';
   }
   $("#app").innerHTML=h;
