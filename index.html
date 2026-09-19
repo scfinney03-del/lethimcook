@@ -16,7 +16,10 @@
 @media (prefers-color-scheme:dark){:root{--bg:#0f1216;--card:#181c22;--ink:#e8ebef;--mute:#9aa4b1;--line:#262c35;--acc:#5b9cff;--good:#3ccf6f;--bad:#ff6b6b;--warn:#f0b849;--live:#ff5c5c;--chip:#232932;--bar:#2c3440;--barme:#5b9cff}}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-text-size-adjust:100%}
-body{padding:12px 12px calc(24px + env(safe-area-inset-bottom));max-width:640px;margin:0 auto}
+body{padding:12px 12px calc(24px + env(safe-area-inset-bottom));max-width:640px;margin:0 auto;overflow-x:hidden}
+table{table-layout:fixed}
+td .sub{white-space:normal;overflow:visible}
+td{overflow-wrap:anywhere}
 header{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:4px 2px 12px}
 h1{font-size:20px;margin:0;letter-spacing:.2px}
 .stamp{color:var(--mute);font-size:12px;text-align:right}
@@ -202,8 +205,9 @@ function render(d){
   // Waivers
   const wv=(d.waivers||[]).filter(w=>!blank(w.player)&&!/^(gone|taken|rostered)/i.test(String(w.inLeague||"")));
   if(wv.length){
-    h+='<section><h2>Waiver watch</h2><table><tr><th>#</th><th>Player</th><th class="n">Wk</th><th class="n">Season</th><th>Status</th></tr>';
-    h+=wv.slice(0,8).map(w=>'<tr><td>'+esc(w.pri)+'</td><td><div style="display:flex;gap:8px;align-items:center">'+logo(w.team)+'<div><b>'+esc(w.player)+'</b><br><span class="sub">'+esc([w.pos,w.team,w.inLeague].filter(x=>!blank(x)).join(' · '))+(blank(w.next3)?'':' · next '+esc(w.next3))+'</span></div></div></td><td class="n">'+f1(w.wk)+'</td><td class="n">'+(num(w.season)===null?"":Math.round(num(w.season)))+'</td><td>'+esc(w.status||"")+'</td></tr>').join("");
+    h+='<section><h2>Waiver watch</h2><table><tr><th style="width:22px">#</th><th>Player</th><th class="n" style="width:44px">Wk</th></tr>';
+    h+=wv.slice(0,8).map(w=>{const st=blank(w.status)?'':'<span class="flag'+(/out|ir/i.test(w.status)?' bad':'')+'">'+esc(w.status)+'</span> · ';
+      return '<tr><td>'+esc(w.pri)+'</td><td><div style="display:flex;gap:8px;align-items:center">'+logo(w.team)+'<div style="min-width:0"><b>'+esc(w.player)+'</b><br><span class="sub">'+st+esc([w.pos,w.team].filter(x=>!blank(x)).join(' · '))+(num(w.season)===null?'':' · season '+Math.round(num(w.season)))+(blank(w.next3)?'':' · next '+esc(w.next3))+'</span></div></div></td><td class="n">'+f1(w.wk)+'</td></tr>'}).join("");
     h+='</table></section>';
   }
 
