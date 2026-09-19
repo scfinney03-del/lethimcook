@@ -149,6 +149,8 @@ function playerRow(p){
   if(num(p.buzz)!==null&&p.buzz<=-3)fb+='<br><span class="flag bad" style="font-weight:600">News: '+esc(p.headline||'negative buzz')+' ('+f1(p.buzz)+')</span>';
   if(num(p.value)!==null&&num(p.perWk)!==null&&Math.abs(p.value-p.perWk)>=0.05)fb+=(fb?' · ':'')+'value <b>'+f1(p.value)+'</b>/wk <small>(ROS '+f1(p.perWk)+' + form)</small>';
   if(!blank(p.verdict)&&!/^Hold$/.test(p.verdict))fb+='<br><span class="flag'+(/^Upgrade/.test(p.verdict)?' bad':'')+'" style="font-weight:600">'+esc(p.verdict)+'</span>';
+  if(num(p.weekVsValue)!==null&&(p.weekVsValue>=1.25||p.weekVsValue<=0.7))fb+='<br><span class="flag'+(p.weekVsValue>=1.25?' good':'')+'">'+(p.weekVsValue>=1.25?'Big week projected ('+Math.round(p.weekVsValue*100)+'% of his usual) — hold through it':'Weak week projected ('+Math.round(p.weekVsValue*100)+'% of his usual)')+'</span>';
+  if(num(p.next3)!==null&&(p.next3>=1.15||p.next3<=0.85))fb+=' · <span class="flag'+(p.next3>=1.15?' good':' bad')+'">next 3 defenses '+(p.next3>=1.15?'soft':'tough')+' ('+f1(p.next3)+'x)</span>';
   if(!blank(p.plan))fb+='<br><span class="flag'+(/IR|Out|drop/i.test(p.plan)?' bad':'')+'" style="font-weight:600">Plan: '+esc(p.plan)+'</span>';
   if(!blank(p.handcuff))fb+=(fb?' · ':'')+'handcuff <b>'+esc(p.handcuff)+'</b>'+(blank(p.hcStatus)?'':' <span class="'+(/^free/i.test(p.hcStatus)?'form up':'form dn')+'">'+esc(p.hcStatus)+'</span>');
   const kick=(p.kickoff&&String(p.game||"").indexOf(String(p.kickoff))<0)?p.kickoff:"";
@@ -204,6 +206,17 @@ function render(d){
     h+='</section>';
   }
 
+  // Trades worth sending (both sides scored)
+  const tr=(d.trades||[]).filter(x=>!blank(x.get));
+  if(tr.length){
+    h+='<section><h2>Trades</h2>'+tr.slice(0,6).map((x,i)=>{const ok=num(x.theirGain)>=-0.3;
+      return '<div class="row" style="padding:8px 0"><div class="main" style="white-space:normal"><div class="name">'+(i+1)+'. '+esc(x.partner)+' <small style="color:var(--mute)">'+esc(x.teamName)+'</small></div>'
+        +'<div style="margin:2px 0">Give <b>'+esc(x.give)+'</b> · get <b>'+esc(x.get)+'</b></div>'
+        +'<div class="sub" style="white-space:normal">You <b style="color:var(--good)">+'+f1(x.myGain)+'/wk</b> (lineup +'+f1(x.lineupGain)+') · them <b style="color:'+(num(x.theirGain)>=0?'var(--good)':'var(--bad)')+'">'+(num(x.theirGain)>=0?'+':'')+f1(x.theirGain)+'</b>'+(num(x.myWeek)!==null&&Math.abs(x.myWeek)>=1?' · this week '+(x.myWeek>0?'+':'')+f1(x.myWeek):'')+(blank(x.h2h)?'':' · you play them wk '+esc(x.h2h))+'</div>'
+        +'<div class="sub" style="white-space:normal"><span class="flag'+(ok?' good':'')+'">'+esc(x.ask)+'</span> · '+esc(x.timing)+'</div></div></div>'}).join("")
+      +'<div class="sub" style="white-space:normal;margin-top:6px">Every 1-for-1, 2-for-1 and 1-for-2 across the league, scored by best-lineup value per week on both sides, adjusted for the weeks you play the partner and each player\'s next three defenses. Only trades that raise your starting lineup are listed.</div></section>';
+  }
+
   // Lineup
   const ro=d.roster||[];
   const starters=ro.filter(p=>!/^BN|^IR/i.test(p.slot||"")&&!blank(p.player));
@@ -234,6 +247,23 @@ function render(d){
     const mineS=stl.filter(x=>x.who!=='opp'),oppS=stl.filter(x=>x.who==='opp');
     h+='<section><h2>Status – mine</h2>'+(mineS.length?mineS.map(line).join(""):'<div class="sub">Nothing on your guys.</div>')+(oppS.length?'<h2 style="margin-top:14px">'+esc((d.matchup&&d.matchup.opp)||'Their side')+'</h2>'+oppS.map(line).join(""):'')+'</section>';
   }
+  // League: standings + power, with rosters on tap
+  const pw=(d.power||[]).filter(x=>!blank(x.name));
+  if(pw.length){
+    const byStand=pw.slice().sort((a,b)=>(num(a.standing)||99)-(num(b.standing)||99)||(num(b.pf)||0)-(num(a.pf)||0));
+    const mx=Math.max.apply(null,pw.map(x=>num(x.ros)||0).concat([1]));
+    h+='<section><h2>League</h2><table><tr><th style="width:28px">#</th><th>Team</th><th class="n" style="width:46px">Rec</th><th class="n" style="width:52px">PF</th><th class="n" style="width:40px">ROS</th></tr>';
+    h+=byStand.map(x=>{const me=/let him cook/i.test(x.name);
+      return '<tr'+(me?' style="font-weight:700"':'')+'><td>'+(num(x.standing)!==null?Math.round(x.standing):'')+'</td><td style="white-space:normal">'+esc(x.name)+'<small style="display:block;color:var(--mute)">'+esc(x.manager)+(blank(x.playsMe)||x.playsMe==='-'?'':' · plays you wk '+esc(x.playsMe))+'</small></td><td class="n">'+esc(x.record)+'</td><td class="n">'+(num(x.pf)!==null?Math.round(x.pf):'')+'</td><td class="n">'+(num(x.rankRos)!==null?Math.round(x.rankRos):'')+'</td></tr>'}).join("");
+    h+='</table><div class="sub" style="margin-top:6px">ROS = rank by rest-of-season value of starters plus 30% of bench. Tap a team for its roster.</div>';
+    const lg=(d.league||[]);
+    h+=pw.slice().sort((a,b)=>(num(a.rankRos)||99)-(num(b.rankRos)||99)).map(x=>{
+      const ros=lg.filter(p=>p.team===x.team).sort((a,b)=>(/^(BN|IR)$/.test(a.slot)?1:0)-(/^(BN|IR)$/.test(b.slot)?1:0)||(num(b.value)||0)-(num(a.value)||0));
+      return '<details style="margin-top:6px"><summary style="cursor:pointer;font-weight:600">'+esc(x.name)+' <small style="color:var(--mute)">ROS #'+Math.round(x.rankRos||0)+' · '+f1(x.ros)+' · this week '+f1(x.week)+(blank(x.best)?'':' · best '+esc(x.best))+'</small></summary><div class="fbar" style="margin:4px 0"><span style="width:60px;flex:0 0 60px">ROS</span><div class="t"><i style="width:'+(100*(num(x.ros)||0)/mx)+'%"></i></div></div>'
+        +'<table>'+ros.map(p=>'<tr><td style="width:36px;color:var(--mute)">'+esc(p.slot)+'</td><td style="white-space:normal">'+esc(p.player)+' <small style="color:var(--mute)">'+esc(p.pos)+' · '+esc(p.nfl)+'</small></td><td class="n" style="width:44px">'+f1(p.week)+'</td><td class="n" style="width:44px">'+f1(p.value)+'</td></tr>').join("")+'</table><div class="sub">columns: this week · value/wk</div></details>'}).join("");
+    h+='</section>';
+  }
+
   // Waivers
   const wv=(d.waivers||[]).filter(w=>!blank(w.player)&&!/^(gone|taken|rostered)/i.test(String(w.inLeague||"")));
   if(wv.length){
