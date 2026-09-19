@@ -214,11 +214,11 @@ function render(d){
   }
 
   // Status: player - status - detail (yours first, then this week's opponent)
-  const st=(d.news||[]).filter(x=>!blank(x.player)&&!blank(x.status));
-  if(st.length){
+  const stl=(d.news||[]).filter(x=>!blank(x.player)&&!blank(x.status));
+  if(stl.length){
     const line=x=>{const sg=num(x.signal)||0,cls=sg<=-2?' bad':(sg>=1.5?' good':'');
       return '<div class="row" style="padding:5px 0"><div class="main"><div class="name" style="font-weight:500">'+esc(x.player)+' <span class="flag'+cls+'" style="font-weight:600">– '+esc(x.status)+'</span>'+(blank(x.detail)?'':' <span style="color:var(--mute)">– '+esc(x.detail)+'</span>')+'</div></div><div class="pts" style="font-size:11px;color:var(--mute)">'+(num(x.age)===null?'':(x.age<1?'now':(x.age<24?Math.round(x.age)+'h':Math.round(x.age/24)+'d')))+'</div></div>'};
-    const mineS=st.filter(x=>x.who!=='opp'),oppS=st.filter(x=>x.who==='opp');
+    const mineS=stl.filter(x=>x.who!=='opp'),oppS=stl.filter(x=>x.who==='opp');
     h+='<section><h2>Status</h2>'+(mineS.length?mineS.map(line).join(""):'<div class="sub">Nothing on your guys.</div>')+(oppS.length?'<div class="sub" style="margin:8px 0 2px;font-weight:600">Their side</div>'+oppS.map(line).join(""):'')+'</section>';
   }
   // Sources and their credibility weights
