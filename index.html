@@ -143,6 +143,8 @@ function playerRow(p){
   let fb="";
   const nu=blank(p.nextUp)?p.fallback:p.nextUp, nsrc=blank(p.nextUp)?'Waiver':(p.nextSrc||''), nwk=blank(p.nextUp)?p.fbWk:p.nextWk;
   if(!blank(nu))fb+='Next up → <b>'+esc(nu)+'</b>'+(nsrc?' <span class="pill">'+esc(nsrc)+'</span>':'')+(num(nwk)!==null?' '+f1(nwk)+'/wk':'');
+  if(num(p.value)!==null&&num(p.perWk)!==null&&Math.abs(p.value-p.perWk)>=0.05)fb+=(fb?' · ':'')+'value <b>'+f1(p.value)+'</b>/wk <small>(ROS '+f1(p.perWk)+' + form)</small>';
+  if(!blank(p.verdict)&&!/^Hold$/.test(p.verdict))fb+='<br><span class="flag'+(/^Upgrade/.test(p.verdict)?' bad':'')+'" style="font-weight:600">'+esc(p.verdict)+'</span>';
   if(!blank(p.plan))fb+='<br><span class="flag'+(/IR|Out|drop/i.test(p.plan)?' bad':'')+'" style="font-weight:600">Plan: '+esc(p.plan)+'</span>';
   if(!blank(p.handcuff))fb+=(fb?' · ':'')+'handcuff <b>'+esc(p.handcuff)+'</b>'+(blank(p.hcStatus)?'':' <span class="'+(/^free/i.test(p.hcStatus)?'form up':'form dn')+'">'+esc(p.hcStatus)+'</span>');
   const kick=(p.kickoff&&String(p.game||"").indexOf(String(p.kickoff))<0)?p.kickoff:"";
