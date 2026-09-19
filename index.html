@@ -42,6 +42,7 @@ h2{font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--mute)
 .pill.bad{background:var(--bad);color:#fff}
 .flag{font-size:12px;color:var(--warn)}
 .flag.bad{color:var(--bad)}
+.flag.good{color:var(--good)}
 .act{padding:10px 0;border-top:1px solid var(--line)}
 .act:first-child{border-top:0}
 .act .when{font-size:11px;text-transform:uppercase;letter-spacing:.6px;font-weight:700;color:var(--acc)}
@@ -143,6 +144,8 @@ function playerRow(p){
   let fb="";
   const nu=blank(p.nextUp)?p.fallback:p.nextUp, nsrc=blank(p.nextUp)?'Waiver':(p.nextSrc||''), nwk=blank(p.nextUp)?p.fbWk:p.nextWk;
   if(!blank(nu))fb+='Next up → <b>'+esc(nu)+'</b>'+(nsrc?' <span class="pill">'+esc(nsrc)+'</span>':'')+(num(nwk)!==null?' '+f1(nwk)+'/wk':'');
+  if(num(p.cons)!==null&&num(p.nsrc)!==null&&p.nsrc>0){fb+=(fb?'<br>':'')+'consensus <b>'+f1(p.cons)+'</b> <small>('+Math.round(p.nsrc)+' source'+(p.nsrc==1?'':'s')+(num(p.spread)!==null&&p.spread>0?', spread '+f1(p.spread):'')+(blank(p.grade)?'':', experts '+esc(p.grade))+')</small>'+(num(p.spread)!==null&&p.spread>=6?' <span class="flag">sources split</span>':'');}
+  if(num(p.buzz)!==null&&p.buzz<=-3)fb+='<br><span class="flag bad" style="font-weight:600">News: '+esc(p.headline||'negative buzz')+' ('+f1(p.buzz)+')</span>';
   if(num(p.value)!==null&&num(p.perWk)!==null&&Math.abs(p.value-p.perWk)>=0.05)fb+=(fb?' · ':'')+'value <b>'+f1(p.value)+'</b>/wk <small>(ROS '+f1(p.perWk)+' + form)</small>';
   if(!blank(p.verdict)&&!/^Hold$/.test(p.verdict))fb+='<br><span class="flag'+(/^Upgrade/.test(p.verdict)?' bad':'')+'" style="font-weight:600">'+esc(p.verdict)+'</span>';
   if(!blank(p.plan))fb+='<br><span class="flag'+(/IR|Out|drop/i.test(p.plan)?' bad':'')+'" style="font-weight:600">Plan: '+esc(p.plan)+'</span>';
@@ -207,6 +210,28 @@ function render(d){
         +'<div class="fbar"><span style="width:66px;flex:0 0 66px">3-wk '+f1(x.avg3)+'</span><div class="t"><i style="width:'+(100*(num(x.avg3)||0)/fmx)+'%"></i></div></div>'
         +'<div class="fbar"><span style="width:66px;flex:0 0 66px">season '+f1(x.season)+'</span><div class="t"><i style="width:'+(100*(num(x.season)||0)/fmx)+'%;opacity:.55"></i></div></div>'
         +(bits.length?'<div class="sub" style="white-space:normal">'+bits.join(' · ')+'</div>':'')+'</div></div>'}).join("")+'</section>';
+  }
+
+  // News on your players / fallbacks (last 72h), keyword-tagged
+  const nw=(d.news||[]).filter(x=>!blank(x.headline));
+  if(nw.length){
+    h+='<section><h2>News on your guys</h2>'+nw.map(x=>{
+      const sg=num(x.signal),cls=sg===null?'':(sg<=-2?' bad':(sg>=2?' good':''));
+      const ago=num(x.age)===null?'':(x.age<1?'just now':(x.age<24?Math.round(x.age)+'h ago':Math.round(x.age/24)+'d ago'));
+      return '<div class="row"><div class="main"><div class="name">'+esc(x.player)+' <span class="pill">'+esc(x.source)+'</span> <small style="color:var(--mute)">'+ago+'</small></div><div class="sub" style="white-space:normal"><b>'+esc(x.headline)+'</b>'+(blank(x.body)?'':'<br>'+esc(x.body))+(blank(x.keywords)?'':'<br><span class="flag'+cls+'">'+esc(x.keywords)+(sg!==null?' · signal '+(sg>0?'+':'')+f1(sg):'')+'</span>')+(blank(x.reporter)?'':' <small>via '+esc(x.reporter)+'</small>')+'</div></div></div>'}).join("")+'</section>';
+  }
+  // Keywords going around (72h)
+  const bz=(d.buzz||[]).filter(x=>num(x.n72)>0).sort((a,b)=>(b.n72||0)-(a.n72||0)).slice(0,24);
+  if(bz.length){
+    const bmx=Math.max.apply(null,bz.map(x=>x.n72||0).concat([1]));
+    h+='<section><h2>Keywords going around</h2>'+bz.map(x=>{const sg=num(x.signal)||0,fc=sg<=-1.5?'dn':(sg>=1.5?'up':'');
+      return '<div class="fbar"><span style="width:118px;flex:0 0 118px;overflow:hidden;text-overflow:ellipsis">'+esc(x.keyword)+(num(x.mine)>0?' <b>·'+Math.round(x.mine)+' mine</b>':'')+'</span><div class="t"><i class="'+fc+'" style="width:'+(100*(x.n72||0)/bmx)+'%"></i></div><span style="width:52px;flex:0 0 52px;text-align:right">'+Math.round(x.n72)+(num(x.n24)>0?' <small>('+Math.round(x.n24)+' today)</small>':'')+'</span></div>'}).join("")+'</section>';
+  }
+  // Sources and their credibility weights
+  const so=(d.sources||[]).filter(x=>!blank(x.source));
+  if(so.length){
+    const wmx=Math.max.apply(null,so.map(x=>x.weight||0).concat([1]));
+    h+='<section><h2>Sources</h2>'+so.map(x=>'<div class="fbar"><span style="width:96px;flex:0 0 96px">'+esc(x.source)+'</span><div class="t"><i style="width:'+(100*(x.weight||0)/wmx)+'%"></i></div><span style="width:120px;flex:0 0 120px;text-align:right;font-size:12px">w '+f1(x.weight)+(num(x.mae)!==null?' · err '+f1(x.mae):' · unscored')+'</span></div>').join("")+'<div class="sub" style="white-space:normal;margin-top:6px">Weight starts from a prior and moves to measured accuracy (average error vs actual points, your scoring) once a source has 50 scored player-weeks. A source that is wrong loses its vote.</div></section>';
   }
 
   // Waivers
