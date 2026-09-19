@@ -70,6 +70,12 @@ th{color:var(--mute);font-weight:600;font-size:11px;text-transform:uppercase;let
 td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .win{color:var(--good);font-weight:700}.loss{color:var(--bad);font-weight:700}
 footer{color:var(--mute);font-size:11px;text-align:center;margin-top:16px}
+.ctl{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+.ctl button{font:inherit;font-size:14px;font-weight:600;padding:10px 8px;border-radius:10px;border:1px solid var(--line);background:var(--chip);color:var(--ink);cursor:pointer}
+.ctl button:active{opacity:.7}
+.ctl button.warn{color:var(--warn)}.ctl button.go{color:var(--acc)}
+.ctlmsg{font-size:12px;color:var(--mute);margin-top:8px;min-height:16px}
+.paused{color:var(--warn);font-weight:600}
 .logo{width:26px;height:26px;flex:0 0 26px;object-fit:contain;border-radius:6px;background:var(--chip)}
 .mb{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--mute);margin-top:3px}
 .mb i{display:block;height:5px;border-radius:3px;background:var(--barme)}
@@ -179,11 +185,11 @@ function render(d){
     const fmx=Math.max.apply(null,fm.map(x=>Math.max(num(x.avg3)||0,num(x.season)||0,num(x.last)||0)).concat([1]));
     h+='<section><h2>Form &amp; usage</h2>'+fm.map(x=>{
       const f=String(x.form||""),fc=/ris/i.test(f)?"up":(/fad/i.test(f)?"dn":"");
-      const bits=[];if(num(x.tgt)!==null)bits.push(Math.round(num(x.tgt)*(num(x.tgt)<=1?100:1))+'% tgt');if(num(x.snap)!==null)bits.push(Math.round(num(x.snap)*(num(x.snap)<=1?100:1))+'% snaps');if(num(x.touches)!==null)bits.push(Math.round(num(x.touches))+' touches');if(!blank(x.depth))bits.push(esc(x.depth));if(!blank(x.flag))bits.push(esc(x.flag));
+      const bits=[];if(num(x.tgt)!==null)bits.push(Math.round(num(x.tgt)*(num(x.tgt)<=1?100:1))+'% tgt');if(num(x.snap)!==null)bits.push(Math.round(num(x.snap)*(num(x.snap)<=1?100:1))+'% snaps');if(num(x.touches)!==null)bits.push(Math.round(num(x.touches))+' touches');if(!blank(x.depth))bits.push(/^\d+$/.test(String(x.depth).trim())?'depth '+esc(x.depth):esc(x.depth));if(!blank(x.flag))bits.push(esc(x.flag));
       return '<div class="row"><div class="slot">'+esc(x.slot)+'</div><div class="main"><div class="name">'+esc(x.player)+' <span class="form '+fc+'" style="font-size:12px;font-weight:600">'+esc(f)+'</span></div>'
-        +'<div class="fbar"><span style="width:44px">last '+f1(x.last)+'</span><div class="t"><i class="'+fc+'" style="width:'+(100*(num(x.last)||0)/fmx)+'%"></i></div></div>'
-        +'<div class="fbar"><span style="width:44px">3-wk '+f1(x.avg3)+'</span><div class="t"><i style="width:'+(100*(num(x.avg3)||0)/fmx)+'%"></i></div></div>'
-        +'<div class="fbar"><span style="width:44px">season '+f1(x.season)+'</span><div class="t"><i style="width:'+(100*(num(x.season)||0)/fmx)+'%;opacity:.55"></i></div></div>'
+        +'<div class="fbar"><span style="width:66px;flex:0 0 66px">last '+f1(x.last)+'</span><div class="t"><i class="'+fc+'" style="width:'+(100*(num(x.last)||0)/fmx)+'%"></i></div></div>'
+        +'<div class="fbar"><span style="width:66px;flex:0 0 66px">3-wk '+f1(x.avg3)+'</span><div class="t"><i style="width:'+(100*(num(x.avg3)||0)/fmx)+'%"></i></div></div>'
+        +'<div class="fbar"><span style="width:66px;flex:0 0 66px">season '+f1(x.season)+'</span><div class="t"><i style="width:'+(100*(num(x.season)||0)/fmx)+'%;opacity:.55"></i></div></div>'
         +(bits.length?'<div class="sub" style="white-space:normal">'+bits.join(' · ')+'</div>':'')+'</div></div>'}).join("")+'</section>';
   }
 
@@ -212,7 +218,18 @@ function render(d){
     h+=se.map(s=>'<tr><td>'+esc(s.week)+'</td><td>'+esc(s.opp)+'<div class="mb"><i style="width:'+(60*(num(s.my)||0)/smx)+'%"></i><span>'+f1(s.my)+'</span></div><div class="mb"><i class="them" style="width:'+(60*(num(s.their)||0)/smx)+'%"></i><span>'+f1(s.their)+'</span></div></td><td class="n">'+f1(s.my)+'</td><td class="n">'+f1(s.their)+'</td><td class="'+(/^w/i.test(s.result||"")?'win':(/^l/i.test(s.result||"")?'loss':''))+'">'+esc(s.result||"")+'</td></tr>').join("");
     h+='</table></section>';
   }
+  // Controls (talk to the laptop through the command channel)
+  if(d.cmd){
+    h+='<section><h2>Laptop</h2><div class="sub" style="white-space:normal">Refresh '+(d.paused?'<span class="paused">paused</span>':'running')+' · last run '+esc(d.updated||"")+'</div><div class="ctl">'
+      +(d.paused?'<button class="go" data-cmd="resume">Resume refresh</button>':'<button class="warn" data-cmd="pause">Pause refresh</button>')
+      +'<button class="go" data-cmd="refresh">Refresh now</button><button data-cmd="ping">Ping laptop</button><button onclick="location.reload()">Reload page</button></div><div class="ctlmsg" id="ctlmsg"></div></section>';
+  }
   $("#app").innerHTML=h;
+  document.querySelectorAll(".ctl button[data-cmd]").forEach(b=>b.addEventListener("click",()=>send(b.dataset.cmd,d.cmd)));
+}
+function send(cmd,topic){
+  const m=$("#ctlmsg"); m.textContent="Sending…";
+  fetch("https://ntfy.sh/"+topic,{method:"POST",body:cmd}).then(r=>{m.textContent=r.ok?"Sent. The laptop replies to your phone in a few seconds.":"Couldn't send ("+r.status+").";}).catch(()=>{m.textContent="Couldn't send — no connection.";});
 }
 function load(){
   fetch("data.json?v="+Date.now(),{cache:"no-store"}).then(r=>{if(!r.ok)throw 0;return r.json()}).then(d=>{try{localStorage.setItem("lhc",JSON.stringify(d))}catch(e){}render(d)})
