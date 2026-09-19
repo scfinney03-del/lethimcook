@@ -213,26 +213,13 @@ function render(d){
         +(bits.length?'<div class="sub" style="white-space:normal">'+bits.join(' · ')+'</div>':'')+'</div></div>'}).join("")+'</section>';
   }
 
-  // News on your players / fallbacks (last 72h), keyword-tagged
-  const nw=(d.news||[]).filter(x=>!blank(x.headline));
-  if(nw.length){
-    h+='<section><h2>News on your guys</h2>'+nw.map(x=>{
-      const sg=num(x.signal),cls=sg===null?'':(sg<=-2?' bad':(sg>=2?' good':''));
-      const ago=num(x.age)===null?'':(x.age<1?'just now':(x.age<24?Math.round(x.age)+'h ago':Math.round(x.age/24)+'d ago'));
-      return '<div class="row"><div class="main"><div class="name">'+esc(x.player)+' <span class="pill">'+esc(x.source)+'</span> <small style="color:var(--mute)">'+ago+'</small></div><div class="sub" style="white-space:normal"><b>'+esc(x.headline)+'</b>'+(blank(x.body)?'':'<br>'+esc(x.body))+(blank(x.keywords)?'':'<br><span class="flag'+cls+'">'+esc(x.keywords)+(sg!==null?' · signal '+(sg>0?'+':'')+f1(sg):'')+'</span>')+(blank(x.reporter)?'':' <small>via '+esc(x.reporter)+'</small>')+'</div></div></div>'}).join("")+'</section>';
-  }
-  // Keywords going around (72h)
-  const bz=(d.buzz||[]).filter(x=>num(x.n72)>0).sort((a,b)=>(b.n72||0)-(a.n72||0)).slice(0,24);
-  if(bz.length){
-    const bmx=Math.max.apply(null,bz.map(x=>x.n72||0).concat([1]));
-    h+='<section><h2>Keywords going around</h2>'+bz.map(x=>{const sg=num(x.signal)||0,fc=sg<=-1.5?'dn':(sg>=1.5?'up':'');
-      return '<div class="fbar"><span style="width:118px;flex:0 0 118px;overflow:hidden;text-overflow:ellipsis">'+esc(x.keyword)+(num(x.mine)>0?' <b>·'+Math.round(x.mine)+' mine</b>':'')+'</span><div class="t"><i class="'+fc+'" style="width:'+(100*(x.n72||0)/bmx)+'%"></i></div><span style="width:52px;flex:0 0 52px;text-align:right">'+Math.round(x.n72)+(num(x.n24)>0?' <small>('+Math.round(x.n24)+' today)</small>':'')+'</span></div>'}).join("")+'</section>';
-  }
-  // Phrases the scanner is learning on its own
-  const lr=(d.learned||[]).filter(x=>!blank(x.phrase));
-  if(lr.length){
-    h+='<section><h2>New phrases it\'s learning</h2>'+lr.map(x=>{const ln=num(x.lean)||0,cls=ln<=-1?' bad':(ln>=1?' good':'');
-      return '<div class="row"><div class="main"><div class="name">'+esc(x.phrase)+' '+(x.status==='auto-added'?'<span class="pill">added</span>':'')+'<small style="color:var(--mute)"> '+Math.round(x.reports)+' reports · lean <span class="flag'+cls+'">'+(ln>0?'+':'')+f1(ln)+'</span></small></div><div class="sub" style="white-space:normal">e.g. '+esc(x.example)+'</div></div></div>'}).join("")+'<div class="sub" style="white-space:normal;margin-top:6px">Recurring 2-3 word phrases from player reports over 14 days. Lean = average signal of the reports they appear in. 8+ reports with a clear lean gets added to the lexicon automatically; a weekly review prunes junk.</div></section>';
+  // Status: player - status - detail (yours first, then this week's opponent)
+  const st=(d.news||[]).filter(x=>!blank(x.player)&&!blank(x.status));
+  if(st.length){
+    const line=x=>{const sg=num(x.signal)||0,cls=sg<=-2?' bad':(sg>=1.5?' good':'');
+      return '<div class="row" style="padding:5px 0"><div class="main"><div class="name" style="font-weight:500">'+esc(x.player)+' <span class="flag'+cls+'" style="font-weight:600">– '+esc(x.status)+'</span>'+(blank(x.detail)?'':' <span style="color:var(--mute)">– '+esc(x.detail)+'</span>')+'</div></div><div class="pts" style="font-size:11px;color:var(--mute)">'+(num(x.age)===null?'':(x.age<1?'now':(x.age<24?Math.round(x.age)+'h':Math.round(x.age/24)+'d')))+'</div></div>'};
+    const mineS=st.filter(x=>x.who!=='opp'),oppS=st.filter(x=>x.who==='opp');
+    h+='<section><h2>Status</h2>'+(mineS.length?mineS.map(line).join(""):'<div class="sub">Nothing on your guys.</div>')+(oppS.length?'<div class="sub" style="margin:8px 0 2px;font-weight:600">Their side</div>'+oppS.map(line).join(""):'')+'</section>';
   }
   // Sources and their credibility weights
   const so=(d.sources||[]).filter(x=>!blank(x.source));
