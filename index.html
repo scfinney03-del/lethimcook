@@ -115,13 +115,14 @@ const blank=v=>v===null||v===undefined||String(v).trim()==="";
 
 const LOGOFIX={JAC:"jax",WAS:"wsh",LA:"lar",OAK:"lv",SD:"lac",STL:"lar"};
 function logo(team){team=String(team||"").toUpperCase();if(!team||team==="0")return '<div class="logo"></div>';const ab=LOGOFIX[team]||team.toLowerCase();return '<img class="logo" alt="" loading="lazy" src="https://a.espncdn.com/i/teamlogos/nfl/500/'+ab+'.png" onerror="this.style.visibility=\'hidden\'">';}
+function gamePill(st){st=String(st||"");if(/progress/i.test(st))return '<span class="pill live">LIVE</span>';if(/final/i.test(st))return '<span class="pill final">FINAL</span>';if(/bye/i.test(st))return '<span class="pill warn">BYE</span>';return '<span class="pill" style="background:transparent;border:1px solid var(--line)">PENDING</span>';}
 function statusPill(st,kick){
   st=String(st||"");
   if(/progress/i.test(st))return '<span class="pill live">LIVE</span>';
   if(/final/i.test(st))return '<span class="pill final">Final</span>';
   if(/bye/i.test(st))return '<span class="pill warn">BYE</span>';
   if(kick)return '<span class="pill">'+esc(kick)+'</span>';
-  if(/upcoming/i.test(st))return "";
+  if(/upcoming/i.test(st))return '<span class="pill" style="background:transparent;border:1px solid var(--line)">PENDING</span>';
   return st?'<span class="pill">'+esc(st)+'</span>':"";
 }
 function flags(p){
@@ -187,7 +188,7 @@ function render(d){
       const e=num(r.edge);const cls=e===null?"":(e>2?"up":(e<-2?"down":""));
       const myv=num(r.myLive)!==null?f1(r.myLive):f1(r.myExp), thv=num(r.theirLive)!==null?f1(r.theirLive):f1(r.theirExp);
       const a=num(myv),b=num(thv),mx2=Math.max(a||0,b||0,num(r.myExp)||0,num(r.theirExp)||0,0.1);
-      return '<div class="vs"><div class="slot">'+esc(r.slot)+'</div><div class="me">'+esc(r.my)+'<small>'+myv+'</small></div><div class="edge '+cls+'">'+(e===null?"":(e>0?"+":"")+e.toFixed(1))+'</div><div class="them">'+esc(r.their)+(/ghost/i.test(String(r.ghost||""))?' <span class="pill warn" title="slot not set yet - best bench fit shown">ghost</span>':'')+'<small>'+thv+'</small></div><div class="pair"><div class="t"><i style="width:'+(100*Math.max(a||0,0)/mx2)+'%"></i></div><div class="t r"><i style="width:'+(100*Math.max(b||0,0)/mx2)+'%"></i></div></div></div>'}).join("");
+      return '<div class="vs"><div class="slot">'+esc(r.slot)+'</div><div class="me">'+esc(r.my)+'<small>'+gamePill(r.myStatus)+' '+myv+'</small></div><div class="edge '+cls+'">'+(e===null?"":(e>0?"+":"")+e.toFixed(1))+'</div><div class="them">'+esc(r.their)+(/ghost/i.test(String(r.ghost||""))?' <span class="pill warn" title="slot not set yet - best bench fit shown">ghost</span>':'')+'<small>'+thv+' '+gamePill(r.theirStatus)+'</small></div><div class="pair"><div class="t"><i style="width:'+(100*Math.max(a||0,0)/mx2)+'%"></i></div><div class="t r"><i style="width:'+(100*Math.max(b||0,0)/mx2)+'%"></i></div></div></div>'}).join("");
     if((m.rows||[]).some(r=>/ghost/i.test(String(r.ghost||""))))h+='<div class="sub" style="white-space:normal;margin-top:6px">ghost = a slot they have not set yet, filled with their best bench fit so the total is realistic.</div>';
     h+='</section>';
   }
@@ -217,7 +218,8 @@ function render(d){
   const stl=(d.news||[]).filter(x=>!blank(x.player)&&!blank(x.status));
   if(stl.length){
     const line=x=>{const sg=num(x.signal)||0,cls=sg<=-2?' bad':(sg>=1.5?' good':'');
-      return '<div class="row" style="padding:5px 0"><div class="main"><div class="name" style="font-weight:500">'+esc(x.player)+' <span class="flag'+cls+'" style="font-weight:600">– '+esc(x.status)+'</span>'+(blank(x.detail)?'':' <span style="color:var(--mute)">– '+esc(x.detail)+'</span>')+'</div></div><div class="pts" style="font-size:11px;color:var(--mute)">'+(num(x.age)===null?'':(x.age<1?'now':(x.age<24?Math.round(x.age)+'h':Math.round(x.age/24)+'d')))+'</div></div>'};
+      const ago=num(x.age)===null?'':(x.age<1?'now':(x.age<24?Math.round(x.age)+'h':Math.round(x.age/24)+'d'));
+      return '<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)"><div style="white-space:normal;line-height:1.35"><span style="font-weight:600">'+esc(x.player)+'</span> <span class="flag'+cls+'" style="font-weight:600">'+esc(x.status)+'</span>'+(blank(x.detail)?'':' <span style="color:var(--mute)">'+esc(x.detail)+'</span>')+'</div><div style="flex:0 0 auto;font-size:11px;color:var(--mute);padding-top:2px">'+ago+'</div></div>'};
     const mineS=stl.filter(x=>x.who!=='opp'),oppS=stl.filter(x=>x.who==='opp');
     h+='<section><h2>Status – mine</h2>'+(mineS.length?mineS.map(line).join(""):'<div class="sub">Nothing on your guys.</div>')+(oppS.length?'<h2 style="margin-top:14px">'+esc((d.matchup&&d.matchup.opp)||'Their side')+'</h2>'+oppS.map(line).join(""):'')+'</section>';
   }
