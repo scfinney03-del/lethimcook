@@ -141,7 +141,9 @@ function playerRow(p){
   let fl=flags(p);
   const nb=num(p.nextBye); if(nb!==null&&d_week!==null&&nb===d_week+1)fl=(fl?fl+' · ':'')+'<span class="flag">Bye next week</span>';
   let fb="";
-  if(!blank(p.fallback))fb+='If he drops → <b>'+esc(p.fallback)+'</b>'+(num(p.fbWk)!==null?' ('+f1(p.fbWk)+'/wk)':'');
+  const nu=blank(p.nextUp)?p.fallback:p.nextUp, nsrc=blank(p.nextUp)?'Waiver':(p.nextSrc||''), nwk=blank(p.nextUp)?p.fbWk:p.nextWk;
+  if(!blank(nu))fb+='Next up → <b>'+esc(nu)+'</b>'+(nsrc?' <span class="pill">'+esc(nsrc)+'</span>':'')+(num(nwk)!==null?' '+f1(nwk)+'/wk':'');
+  if(!blank(p.plan))fb+='<br><span class="flag'+(/IR|Out|drop/i.test(p.plan)?' bad':'')+'" style="font-weight:600">Plan: '+esc(p.plan)+'</span>';
   if(!blank(p.handcuff))fb+=(fb?' · ':'')+'handcuff <b>'+esc(p.handcuff)+'</b>'+(blank(p.hcStatus)?'':' <span class="'+(/^free/i.test(p.hcStatus)?'form up':'form dn')+'">'+esc(p.hcStatus)+'</span>');
   const kick=(p.kickoff&&String(p.game||"").indexOf(String(p.kickoff))<0)?p.kickoff:"";
   return '<div class="row"><div class="slot">'+esc(p.slot)+'</div>'+logo(p.team)+'<div class="main"><div class="name">'+esc(p.player)+'</div><div class="sub">'+statusPill(p.status,kick)+esc([p.pos,p.team,p.game].filter(x=>!blank(x)).join(' · '))+(fl?'<br>'+fl:'')+(fb?'<br><span style="white-space:normal">'+fb+'</span>':'')+'</div></div><div class="pts">'+pts+'</div></div>';
@@ -208,7 +210,7 @@ function render(d){
   // Waivers
   const wv=(d.waivers||[]).filter(w=>!blank(w.player)&&!/^(gone|taken|rostered)/i.test(String(w.inLeague||"")));
   if(wv.length){
-    h+='<section><h2>Waiver watch</h2><table><tr><th style="width:22px">#</th><th>Player</th><th class="n" style="width:44px">Wk</th></tr>';
+    h+='<section><h2>Waiver watch</h2><table><tr><th style="width:30px">#</th><th>Player</th><th class="n" style="width:44px">Wk</th></tr>';
     h+=wv.slice(0,8).map(w=>{const st=blank(w.status)?'':'<span class="flag'+(/out|ir/i.test(w.status)?' bad':'')+'">'+esc(w.status)+'</span> · ';
       return '<tr><td>'+esc(w.pri)+'</td><td><div style="display:flex;gap:8px;align-items:center">'+logo(w.team)+'<div style="min-width:0"><b>'+esc(w.player)+'</b><br><span class="sub">'+st+esc([w.pos,w.team].filter(x=>!blank(x)).join(' · '))+(num(w.season)===null?'':' · season '+Math.round(num(w.season)))+(blank(w.next3)?'':' · next '+esc(w.next3))+'</span></div></div></td><td class="n">'+f1(w.wk)+'</td></tr>'}).join("");
     h+='</table></section>';
@@ -226,7 +228,7 @@ function render(d){
   // Season
   const se=(d.season||[]).filter(s=>!blank(s.opp)&&num(s.my)!==null);
   if(se.length){
-    h+='<section><h2>Season</h2><table><tr><th>Wk</th><th>Opponent</th><th class="n">Me</th><th class="n">Them</th><th></th></tr>';
+    h+='<section><h2>Season</h2><table><tr><th style="width:30px">Wk</th><th>Opponent</th><th class="n" style="width:52px">Me</th><th class="n" style="width:52px">Them</th><th style="width:50px"></th></tr>';
     const smx=Math.max.apply(null,se.map(s=>Math.max(num(s.my)||0,num(s.their)||0)).concat([1]));
     h+=se.map(s=>'<tr><td>'+esc(s.week)+'</td><td>'+esc(s.opp)+'<div class="mb"><i style="width:'+(60*(num(s.my)||0)/smx)+'%"></i><span>'+f1(s.my)+'</span></div><div class="mb"><i class="them" style="width:'+(60*(num(s.their)||0)/smx)+'%"></i><span>'+f1(s.their)+'</span></div></td><td class="n">'+f1(s.my)+'</td><td class="n">'+f1(s.their)+'</td><td class="'+(/^w/i.test(s.result||"")?'win':(/^l/i.test(s.result||"")?'loss':''))+'">'+esc(s.result||"")+'</td></tr>').join("");
     h+='</table></section>';
