@@ -90,6 +90,7 @@ function statusPill(st,kick){
   if(/final/i.test(st))return '<span class="pill final">Final</span>';
   if(/bye/i.test(st))return '<span class="pill warn">BYE</span>';
   if(kick)return '<span class="pill">'+esc(kick)+'</span>';
+  if(/upcoming/i.test(st))return "";
   return st?'<span class="pill">'+esc(st)+'</span>':"";
 }
 function flags(p){
