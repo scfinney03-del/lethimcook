@@ -687,9 +687,15 @@ h+='<section><h2>Team context · '+tl(p.team)+'</h2>'+kv([['Coaches',c?coachLine
     h+='<section><h2>Week by week</h2>'+svgLine({labels:L2.map(x=>'Wk '+x.week),series:[{vals:L2.map(x=>x.ppr),cls:'me'},{vals:avg,cls:'them',dash:true}],h:140,legend:[['me','points'],['them','3-week average']]})+'</section>';}
   // game log
   const lg=(p.log||[]);
-  if(lg.length){const isQB=p.pos==='QB';
-    h+='<section><h2>Game log</h2><table><tr><th style="width:30px">Wk</th><th>Opp</th><th class="n">Pts</th>'+(isQB?'<th class="n">Pass</th><th class="n">Rush</th>':'<th class="n">Car</th><th class="n">Tgt</th><th class="n">Rec</th><th class="n">Yds</th>')+'<th class="n">TD</th><th class="n">Snap</th></tr>';
-    h+=lg.map(x=>'<tr><td>'+esc(x.week)+'</td><td>'+esc(x.opp)+'</td><td class="n"><b>'+f1(x.ppr)+'</b></td>'+(isQB?'<td class="n">'+Math.round(x.payd)+'</td><td class="n">'+Math.round(x.ruyd)+'</td>':'<td class="n">'+Math.round(x.car)+'</td><td class="n">'+Math.round(x.tgt)+'</td><td class="n">'+Math.round(x.rec)+'</td><td class="n">'+Math.round((x.ruyd||0)+(x.reyd||0))+'</td>')+'<td class="n">'+Math.round(x.td)+'</td><td class="n">'+pct(x.snap)+'</td></tr>').join("")+'</table></section>';
+  if(lg.length){const isQB=p.pos==='QB',isD=p.pos==='DST'||p.pos==='DEF',isK=p.pos==='K';
+    const hd=isD?'<th class="n">Sack</th><th class="n">INT</th><th class="n">Fum</th><th class="n">TD</th><th class="n">Allowed</th>'
+      :isK?'<th class="n">FG</th><th class="n">Att</th><th class="n">PAT</th>'
+      :(isQB?'<th class="n">Pass</th><th class="n">Rush</th>':'<th class="n">Car</th><th class="n">Tgt</th><th class="n">Rec</th><th class="n">Yds</th>')+'<th class="n">TD</th><th class="n">Snap</th>';
+    h+='<section><h2>Game log</h2><table><tr><th style="width:30px">Wk</th><th>Opp</th><th class="n">Pts</th>'+hd+'</tr>';
+    h+=lg.map(x=>{const cells=isD?'<td class="n">'+Math.round(num(x.sack)||0)+'</td><td class="n">'+Math.round(num(x.dint)||0)+'</td><td class="n">'+Math.round(num(x.fr)||0)+'</td><td class="n">'+Math.round(num(x.dtd)||0)+'</td><td class="n">'+Math.round(num(x.pa)||0)+'</td>'
+        :isK?'<td class="n">'+Math.round(num(x.fgm)||0)+'</td><td class="n">'+Math.round(num(x.fga)||0)+'</td><td class="n">'+Math.round(num(x.pat)||0)+'</td>'
+        :(isQB?'<td class="n">'+Math.round(x.payd)+'</td><td class="n">'+Math.round(x.ruyd)+'</td>':'<td class="n">'+Math.round(x.car)+'</td><td class="n">'+Math.round(x.tgt)+'</td><td class="n">'+Math.round(x.rec)+'</td><td class="n">'+Math.round((x.ruyd||0)+(x.reyd||0))+'</td>')+'<td class="n">'+Math.round(x.td)+'</td><td class="n">'+pct(x.snap)+'</td>';
+      return '<tr><td>'+esc(x.week)+'</td><td>'+esc(x.opp)+'</td><td class="n"><b>'+f1(x.ppr)+'</b></td>'+cells+'</tr>';}).join("")+'</table></section>';
   }
   // news
   const nw=(p.news||[]);
@@ -750,6 +756,16 @@ function gameScore(g){
 }
 function logLine(l){
   const b=[],G=k=>num(l[k])||0;
+  if('pa' in l){        // team defense: a different box score entirely
+    if(G('sack'))b.push(G('sack')+' sack'+(G('sack')===1?'':'s'));
+    if(G('dint'))b.push(G('dint')+' INT');
+    if(G('fr'))b.push(G('fr')+' fumble'+(G('fr')===1?'':'s')+' recovered');
+    if(G('dtd'))b.push(G('dtd')+' TD');
+    if(G('sfty'))b.push(G('sfty')+' safety');
+    if(G('blk'))b.push(G('blk')+' blocked kick');
+    b.push(Math.round(G('pa'))+' allowed');
+    return b.join(' · ');
+  }
   if(G('fga')||G('pat'))b.push(G('fgm')+' of '+G('fga')+' FG'+(G('pat')?', '+G('pat')+' PAT':''));
   if(G('payd'))b.push(Math.round(G('payd'))+' pass yd');
   if(G('car'))b.push(G('car')+' car, '+Math.round(G('ruyd'))+' yd');
@@ -775,8 +791,10 @@ function boxRows(g){
     let pts=null,line='';
     const lg=(p.log||[]).filter(l=>String(l.opp||'').toUpperCase()===opp&&(wk===null||num(l.week)===wk));
     if(lg.length){const l=lg[lg.length-1];pts=num(l.ppr);line=logLine(l);
-      // nflverse carries no kicking or team-defense scoring, so a flat 0 there is missing data, not a blank game
-      if(pts===0&&(p.pos==='K'||p.pos==='DST'||p.pos==='DEF')&&!num(l.fga)&&!num(l.pat)){pts=null;line='';}}
+      // a 0 from before the kicking/defense fix is missing data, not a blank game; a row that
+      // carries the fields is real, even when the number is 0
+      if(pts===0&&p.pos==='K'&&!('fga' in l)&&!('pat' in l)){pts=null;line='';}
+      if(pts===0&&(p.pos==='DST'||p.pos==='DEF')&&!('pa' in l)){pts=null;line='';}}
     if(pts===null&&p.game&&String(p.game.opp||'').toUpperCase()===opp&&num(p.game.live)!==null){pts=num(p.game.live);line=rawLine(p.sid);}
     if(pts===null)return;
     out.push({name:p.name,sid:p.sid,team:t,pos:p.pos,owner:(num(p.owner)?(p.ownerName||''):''),mine:isMine(p.ownerName),pts:pts,line:line,proj:num(p.proj)});
