@@ -199,6 +199,7 @@ const f2=v=>{const n=num(v);return n===null?"":n.toFixed(2)};
 const pct=v=>{const n=num(v);return n===null?"":Math.round(n*(n<=1?100:1))+"%"};
 const blank=v=>v===null||v===undefined||String(v).trim()==="";
 let D=null, d_week=null, clockTimer=null;
+let NAV=true,LASTSIG='';
 let SHOW=false;try{SHOW=localStorage.getItem('lhc_show')==='1'}catch(e){}
 let CMDKEY='';try{CMDKEY=localStorage.getItem('lhc_cmd')||''}catch(e){}
 const WXI={Indoors:'🏟️','Heavy wind':'💨','Rain likely':'🌧️',Cold:'🥶',Breezy:'🍃',Fine:'☀️'};const wxIcon=i=>WXI[i]||'';
@@ -446,7 +447,7 @@ function renderHome(d){
     let chk=""; if(d.checkedIso){const cm=Math.round((Date.now()-new Date(d.checkedIso).getTime())/60000);chk=esc(d.checked||"")+(cm<1?" (just now)":" ("+cm+" min ago)");}
     h+='<section><h2>Laptop</h2><div style="margin:2px 0 6px"><span class="badge'+(d.paused?' off':'')+'">'+(d.paused?'PAUSED':'RUNNING')+'</span>'+(d.engine?' <span class="pill">'+esc(d.engine)+' engine · '+esc(d.runSec)+'s</span>':'')+'</div>'
       +'<div class="sub" style="white-space:normal">Last check '+(chk||esc(d.updated||""))+' · last data '+esc(d.updated||"")+'<br><span class="dot'+(lOn?'':' off')+'"></span>Buttons '+(lOn?'online':(la===null||la<0?'unknown':'offline'))+(blank(d.asof)?'':'<br>'+esc(d.asof))+'</div>'
-      +(CMDKEY?'<div class="ctl">'+(d.paused?'<button class="start" data-cmd="resume">Resume refresh</button>':'<button class="stop" data-cmd="pause">Pause refresh</button>')+'<button class="go" data-cmd="refresh">Refresh now</button><button data-cmd="ping">Ping laptop</button><button onclick="location.reload()">Reload page</button></div><div class="ctlmsg" id="ctlmsg"></div><div class="sub" style="margin-top:6px"><a href="#" id="cmdclear" style="color:var(--mute)">forget command key on this phone</a></div>':'<div class="filters" style="margin-top:6px"><input id="cmdkey" type="password" placeholder="Command key (unlocks the buttons on this phone)" style="grid-column:1/3"><button class="more" id="cmdsave" style="grid-column:1/3;margin:0">Unlock buttons</button></div>')+'</section>';
+      +(CMDKEY?'<div class="ctl">'+(d.paused?'<button class="start" data-cmd="resume">Resume refresh</button>':'<button class="stop" data-cmd="pause">Pause refresh</button>')+'<button class="go" data-cmd="refresh">Refresh now</button><button class="go" data-cmd="pull">Pull everything</button><button data-cmd="ping">Ping laptop</button><button onclick="location.reload()">Reload page</button></div><div class="ctlmsg" id="ctlmsg"></div><div class="sub" style="white-space:normal;margin-top:4px">Refresh now = recompute from what is already downloaded (about a minute). Pull everything = re-download every projection source and the news feed first (3-5 min).</div><div class="sub" style="margin-top:6px"><a href="#" id="cmdclear" style="color:var(--mute)">forget command key on this phone</a></div>':'<div class="filters" style="margin-top:6px"><input id="cmdkey" type="password" placeholder="Command key (unlocks the buttons on this phone)" style="grid-column:1/3"><button class="more" id="cmdsave" style="grid-column:1/3;margin:0">Unlock buttons</button></div>')+'</section>';
   }
   return h;
 }
@@ -656,10 +657,11 @@ function applyLive(){
   (D.players||[]).forEach(p=>{if(!p.sid||!p.game)return;const st=gm[p.team];if(st&&st!=='Upcoming'){p.game.status=st;const v=pts(p.sid,p.pos);if(v!==null)p.game.live=v;}});
   (D.league||[]).forEach(p=>{if(!p.sid)return;const st=gm[p.nfl];if(st&&st!=='Upcoming'){const v=pts(p.sid,p.pos);if(v!==null)p.week=v;}});
 }
+function liveSig(){let t="";(D&&D.players||[]).forEach(p=>{if(p.live!==null&&p.live!==undefined)t+=p.name+p.live+";"});(D&&D.games||[]).forEach(g=>{t+=(g.status||"")+(g.homeScore||"")+(g.awayScore||"")+";"});return t}
 function liveTick(force){
   if(!D||document.hidden)return;const yr=D.nflSeason||2026,wk=num(D.week);if(!wk)return;
   if(!force&&!anyLiveNow()&&LIVE.at&&(Date.now()-LIVE.at.getTime())<5*60000)return;
-  fetch("https://api.sleeper.app/v1/stats/nfl/regular/"+yr+"/"+wk,{cache:"no-store"}).then(r=>{if(!r.ok)throw 0;return r.json()}).then(j=>{LIVE.stats=j;LIVE.at=new Date();LIVE.ok=true;applyLive();render();}).catch(()=>{LIVE.ok=false;});
+  fetch("https://api.sleeper.app/v1/stats/nfl/regular/"+yr+"/"+wk,{cache:"no-store"}).then(r=>{if(!r.ok)throw 0;return r.json()}).then(j=>{LIVE.stats=j;LIVE.at=new Date();LIVE.ok=true;applyLive();const sg=liveSig();if(force||sg!==LASTSIG){LASTSIG=sg;render()}}).catch(()=>{LIVE.ok=false;});
 }
 setInterval(()=>liveTick(false),45000);
 
@@ -898,6 +900,7 @@ function searchHits(q){q=q.toLowerCase();if(q.length<2)return [];const out=[];
 
 // ---------------- ROUTER ----------------
 function route(){
+  NAV=true;
   const hsh=decodeURIComponent(location.hash||"#home").slice(1);
   const parts=hsh.split("/");
   state.view=parts[0]||"home";
@@ -925,6 +928,7 @@ function render(){
   else if(v==="injuries")h=renderInjuries(d);
   else if(v==="news")h=renderNews(d);
   else h=renderHome(d);
+  const _sy=window.scrollY;
   $("#app").innerHTML=h;
   document.querySelectorAll(".nav a").forEach(a=>a.classList.toggle("on",a.dataset.v===(v==="team"||v==="coach"||v==="nfl"?"league":(v==="player"?"players":v))));
   document.querySelectorAll(".ctl button[data-cmd]").forEach(b=>b.addEventListener("click",()=>send(b.dataset.cmd,CMDKEY)));
@@ -950,7 +954,7 @@ function render(){
   const ifl=$("#ifilt");if(ifl)ifl.addEventListener("change",()=>{state.ifilt=ifl.value;render()});
   const nfl=$("#nfilt");if(nfl)nfl.addEventListener("change",()=>{state.nfilt=nfl.value;render()});
   const nq=$("#nq");if(nq)nq.addEventListener("input",()=>{state.nq=nq.value;const k=nq.selectionStart;render();const q2=$("#nq");if(q2){q2.focus();try{q2.setSelectionRange(k,k)}catch(e){}}});
-  if(v!=="players")window.scrollTo(0,0);
+  if(NAV){if(v!=="players")window.scrollTo(0,0);NAV=false}else if(_sy>0){const _rs=()=>{if(Math.abs(window.scrollY-_sy)>2)window.scrollTo(0,_sy)};_rs();requestAnimationFrame(_rs);setTimeout(_rs,80);setTimeout(_rs,300)}
 }
 function send(cmd,topic){
   const m=$("#ctlmsg"); if(m)m.textContent="Sending…";
