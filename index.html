@@ -201,6 +201,16 @@ body.big .wi-t{font-size:18px;padding:10px 14px 10px 10px}body.big .wi-sw{width:
 .hist i.W{background:var(--good)}.hist i.L{background:var(--bad)}
 .devwrap input{width:100%}
 body.big .pos{font-size:15px;padding:2px 8px}body.big .wpn{font-size:28px}body.big .hist i{font-size:15px}
+
+.gl{border-bottom:1px dashed var(--acc);cursor:pointer}
+.gl::after{content:"?";font-size:9px;vertical-align:super;color:var(--acc);margin-left:1px;font-weight:700}
+#glsheet{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;z-index:50}
+#glsheet.on{display:flex}
+.gl-card{background:var(--card);color:var(--ink);width:100%;border-radius:16px 16px 0 0;padding:18px 16px 22px;box-shadow:0 -6px 24px rgba(0,0,0,.25)}
+.gl-t{font-size:18px;font-weight:800;margin-bottom:8px}
+.gl-b{font-size:15px;line-height:1.45;white-space:normal}
+.gl-x{margin-top:14px;width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--chip);color:var(--ink);font:inherit;font-weight:600}
+body.big .gl-t{font-size:22px}body.big .gl-b{font-size:19px}
 </style>
 </head>
 <body>
@@ -375,7 +385,7 @@ function renderHome(d){
     h+='<div class="lbl">Me'+(anyLive?' (live · expected '+f1(m.myExp)+')':' (expected)')+'</div><div class="num">'+f1(mine)+'</div><div class="bar"><i style="width:'+(100*(mine||0)/mx)+'%"></i></div>';
     h+='<div class="lbl">'+esc(m.opp||"Them")+(anyLive?' (expected '+f1(m.theirExp)+')':'')+'</div><div class="num">'+f1(theirs)+'</div><div class="bar them"><i style="width:'+(100*(theirs||0)/mx)+'%"></i></div></div>';
     const wp=num(m.winPct);
-    if(wp!==null&&!SHOW){h+='<div class="wp"><span class="wpn" style="color:'+(wp>=50?'var(--good)':'var(--bad)')+'">'+Math.round(wp)+'%</span><div class="track"><i class="mine" style="width:'+Math.round(wp)+'%"></i><i class="theirs" style="width:'+(100-Math.round(wp))+'%"></i></div><span class="sub">'+(100-Math.round(wp))+'%</span></div><div class="sub" style="white-space:normal">Chance you win, worked out from how much each of the nine slots can swing (your spread \u00b1'+f1(m.mySd)+' pts, theirs \u00b1'+f1(m.theirSd)+').</div>';}
+    if(wp!==null&&!SHOW){h+='<div class="wp"><span class="wpn" style="color:'+(wp>=50?'var(--good)':'var(--bad)')+'">'+Math.round(wp)+'%</span><div class="track"><i class="mine" style="width:'+Math.round(wp)+'%"></i><i class="theirs" style="width:'+(100-Math.round(wp))+'%"></i></div><span class="sub">'+(100-Math.round(wp))+'%</span></div><div class="sub" style="white-space:normal">'+gl('winpct','Chance you win')+', worked out from how much each of the nine slots can swing (your spread \u00b1'+f1(m.mySd)+' pts, theirs \u00b1'+f1(m.theirSd)+').</div>';}
     h+=(m.rows||[]).map(r=>{
       const e=num(r.edge);const cls=e===null?"":(e>2?"up":(e<-2?"down":""));
       const myv=num(r.myLive)!==null?f1(r.myLive):f1(r.myExp), thv=num(r.theirLive)!==null?f1(r.theirLive):f1(r.theirExp);
@@ -592,16 +602,16 @@ function renderPlayer(d,name){
   if(num(p.wvv)!==null)h+='<div class="sub" style="white-space:normal;margin-top:6px">This week vs his usual value: <b>'+Math.round(p.wvv*100)+'%</b>'+(p.wvv>=1.25?' — big week projected, hold through it':(p.wvv<=0.7?' — weak week projected':''))+'</div>';
   h+='</section>';
   // value
-  h+='<section><h2>Value</h2>';
+  h+='<section><h2>'+gl('value','Value')+'</h2>';
   const rmx=Math.max.apply(null,[rs.cons,rs.sleeper,rs.espn,rs.fantasypros,p.value].map(v=>num(v)||0).concat([1]));
   h+='<div><b>'+f1(p.value)+' per week</b> <small style="color:var(--mute)">blended: ROS consensus + recent form + usage + history, plus 25% of this week</small></div>';
   h+=fbar('Value',p.value,rmx)+fbar('ROS consensus',rs.cons,rmx)+(num(rs.sleeper)?fbar('ROS Sleeper',rs.sleeper,rmx):'')+(num(rs.espn)?fbar('ROS ESPN',rs.espn,rmx):'')+(num(rs.fantasypros)?fbar('ROS FantasyPros',rs.fantasypros,rmx):'');
-  h+=kv([['Rest of season',num(rs.season)!==null?Math.round(rs.season)+' pts over '+esc(d.weeksLeft)+' weeks':''],['History used',num(p.histUsed)?f1(p.histUsed)+' ppg':''],['Next 3 defenses',num(p.next3idx)!==null?'<b>'+f1(p.next3idx)+'x</b> <small style="color:var(--mute)">(1.0 = average; '+(p.next3idx>=1.15?'soft':(p.next3idx<=0.85?'tough':'neutral'))+')</small>':''],['Sleeper adds 24h',p.adds?Math.round(p.adds):''],['Buzz 72h',num(p.buzz)&&p.buzz!==0?f1(p.buzz)+' ('+p.mentions+' mentions)':(p.mentions?p.mentions+' mentions':'')]]);
+  h+=kv([['Rest of season',num(rs.season)!==null?Math.round(rs.season)+' pts over '+esc(d.weeksLeft)+' weeks':''],['History used',num(p.histUsed)?f1(p.histUsed)+' ppg':''],[gl('next3','Next 3 defenses'),num(p.next3idx)!==null?'<b>'+f1(p.next3idx)+'x</b> <small style="color:var(--mute)">(1.0 = average; '+(p.next3idx>=1.15?'soft':(p.next3idx<=0.85?'tough':'neutral'))+')</small>':''],['Sleeper adds 24h',p.adds?Math.round(p.adds):''],[gl('buzz','Buzz 72h'),num(p.buzz)&&p.buzz!==0?f1(p.buzz)+' ('+p.mentions+' mentions)':(p.mentions?p.mentions+' mentions':'')]]);
   h+='</section>';
   // form
   if(p.pos!=='K'&&p.pos!=='DST'){
     const fmx=Math.max.apply(null,[fm.last,fm.avg3,fm.season].map(v=>num(v)||0).concat([1]));
-    h+='<section><h2>Form &amp; usage</h2>'+fbar('Last week',fm.last,fmx)+fbar('3-week avg',fm.avg3,fmx)+fbar('Season avg',fm.season,fmx);
+    h+='<section><h2>'+gl('form','Form')+' &amp; '+gl('usage','usage')+'</h2>'+fbar('Last week',fm.last,fmx)+fbar('3-week avg',fm.avg3,fmx)+fbar('Season avg',fm.season,fmx);
     h+=kv([['Trend',num(fm.trend)!==null?'<span class="'+(fm.trend>=3?'form up':(fm.trend<=-3?'form dn':''))+'">'+(fm.trend>0?'+':'')+f1(fm.trend)+' vs his prior average</span>':''],['Touches + targets',num(fm.touches)!==null?Math.round(fm.touches):''],['Target share',pct(fm.tgt)],['Snap share',pct(fm.snap)],['Depth chart',num(fm.depth)!==null?p.pos+fm.depth:''],['Games played',fm.gp]]);
     h+='</section>';
   }
@@ -666,7 +676,7 @@ function gameCharts(g){
   const A=String(g.away||''),Hm=String(g.home||'');
   let h='<div style="margin-top:10px">';
   const ih=num(g.impliedHome),ia=num(g.impliedAway);
-  if(ih!==null||ia!==null)h+='<div class="sub" style="font-weight:600">Vegas expects</div>'+svgBars({labels:[A,Hm],series:[{vals:[ia,ih],cls:'me',clsAt:[((ia||0)>=(ih||0)?'good':''),((ih||0)>(ia||0)?'good':'')]}],h:100,line:{v:22.5,label:'league avg'}})+'<div class="sub" style="white-space:normal">Implied points per side'+(blank(g.total)?'':' from a total of '+esc(g.total)+', spread '+esc(g.spread))+'.</div>';
+  if(ih!==null||ia!==null)h+='<div class="sub" style="font-weight:600">Vegas expects — '+gl('implied','implied points')+'</div>'+svgBars({labels:[A,Hm],series:[{vals:[ia,ih],cls:'me',clsAt:[((ia||0)>=(ih||0)?'good':''),((ih||0)>(ia||0)?'good':'')]}],h:100,line:{v:22.5,label:'league avg'}})+'<div class="sub" style="white-space:normal">Implied points per side'+(blank(g.total)?'':' from a total of '+esc(g.total)+', spread '+esc(g.spread))+'.</div>';
   if(num(as.all)!==null||num(hs.all)!==null)h+='<div class="sub" style="font-weight:600;margin-top:10px">Scoring since 2024</div>'+svgBars({labels:['All','Home','Away','Bad wx'],series:[{vals:[as.all,as.home,as.away,num(as.badN)>=3?as.badWx:null],cls:'them'},{vals:[hs.all,hs.home,hs.away,num(hs.badN)>=3?hs.badWx:null],cls:'me'}],h:130,legend:[['them',A],['me',Hm]]});
   const hl=(H.homeLast||[]),al=(H.awayLast||[]),h2=(H.h2h||[]);
   if(hl.length>1||al.length>1){const n=Math.max(hl.length,al.length);
@@ -754,7 +764,7 @@ function collegeSection(d,p){
   const pcts=mets.map(m=>({...m,p:cPct(p.pos,m.k,m.v,m.low)})).filter(m=>m.p!==null);
   let h='<section><h2>'+(rook?'Rookie profile — no NFL sample yet':'Out of college')+'</h2>';
   h+=kv([['School',esc(c.school||'')],['Drafted',rd?('round '+Math.round(rd)+', pick '+Math.round(pk)+' in '+Math.round(num(c.draftYear))):(num(c.draftYear)?'undrafted ('+Math.round(num(c.draftYear))+')':'')],
-    ['Draft capital',capPct!==null?capPct+'/100 <small style="color:var(--mute)">'+(capPct>=70?'premium pick — teams force these on the field':(capPct>=40?'solid investment':'late pick — has to earn the work'))+'</small>':''],
+    [gl('capital','Draft capital'),capPct!==null?capPct+'/100 <small style="color:var(--mute)">'+(capPct>=70?'premium pick — teams force these on the field':(capPct>=40?'solid investment':'late pick — has to earn the work'))+'</small>':''],
     ['Age when drafted',num(c.draftAge)?Math.round(num(c.draftAge))+(num(c.draftAge)<=21?' <small style="color:var(--good)">young for his class</small>':''):''],
     ['Size',[c.height,num(c.weight)?Math.round(num(c.weight))+' lb':''].filter(x=>x).join(' · ')],
     ['NFL seasons',exp!==null?(exp<=0?'rookie':exp+(exp===1?' year in':' years in'))+' · '+gp+' game'+(gp===1?'':'s')+' played':'']]);
@@ -765,7 +775,7 @@ function collegeSection(d,p){
     const line=[];if(rc)line.push(rc+' catches, '+Math.round(ry)+' yds, '+Math.round(rt)+' TD');if(ca)line.push(Math.round(ca)+' carries, '+Math.round(uy)+' yds, '+Math.round(ut)+' TD');if(py)line.push(Math.round(py)+' pass yds, '+Math.round(pt)+' TD');
     const shPct=sh!==null?Math.round(sh*100):null;
     h+='<h2 style="margin-top:14px">Last college season · '+Math.round(cy)+' '+esc(c.collTeam||'')+'</h2>'+kv([['Production',line.join('<br>')],
-      ['Share of his offense',shPct!==null?shPct+'% <small style="color:var(--mute)">'+(shPct>=30?'carried that offense':(shPct>=20?'a real focal point':(shPct>=10?'one of several options':'a complementary piece')))+'</small>':''],
+      [gl('share','Share of his offense'),shPct!==null?shPct+'% <small style="color:var(--mute)">'+(shPct>=30?'carried that offense':(shPct>=20?'a real focal point':(shPct>=10?'one of several options':'a complementary piece')))+'</small>':''],
       ['Snap usage',us!==null?Math.round(us*100)+'% of his team\'s plays':'']]);
     const peers=(D&&D.players||[]).filter(x=>x.pos===p.pos&&x.college&&num(x.college.collShare)!==null).map(x=>num(x.college.collShare));
     if(sh!==null&&peers.length>=8){const below=peers.filter(v=>v<sh).length;const pc=Math.round(100*below/peers.length);
@@ -774,6 +784,34 @@ function collegeSection(d,p){
   if(rook||gp<8)h+='<div class="sub" style="white-space:normal;margin-top:6px">With this little NFL tape, his projection leans on draft capital and the depth chart rather than his own numbers — treat week-to-week swings with more suspicion than usual.</div>';
   return h+'</section>';
 }
+// ---------------- GLOSSARY ----------------
+const GLOSS={
+ value:['Value per week','The one number for "how good is this guy going forward". It starts from the rest-of-season consensus, pulls toward his last 3 games and his own career history, adjusts for snap share and whether he is trending up or down, then mixes in a quarter of this week\'s projection. Use it for waivers, trades and who to stash — not for start/sit, where "this week" is the number that matters.'],
+ week:['This week','What the six projection sources expect him to score in this week\'s game, weighted by how accurate each source has been, then cut for injury risk. This is the start/sit number.'],
+ ros:['ROS','Rest of season, per week. What the season-long projections expect him to average from here on, ignoring this week\'s matchup. Good for trades and stashes.'],
+ form:['Form','His average PPR points over his last 3 games. It answers "what is he doing lately", which projections are slow to catch. Weighted more heavily the more games he has played this season.'],
+ usage:['Usage','How much of his offense he touches — target share for pass catchers, snap share for quarterbacks. Usage is stickier week to week than points, so a big usage number with small points often means points are coming.'],
+ history:['History','His own points per game in 2025, or his career average if 2025 was short. It keeps a hot three weeks from running away with the number.'],
+ health:['Health','Chance he actually plays and finishes, from his injury designation and the latest news. Out, IR or PUP is 0%, doubtful 35%, questionable 85%, healthy 100%. This multiplies his weekly projection.'],
+ experts:['Expert rank','FantasyPros consensus rank across all their experts, plus how much those experts disagree. A wide spread means nobody knows, which is itself worth knowing.'],
+ next3:['Next 3','How friendly his next three defenses are to his position, as a multiplier. 1.0 is average, 1.2 means those defenses give up 20% more than normal to his position, 0.8 means they are tough.'],
+ buzz:['Buzz','Net tone of the last 72 hours of news about him, from our keyword list. Negative is bad news piling up, positive is good news. It is a nudge, not a projection.'],
+ winpct:['Win %','Your chance of winning this week. Every slot is treated as a range rather than a single number — a receiver can swing 20 points, a kicker maybe 6 — and we add those swings up. Players who finished are locked in, players mid-game count part way.'],
+ slotwin:['Slot win %','Chance your player outscores theirs in that slot, given how much each can swing from here.'],
+ capital:['Draft capital','Where he went in the NFL draft, on a 0–100 scale. It matters because teams play their expensive picks through bad games, and that opportunity is what fantasy points come from.'],
+ share:['Share of his offense','In his last college season, the share of his team\'s yards and touchdowns he accounted for. One of the few college numbers that keeps predicting once players reach the NFL.'],
+ mae:['MAE','Mean absolute error — the average miss, in fantasy points, between a projection and what actually happened. Lower is better. It is how sources earn or lose weight in the blend.'],
+ bias:['Bias','Whether a source runs hot or cold. Positive means it projects more points than players actually score; negative means it under-projects.'],
+ urgency:['Urgency','0–100 on how soon a board item needs you. 85+ is red and needs doing now, 60+ amber this week, 40+ blue soon, grey means keep an eye on it.'],
+ scarcity:['Scarcity','How few comparable players are left on the wire. A multiplier above 1 means a rival grabbing this guy is a real loss because there is no equivalent behind him.'],
+ implied:['Implied points','Vegas\'s expectation for a team\'s score, from the game total and the spread. More implied points means more touchdowns to go around.'],
+ spread:['Spread and total','The betting line. The total is the combined points both teams are expected to score; the spread is the expected margin. Together they say how much scoring is on the table.'],
+ depth:['Depth chart','Where he sits on his own team at his position, per Sleeper. 1 is the starter.'],
+ bust:['Bust rate','How often he has finished under 5 points in a game. A high number means a boom-or-bust week-winner; a low number means a floor you can trust.']
+};
+function gl(key,label){const g=GLOSS[key];if(!g)return esc(label||key);return '<span class="gl" data-gl="'+esc(key)+'">'+esc(label||g[0])+'</span>';}
+function glSheet(){const el=document.getElementById('glsheet');if(el)return el;const d=document.createElement('div');d.id='glsheet';d.innerHTML='<div class="gl-card"><div class="gl-t"></div><div class="gl-b"></div><button class="gl-x">Got it</button></div>';document.body.appendChild(d);d.addEventListener('click',e=>{if(e.target===d||e.target.className==='gl-x')d.classList.remove('on')});return d;}
+function glShow(key){const g=GLOSS[key];if(!g)return;const d=glSheet();d.querySelector('.gl-t').textContent=g[0];d.querySelector('.gl-b').textContent=g[1];d.classList.add('on');}
 // ---------------- DEV PAGE (pin-gated) ----------------
 let PIN='';try{PIN=localStorage.getItem('lhc_pin')||''}catch(e){}
 const DEVPIN='2611';
@@ -789,7 +827,7 @@ function renderDev(d){
     +svgBars({labels:['Form','History','This week'],series:[{vals:[(num(W.w_form)||0)*100,(num(W.w_hist)||0)*100,(num(W.w_week)||0)*100],cls:'me'}],h:110})+'</section>';
   const src=(v.sources||[]);
   if(src.length){const mx=Math.max.apply(null,src.map(x=>num(x.weight)||0).concat([1]));
-    h+='<section><h2>Source weights</h2><table><tr><th>Source</th><th class="n">Weight</th><th class="n">Share</th><th class="n">MAE</th><th class="n">Bias</th><th class="n">n</th></tr>'
+    h+='<section><h2>Source weights</h2><table><tr><th>Source</th><th class="n">Weight</th><th class="n">Share</th><th class="n">'+gl('mae','MAE')+'</th><th class="n">'+gl('bias','Bias')+'</th><th class="n">n</th></tr>'
       +src.slice().sort((a,b)=>(num(b.weight)||0)-(num(a.weight)||0)).map(x=>{const sh=Math.round(100*(num(x.weight)||0)/src.reduce((a,b)=>a+(num(b.weight)||0),0));
       return '<tr><td>'+esc(x.source)+'</td><td class="n">'+f1(x.weight)+'</td><td class="n pct">'+sh+'%</td><td class="n">'+(num(x.mae)!==null?f1(x.mae):'<span class="sub">—</span>')+'</td><td class="n">'+(num(x.bias)!==null?(num(x.bias)>0?'+':'')+f1(x.bias):'<span class="sub">—</span>')+'</td><td class="n">'+(num(x.samples)||0)+'</td></tr>'}).join('')+'</table>'
       +svgBars({labels:src.map(x=>String(x.source).slice(0,4)),series:[{vals:src.map(x=>num(x.weight)),cls:'me'}],h:120})+'<div class="sub" style="white-space:normal">Weights start from priors and move toward whoever is actually accurate once three weeks are scored. MAE = average miss in points, bias = over (+) or under (−) projecting.</div></section>';}
@@ -798,7 +836,7 @@ function renderDev(d){
   if(ov.length){
     h+='<div class="sub" style="white-space:normal">Every week our own projection is logged alongside the others and scored against what actually happened (PPR). Lower is better.</div>';
     h+=svgBars({labels:ov.map(x=>x.source==='LetHimCook'?'US':String(x.source).slice(0,4)),series:[{vals:ov.map(x=>num(x.mae)),cls:'me',clsAt:ov.map(x=>x.source==='LetHimCook'?'good':'')}],h:130})
-      +'<table><tr><th>Source</th><th class="n">MAE</th><th class="n">Bias</th><th class="n">Players scored</th></tr>'+ov.map(x=>'<tr'+(x.source==='LetHimCook'?' style="font-weight:700"':'')+'><td>'+(x.source==='LetHimCook'?'Let Him Cook (us)':esc(x.source))+'</td><td class="n">'+f1(x.mae)+'</td><td class="n">'+(num(x.bias)>0?'+':'')+f1(x.bias)+'</td><td class="n">'+x.n+'</td></tr>').join('')+'</table>';
+      +'<table><tr><th>Source</th><th class="n">'+gl('mae','MAE')+'</th><th class="n">'+gl('bias','Bias')+'</th><th class="n">Players scored</th></tr>'+ov.map(x=>'<tr'+(x.source==='LetHimCook'?' style="font-weight:700"':'')+'><td>'+(x.source==='LetHimCook'?'Let Him Cook (us)':esc(x.source))+'</td><td class="n">'+f1(x.mae)+'</td><td class="n">'+(num(x.bias)>0?'+':'')+f1(x.bias)+'</td><td class="n">'+x.n+'</td></tr>').join('')+'</table>';
     if(mine){const rank=ov.findIndex(x=>x.source==='LetHimCook')+1;h+='<div class="sub" style="white-space:normal;margin-top:6px"><b>We rank '+rank+' of '+ov.length+'</b> on average miss.</div>';}
     const byW={};wk.forEach(x=>{(byW[x.source]=byW[x.source]||[]).push(x)});
     const weeks=[...new Set(wk.map(x=>x.week))].sort((a,b)=>a-b);
@@ -809,7 +847,7 @@ function renderDev(d){
   const f=(v.files||[]);
   if(f.length)h+='<section><h2>Data freshness</h2><table><tr><th>File</th><th class="n">Rows</th><th class="n">Age</th></tr>'+f.map(x=>'<tr><td>'+esc(x.name)+'</td><td class="n">'+x.rows+'</td><td class="n" style="color:'+(num(x.ageH)>36?'var(--bad)':(num(x.ageH)>12?'var(--warn)':'var(--good)'))+'">'+f1(x.ageH)+' h</td></tr>').join('')+'</table></section>';
   const rl=(v.rules||[]);
-  if(rl.length)h+='<section><h2>Board rules that fired</h2>'+svgBars({labels:rl.map(x=>String(x.where||'').slice(0,5)),series:[{vals:rl.map(x=>num(x.score)),cls:'me',clsAt:rl.map(x=>num(x.score)>=85?'bad':(num(x.score)>=60?'warn':''))}],h:120,line:{v:60,label:'push threshold'}})+'<div class="sub" style="white-space:normal">Each board line carries a 0–100 urgency. 85+ shows red, 60+ amber, 40+ blue.</div></section>';
+  if(rl.length)h+='<section><h2>Board rules that fired</h2>'+svgBars({labels:rl.map(x=>String(x.where||'').slice(0,5)),series:[{vals:rl.map(x=>num(x.score)),cls:'me',clsAt:rl.map(x=>num(x.score)>=85?'bad':(num(x.score)>=60?'warn':''))}],h:120,line:{v:60,label:'push threshold'}})+'<div class="sub" style="white-space:normal">Each board line carries a 0–100 '+gl('urgency','urgency')+'. 85+ shows red, 60+ amber, 40+ blue.</div></section>';
   h+='<section><div class="sub" style="white-space:normal">The pin keeps this page out of the way when you hand someone your phone. It is not real security — the numbers live in the published data file, so treat it as a tidy drawer, not a safe.</div></section>';
   return h;
 }
@@ -972,7 +1010,7 @@ function playerRadar(d,p){
     {label:'Usage',v:p.pos==='QB'?(num(p.form&&p.form.snap)||0):pctRank(p.form&&p.form.tgt,peers.map(x=>x.form&&x.form.tgt)),txt:p.pos==='QB'?pct(p.form&&p.form.snap):pct(p.form&&p.form.tgt)},
     {label:'History',v:pctRank(p.histUsed,peers.map(x=>x.histUsed)),txt:num(p.histUsed)?f1(p.histUsed):'—'},
     {label:'Health',v:num(p.avail)===null?1:p.avail,txt:num(p.avail)===null?'':Math.round(p.avail*100)+'%'}];
-  return svgRadar(ax)+'<div class="sub" style="text-align:center">percentile among '+peers.length+' '+esc(p.pos)+'s (outer edge = best)</div>';
+  return svgRadar(ax)+'<div class="sub" style="text-align:center;white-space:normal">percentile among '+peers.length+' '+esc(p.pos)+'s (outer edge = best)</div><div class="sub" style="text-align:center;white-space:normal;margin-top:4px">tap to explain: '+[gl('week','this week'),gl('value','value'),gl('ros','ROS'),gl('experts','experts'),gl('form','form'),gl('usage','usage'),gl('history','history'),gl('health','health')].join(' · ')+'</div>';
 }
 function teamRadar(d,pw){
   const all=(d.power||[]);const rec=x=>{const m=/^(\d+)-(\d+)/.exec(x.record||'');return m?(+m[1])/((+m[1])+(+m[2])||1):0};
@@ -999,8 +1037,14 @@ function renderNews(d){
   let list=all.slice();if(f==='MINE')list=list.filter(x=>num(x.owner)===5);else if(f==='LEAGUE')list=list.filter(x=>num(x.owner));else if(f==='NEG')list=list.filter(x=>num(x.sig)<0);else if(f==='POS')list=list.filter(x=>num(x.sig)>0);else if(f!=='ALL')list=list.filter(x=>x.src===f);
   const q=(state.nq||'').toLowerCase();if(q)list=list.filter(x=>String(x.player).toLowerCase().indexOf(q)>=0||String(x.head).toLowerCase().indexOf(q)>=0);
   const srcs=Array.from(new Set(all.map(x=>x.src)));
-  const hrs=[0,0,0,0,0,0,0];all.forEach(x=>{const dd=Math.min(6,Math.floor((num(x.age)||0)/24));hrs[dd]++});
-  let h='<section><h2>News · '+all.length+' reports, last 7 days</h2>'+svgBars({labels:['today','1d','2d','3d','4d','5d','6d'],series:[{vals:hrs,cls:'me'}],h:100})+'<div class="filters" style="margin-top:8px"><select id="nfilt">'+[['ALL','Everything'],['MINE','My players'],['LEAGUE','Rostered in league'],['NEG','Bad news'],['POS','Good news']].concat(srcs.map(s=>[s,s])).map(o=>'<option value="'+o[0]+'"'+(f===o[0]?' selected':'')+'>'+esc(o[1])+'</option>').join('')+'</select><input id="nq" type="search" placeholder="Search news" value="'+esc(state.nq||'')+'"></div></section>';
+  const net={};all.forEach(x=>{if(num(x.age)>72)return;const k=cleanName(x.player);if(!k)return;const o=net[k]||(net[k]={n:0,sig:0,owner:x.owner,ownerName:x.ownerName});o.n++;o.sig+=(num(x.sig)||0)});
+  const mv=Object.keys(net).map(k=>Object.assign({name:k},net[k])).filter(x=>Math.abs(x.sig)>=0.5).sort((a,b)=>Math.abs(b.sig)-Math.abs(a.sig)).slice(0,8);
+  const mine2=mv.filter(x=>num(x.owner)===5);
+  let h='<section><h2>News that moved somebody · last 72h</h2>';
+  if(mv.length)h+=svgBars({labels:mv.map(x=>String(x.name).split(' ').slice(-1)[0].slice(0,9)),series:[{vals:mv.map(x=>Math.abs(x.sig)),cls:'me',clsAt:mv.map(x=>x.sig<0?'bad':'good')}],h:140,legend:[['bad','bad news'],['good','good news']]})
+    +'<div class="sub" style="white-space:normal">How loudly the last 3 days of news moved each player: '+mv.slice(0,4).map(x=>pl(x.name)+' <b style="color:'+(x.sig<0?'var(--bad)':'var(--good)')+'">'+(x.sig>0?'+':'')+f1(x.sig)+'</b> ('+x.n+' report'+(x.n===1?'':'s')+')').join(' · ')+'. '+(mine2.length?'<b>On your roster:</b> '+mine2.map(x=>pl(x.name)+' ('+(x.sig>0?'+':'')+f1(x.sig)+')').join(', ')+'.':'Nobody on your roster is in it.')+'</div>';
+  else h+='<div class="sub">Quiet — nothing in the last 3 days carried a strong signal.</div>';
+  h+='<div class="sub" style="margin-top:6px">'+all.length+' reports in the last 7 days.</div>'+'<div class="filters" style="margin-top:8px"><select id="nfilt">'+[['ALL','Everything'],['MINE','My players'],['LEAGUE','Rostered in league'],['NEG','Bad news'],['POS','Good news']].concat(srcs.map(s=>[s,s])).map(o=>'<option value="'+o[0]+'"'+(f===o[0]?' selected':'')+'>'+esc(o[1])+'</option>').join('')+'</select><input id="nq" type="search" placeholder="Search news" value="'+esc(state.nq||'')+'"></div></section>';
   h+='<section>'+list.slice(0,80).map(x=>{const ago=num(x.age)===null?'':(x.age<1?'now':(x.age<24?Math.round(x.age)+'h':Math.round(x.age/24)+'d'));const sg=num(x.sig)||0;
     return '<div style="padding:8px 0;border-top:1px solid var(--line);white-space:normal;line-height:1.35"><div><b>'+pl(x.player)+'</b>'+(x.team?' <span class="sub">'+esc(x.pos)+' · '+esc(x.team)+'</span>':'')+(num(x.owner)?' <span class="pill'+(num(x.owner)===5?' warn':'')+'">'+esc(num(x.owner)===5?'YOU':x.ownerName)+'</span>':'')+'</div><div>'+esc(x.head)+'</div>'+(blank(x.body)?'':'<div class="sub" style="white-space:normal">'+esc(x.body)+'</div>')+'<div class="sub">'+esc(x.src)+' · '+ago+(blank(x.kw)?'':' · <span class="'+(sg<0?'form dn':(sg>0?'form up':''))+'">'+esc(x.kw)+'</span>')+'</div></div>'}).join('')+'</section>';
   return h;
@@ -1088,7 +1132,7 @@ function load(){
   box.addEventListener('click',()=>{box.style.display='none';inp.value='';});inp.addEventListener('blur',()=>setTimeout(()=>{box.style.display='none'},250));})();
 (function(){const b=document.getElementById('aa');if(!b)return;let big=false;try{big=localStorage.getItem('lhc_big')==='1'}catch(e){}const ap=()=>{document.body.classList.toggle('big',big);b.setAttribute('aria-pressed',big?'true':'false');b.classList.toggle('on',big)};ap();b.addEventListener('click',()=>{big=!big;try{localStorage.setItem('lhc_big',big?'1':'0')}catch(e){}ap()});})();
 (function(){const b=document.getElementById('show');if(!b)return;const ap=()=>{b.textContent=SHOW?'Show mode on':'Show mode';b.classList.toggle('on',SHOW);document.body.classList.toggle('show',SHOW)};ap();b.addEventListener('click',()=>{SHOW=!SHOW;try{localStorage.setItem('lhc_show',SHOW?'1':'0')}catch(e){}ap();render()});})();
-document.getElementById('app').addEventListener('click',e=>{const el=e.target.closest('[data-nfl],[data-psid]');if(!el)return;if(el.dataset.psid){const p=(D&&D.players||[]).find(x=>String(x.sid)===String(el.dataset.psid));if(p){e.preventDefault();e.stopPropagation();location.hash='#player/'+encodeURIComponent(p.name);return}}if(el.dataset.nfl&&(D&&D.nflTeams||[]).some(t=>t.team===el.dataset.nfl)){e.preventDefault();e.stopPropagation();location.hash='#nfl/'+el.dataset.nfl}});
+document.getElementById('app').addEventListener('click',e=>{const gx=e.target.closest('[data-gl]');if(gx){e.preventDefault();e.stopPropagation();glShow(gx.dataset.gl);return}const el=e.target.closest('[data-nfl],[data-psid]');if(!el)return;if(el.dataset.psid){const p=(D&&D.players||[]).find(x=>String(x.sid)===String(el.dataset.psid));if(p){e.preventDefault();e.stopPropagation();location.hash='#player/'+encodeURIComponent(p.name);return}}if(el.dataset.nfl&&(D&&D.nflTeams||[]).some(t=>t.team===el.dataset.nfl)){e.preventDefault();e.stopPropagation();location.hash='#nfl/'+el.dataset.nfl}});
 (function(){let sx=0,sy=0,st=0;const app=document.getElementById('app');
   app.addEventListener('touchstart',e=>{const t=e.touches[0];sx=t.clientX;sy=t.clientY;st=Date.now()},{passive:true});
   app.addEventListener('touchend',e=>{const t=e.changedTouches[0];const dx=t.clientX-sx,dy=t.clientY-sy;if(Date.now()-st>700||Math.abs(dx)<70||Math.abs(dy)>50)return;
