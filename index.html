@@ -662,7 +662,7 @@ function renderGames(d){
     const away=inLeague(g.away),home=inLeague(g.home);
     const side=(t,list)=>'<div style="min-width:0"><div class="sub" style="font-weight:600">'+esc(t)+(num(t===g.home?g.impliedHome:g.impliedAway)!==null?' · implied '+f1(t===g.home?g.impliedHome:g.impliedAway):'')+'</div>'+list.map(p=>'<div class="sub'+(isMine(p.ownerName)?' mine':'')+'" style="white-space:normal;display:flex;gap:6px;align-items:center;padding:2px 0">'+face(p.sid,p.team,p.pos).replace('class="logo face"','class="logo face" style="width:22px;height:22px;flex-basis:22px"')+'<span>'+pl(p.name)+' <small>'+esc(p.pos)+' · '+(isMine(p.ownerName)?'<b style="color:var(--good)">YOU</b>':esc(p.ownerName))+' · '+f1(num(p.game&&p.game.live)!==null&&fin?p.game.live:p.proj)+'</small></span></div>').join("")+'</div>';
     return '<section><details class="g"><summary style="color:var(--ink);font-size:14px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div style="display:flex;align-items:center;gap:6px">'+logo(g.away)+'<b>'+tl(g.away)+'</b><span class="sub">@</span>'+logo(g.home)+'<b>'+tl(g.home)+'</b></div><div style="text-align:right">'+gamePill(g.status)+' <span class="sub">'+esc(g.kick)+'</span>'+(sc?'<br>'+sc:'')+'</div></div>'
-      +((g.live&&g.live.state==='in')?liveWin(g):'')+'<div class="sub" style="white-space:normal;margin-top:4px">'+[blank(g.spread)?'':gl('spread','spread')+' '+esc(g.spread)+' · total '+esc(g.total),esc(g.roof||''),wx,num(g.aqi)!==null?'air '+aqiTxt(g.aqi):'',num(g.altitude)?'⛰️ '+Math.round(g.altitude).toLocaleString()+' ft':''].filter(x=>x).join(' · ')+'</div></summary>'
+      +liveWin(g)+'<div class="sub" style="white-space:normal;margin-top:4px">'+[blank(g.spread)?'':gl('spread','spread')+' '+esc(g.spread)+' · total '+esc(g.total),esc(g.roof||''),wx,num(g.aqi)!==null?'air '+aqiTxt(g.aqi):'',num(g.altitude)?'⛰️ '+Math.round(g.altitude).toLocaleString()+' ft':''].filter(x=>x).join(' · ')+'</div></summary>'
       +((g.homeSplits||g.awaySplits)?'<div class="sub" style="white-space:normal;margin-top:6px">'+[g.awaySplits?esc(g.away)+' scores '+f1(g.awaySplits.away)+' away / '+f1(g.awaySplits.home)+' home'+(num(g.awaySplits.badN)>=3?', '+f1(g.awaySplits.badWx)+' in bad weather':''):'',g.homeSplits?esc(g.home)+' scores '+f1(g.homeSplits.home)+' home / '+f1(g.homeSplits.away)+' away'+(num(g.homeSplits.badN)>=3?', '+f1(g.homeSplits.badWx)+' in bad weather':''):''].filter(x=>x).join('<br>')+' <small>(2024–26)</small></div>':'')+((g.awayCoach||g.homeCoach)?'<div class="sub" style="white-space:normal;margin-top:6px">'+[g.awayCoach?esc(g.away)+': '+coachLine(g.awayCoach):'',g.homeCoach?esc(g.home)+': '+coachLine(g.homeCoach):''].filter(x=>x).join('<br>')+'</div>':'')
       +gameCharts(g)+'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">'+side(g.away,away)+side(g.home,home)+'</div></details></section>'}).join("");
   return h;
@@ -672,12 +672,13 @@ function renderGames(d){
 // ---------------- GAME CHARTS & HISTORY ----------------
 function histChips(rows){return '<div class="hist">'+(rows||[]).slice().reverse().map(x=>'<i class="'+esc(x.result)+'">'+esc(x.result)+' '+Math.round(x.pts)+'-'+Math.round(x.pa)+' '+(x.ha==='Home'?'v ':'@ ')+esc(x.opp)+'</i>').join('')+'</div>';}
 function liveWin(g){
-  const L=g.live;if(!L||num(L.winHome)===null)return '';
-  const wh=Math.round(num(L.winHome)),wa=100-wh;
+  const L=nflWin(g);if(!L||L.winHome===null||L.winHome===undefined)return '';
+  const wh=Math.round(L.winHome),wa=100-wh;
   const A=String(g.away||''),Hm=String(g.home||'');
-  const when=L.state==='post'?'final':(L.state==='in'?('Q'+L.period+(num(L.clock)!==null?' · '+Math.floor(L.clock/60)+':'+String(L.clock%60).padStart(2,'0'):'')+' · '+f1(L.minsLeft)+' min left'):'before kickoff');
-  return '<div class="wp" style="margin-top:6px"><span class="sub" style="width:42px;flex:0 0 42px">'+esc(A)+' '+wa+'%</span><div class="track"><i class="theirs" style="width:'+wa+'%"></i><i class="mine" style="width:'+wh+'%"></i></div><span class="sub" style="width:42px;flex:0 0 42px;text-align:right">'+wh+'% '+esc(Hm)+'</span></div>'
-    +'<div class="sub" style="white-space:normal">'+gl('livewin','Live win chance')+' · '+esc(when)+(L.state==='in'?' · '+esc(A)+' '+Math.round(L.awayScore)+'–'+Math.round(L.homeScore)+' '+esc(Hm):'')+'</div>';
+  const when=L.state==='post'?'final':(L.state==='in'?(esc(L.detail||('Q'+L.period))+' · '+Math.round(L.minsLeft)+' min left'):'before kickoff, from the line');
+  const sc=L.state==='in'||L.state==='post'?' · '+esc(A)+' '+Math.round(L.awayScore)+'–'+Math.round(L.homeScore)+' '+esc(Hm):'';
+  return '<div class="wp" style="margin-top:6px"><span class="sub" style="width:56px;flex:0 0 56px">'+esc(A)+' '+wa+'%</span><div class="track"><i class="theirs" style="width:'+wa+'%"></i><i class="mine" style="width:'+wh+'%"></i></div><span class="sub" style="width:56px;flex:0 0 56px;text-align:right">'+wh+'% '+esc(Hm)+'</span></div>'
+    +'<div class="sub" style="white-space:normal">'+gl('livewin','Live win chance')+' · '+when+sc+'</div>';
 }
 function gameCharts(g){
   const hs=g.homeSplits||{},as=g.awaySplits||{},H=g.hist||{};
@@ -694,6 +695,41 @@ function gameCharts(g){
   if(h2.length){const w=h2.filter(x=>x.result==='W').length;
     h+='<div class="sub" style="font-weight:600;margin-top:10px">Head to head since 2024 — '+Hm+' '+w+'-'+(h2.length-w)+'</div><table>'+h2.map(x=>'<tr><td>'+x.season+' wk '+x.week+'</td><td>'+(x.ha==='Home'?'v ':'@ ')+tl(x.opp)+'</td><td class="n '+(x.result==='W'?'win':'loss')+'">'+Math.round(x.pts)+'–'+Math.round(x.pa)+'</td></tr>').join('')+'</table>';}
   return h+'</div>';
+}
+
+// ---------------- LIVE NFL SCOREBOARD (from the phone, every 45s) ----------------
+const NFLG={at:null,by:{},ok:false};
+function phi(z){const t=1/(1+0.2316419*Math.abs(z));const d=0.3989422804014327*Math.exp(-z*z/2);const p=d*t*(0.319381530+t*(-0.356563782+t*(1.781477937+t*(-1.821255978+t*1.330274429))));return z>0?1-p:p;}
+function nflTick(){
+  const urls=["https://cdn.espn.com/core/nfl/scoreboard?xhr=1","https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard"];
+  const tryOne=i=>{if(i>=urls.length){NFLG.ok=false;return}
+    fetch(urls[i],{cache:"no-store"}).then(r=>{if(!r.ok)throw 0;return r.json()}).then(j=>{
+      let evs=j.events||((j.content||{}).sbData||{}).events||[];
+      const by={};
+      evs.forEach(ev=>{const c=(ev.competitions||[])[0];if(!c)return;
+        const st=c.status||ev.status||{};const state=((st.type||{}).state)||'';
+        let hs=null,as=null,ht='',at='';
+        (c.competitors||[]).forEach(x=>{const ab=String((x.team||{}).abbreviation||'').toUpperCase();const sc=num(x.score);
+          if(x.homeAway==='home'){ht=ab;hs=sc}else{at=ab;as=sc}});
+        if(!ht||!at)return;
+        const per=num(st.period)||0,clk=num(st.clock);
+        let rem=60;if(state==='post')rem=0;else if(state==='in'){rem=per<=4?((4-per)*15+(clk!==null?clk/60:7.5)):(clk!==null?clk/60:5);}
+        const o={state:state,period:per,clock:clk,home:ht,away:at,homeScore:hs,awayScore:as,minsLeft:Math.max(0,rem),detail:(st.type||{}).shortDetail||''};
+        by[ht]=o;by[at]=o;});
+      if(Object.keys(by).length){NFLG.by=by;NFLG.at=new Date();NFLG.ok=true;if(state_isGames())render()}
+    }).catch(()=>tryOne(i+1));};
+  tryOne(0);
+}
+function state_isGames(){return state.view==='games'||state.view==='home'}
+function nflWin(g){
+  const L=NFLG.by[String(g.home||'').toUpperCase()];if(!L||L.home!==String(g.home||'').toUpperCase())return null;
+  const frac=Math.max(0,Math.min(1,L.minsLeft/60));
+  const pre=blank(g.spread)?0:-1*(num(g.spread)||0);          // spread is home-relative; negative means home favoured
+  if(L.state==='post')return Object.assign({},L,{winHome:(L.homeScore>L.awayScore?100:(L.homeScore<L.awayScore?0:50))});
+  if(L.state!=='in')return Object.assign({},L,{winHome:blank(g.spread)?null:Math.round(100*phi(pre/13.5))});
+  const mu=(num(L.homeScore)||0)-(num(L.awayScore)||0)+pre*frac;
+  const sd=Math.max(0.5,13.5*Math.sqrt(frac));
+  return Object.assign({},L,{winHome:Math.round(100*phi(mu/sd))});
 }
 // ---------------- LIVE LAYER (Sleeper, straight from the phone) ----------------
 const LIVE={at:null,stats:null,ok:false};
@@ -725,6 +761,7 @@ function liveTick(force){
   fetch("https://api.sleeper.app/v1/stats/nfl/regular/"+yr+"/"+wk,{cache:"no-store"}).then(r=>{if(!r.ok)throw 0;return r.json()}).then(j=>{LIVE.stats=j;LIVE.at=new Date();LIVE.ok=true;applyLive();const sg=liveSig();if(force||sg!==LASTSIG){LASTSIG=sg;render()}}).catch(()=>{LIVE.ok=false;});
 }
 setInterval(()=>liveTick(false),45000);
+nflTick();setInterval(nflTick,45000);
 
 
 // ---------------- NFL TEAMS (coaches, splits, context) ----------------
