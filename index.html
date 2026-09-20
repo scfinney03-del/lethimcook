@@ -100,7 +100,13 @@ footer{color:var(--mute);font-size:11px;text-align:center;margin-top:16px}
 .fbar .t i.up{background:var(--good)}.fbar .t i.dn{background:var(--bad)}
 .form{color:var(--mute)}.form.up{color:var(--good)}.form.dn{color:var(--bad)}
 
-.nav{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:0 0 12px;position:sticky;top:0;z-index:5;background:var(--bg);padding:4px 0}
+.nav{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:0 0 4px;position:sticky;top:0;z-index:6;background:var(--bg);padding:4px 0}
+.crumb{position:sticky;top:46px;z-index:5;background:var(--bg);padding:6px 2px 8px;display:flex;align-items:center;gap:8px;font-size:14px;color:var(--mute);border-bottom:1px solid var(--line);margin-bottom:10px;white-space:nowrap;overflow:hidden}
+.crumb .back{flex:0 0 auto;color:var(--acc);font-weight:700;text-decoration:none;font-size:16px}
+.crumb .path{overflow:hidden;text-overflow:ellipsis}
+.crumb b{color:var(--ink)}
+.crumb .sep{opacity:.5;margin:0 4px}
+body.big .crumb{font-size:19px;top:56px;padding:8px 2px 10px}
 .nav a{text-align:center;font-size:13px;font-weight:600;padding:8px 4px;border-radius:9px;background:var(--chip);color:var(--mute);text-decoration:none}
 .nav a.on{background:var(--acc);color:#fff}
 a.pl{color:inherit;text-decoration:none;border-bottom:1px dotted var(--mute)}
@@ -213,7 +219,7 @@ body.big .wchip{font-size:17px;padding:8px 14px}
 </head>
 <body>
 <header><div><h1>Let Him Cook</h1><div class="hdrbtns"><button class="aa" id="aa" title="Easy-read mode: bigger text, higher contrast" aria-pressed="false">Aa</button><a class="aa" id="devbtn" href="#dev" title="Engine room (pin)">⚙</a><button class="aa show" id="show" title="Hide the private stuff when showing others">Show mode</button></div></div><div class="stamp" id="stamp">loading…</div></header>
-<nav class="nav"><a href="#home" data-v="home">Home</a><a href="#league" data-v="league">League</a><a href="#players" data-v="players">Players</a><a href="#games" data-v="games">Games</a><a href="#injuries" data-v="injuries">Injuries</a><a href="#news" data-v="news">News</a></nav>
+<nav class="nav"><a href="#home" data-v="home">Home</a><a href="#league" data-v="league">League</a><a href="#players" data-v="players">Players</a><a href="#games" data-v="games">Games</a><a href="#injuries" data-v="injuries">Injuries</a><a href="#news" data-v="news">News</a></nav><div class="crumb" id="crumb"></div>
 <div class="search"><input id="gs" type="search" placeholder="Search players, teams, managers" autocomplete="off"><div id="gsr"></div></div>
 <div id="app"><section><div class="empty">Waiting for the first refresh…</div></section></div>
 <footer>Updates every 5 minutes while the laptop is on. Pull down to refresh.</footer>
@@ -1143,6 +1149,29 @@ function searchHits(q){q=q.toLowerCase();if(q.length<2)return [];const out=[];
   (D.players||[]).filter(p=>String(p.name).toLowerCase().indexOf(q)>=0).sort((a,b)=>(num(b.value)||0)-(num(a.value)||0)).slice(0,8).forEach(p=>out.push({t:'player',label:p.name,sub:[p.pos,p.team,num(p.owner)?p.ownerName:'Free agent'].join(' · '),href:'#player/'+encodeURIComponent(p.name),sid:p.sid,team:p.team,pos:p.pos}));
   return out.slice(0,10);}
 
+function crumbFill(d,v){
+  const el=document.getElementById('crumb');if(!el)return;
+  const P=n=>'<b>'+esc(n)+'</b>';const sep='<span class="sep">›</span>';
+  let trail='',deep=false;
+  if(v==='home')trail=P('Home');
+  else if(v==='league')trail=P('League');
+  else if(v==='players')trail=P('Players');
+  else if(v==='games')trail=P('Games');
+  else if(v==='injuries')trail=P('Injuries');
+  else if(v==='news')trail=P('News');
+  else if(v==='dev')trail=P('Engine room');
+  else if(v==='team'){deep=true;const t=(d.power||[]).find(x=>String(x.team)===String(state.team))||{};
+    trail='League'+sep+P((t.manager||'Team')+(t.name?' · '+t.name:''));}
+  else if(v==='player'){deep=true;const nm=cleanName(state.player);const pl2=(d.players||[]).find(x=>String(x.name).toLowerCase()===String(nm).toLowerCase())||{};
+    trail=(state.ctxName?esc(state.ctxName):'Players')+sep+P(nm)+(pl2.pos?' <span class="sub">'+esc(pl2.pos)+(pl2.team?' · '+esc(pl2.team):'')+'</span>':'');}
+  else if(v==='nfl'){deep=true;const t=(d.nflTeams||[]).find(x=>x.team===String(state.nfl2).toUpperCase())||{};
+    trail='NFL teams'+sep+P(t.name||state.nfl2);}
+  else if(v==='coach'){deep=true;const nm=state.coach;const ts=(d.nflTeams||[]);let team='';
+    ts.forEach(t=>{['hc','oc','dc'].forEach(r=>{if(String(t[r]).toLowerCase()===String(nm).toLowerCase())team=t.name})});
+    trail='Coaches'+sep+P(nm)+(team?' <span class="sub">'+esc(team)+'</span>':'');}
+  else trail=P(v);
+  el.innerHTML=(deep?'<a class="back" href="javascript:history.back()">‹</a>':'')+'<span class="path">'+trail+'</span>';
+}
 // ---------------- ROUTER ----------------
 function route(){
   NAV=true;
@@ -1175,6 +1204,7 @@ function render(){
   else h=renderHome(d);
   const _sy=window.scrollY;
   $("#app").innerHTML=h;
+  crumbFill(d,v);
   document.querySelectorAll(".nav a").forEach(a=>a.classList.toggle("on",a.dataset.v===(v==="team"||v==="coach"||v==="nfl"?"league":(v==="player"?"players":v))));
   document.querySelectorAll(".ctl button[data-cmd]").forEach(b=>b.addEventListener("click",()=>send(b.dataset.cmd,CMDKEY)));
   const ck=$("#cmdsave");if(ck)ck.addEventListener("click",()=>{const v=($("#cmdkey").value||"").trim();if(v){CMDKEY=v;try{localStorage.setItem('lhc_cmd',v)}catch(e){}render()}});
