@@ -583,7 +583,8 @@ function renderPlayer(d,name){
   }
   // team context
   if(p.coach||p.teamSplits){const c=p.coach,oc=p.oppCoach,ts=p.teamSplits;
-    h+='<section><h2>Team context · '+tl(p.team)+'</h2>'+kv([['Coaches',c?coachLine(c,true):''],['This week\'s opponent',oc?esc(g.opp)+' — '+coachLine(oc,true):''],['Team scoring',ts?f1(ts.all)+' ppg · home '+f1(ts.home)+' / away '+f1(ts.away)+(num(ts.badN)>=3?' · bad weather '+f1(ts.badWx):'')+' <small>(2024–26)</small>':'']])+'</section>';}
+    h+=collegeSection(d,p);
+h+='<section><h2>Team context · '+tl(p.team)+'</h2>'+kv([['Coaches',c?coachLine(c,true):''],['This week\'s opponent',oc?esc(g.opp)+' — '+coachLine(oc,true):''],['Team scoring',ts?f1(ts.all)+' ppg · home '+f1(ts.home)+' / away '+f1(ts.away)+(num(ts.badN)>=3?' · bad weather '+f1(ts.badWx):'')+' <small>(2024–26)</small>':'']])+'</section>';}
   // splits
   const sp=p.splits;
   if(sp&&num(sp.games)>=4){const rows=[['Home',sp.home,sp.homeN],['Away',sp.away,sp.awayN],['Good weather',sp.goodWx,sp.goodN],['Bad weather',sp.badWx,sp.badN],['Dome',sp.dome,sp.domeN],['At Denver',sp.denver,sp.denverN]].filter(r=>num(r[2])>0);
@@ -697,6 +698,39 @@ function renderNfl(d,abbr){
   if(inL.length)h+='<section><h2>In our league</h2>'+inL.map(p=>'<div class="row tapp" data-player="'+esc(p.name)+'">'+face(p.sid,p.team,p.pos)+'<div class="main"><div class="name'+(isMine(p.ownerName)?' mine':'')+'">'+esc(p.name)+'</div><div class="sub">'+esc(p.pos)+' · '+esc(isMine(p.ownerName)?'YOU':p.ownerName)+(p.slot?' ('+esc(p.slot)+')':'')+'</div></div><div class="pts"><b>'+f1(p.value)+'</b><small>value</small></div></div>').join('')+'</section>';
   if(fa.length)h+='<section><h2>Free agents on this team</h2>'+fa.map(p=>'<div class="row tapp" data-player="'+esc(p.name)+'">'+face(p.sid,p.team,p.pos)+'<div class="main"><div class="name">'+esc(p.name)+'</div><div class="sub">'+esc(p.pos)+' · wk '+f1(p.proj)+'</div></div><div class="pts"><b>'+f1(p.value)+'</b><small>value</small></div></div>').join('')+'</section>';
   return h;
+}
+
+// ---------------- COLLEGE / DRAFT ----------------
+const CMET=[['forty','40-yard dash','s',true],['vertical','Vertical','in',false],['broad','Broad jump','in',false],['bench','Bench reps','',false],['cone','3-cone','s',true],['shuttle','Shuttle','s',true]];
+function cPct(pos,key,v,lowGood){const vs=(D&&D.players||[]).filter(x=>x.pos===pos&&x.college&&num(x.college[key])>0).map(x=>num(x.college[key]));if(vs.length<8)return null;const below=vs.filter(x=>lowGood?x>v:x<v).length;return Math.round(100*below/vs.length);}
+function collegeSection(d,p){
+  const c=p.college;if(!c)return '';
+  const exp=num(c.expYears),gp=num((p.form||{}).gp)||0,rook=exp!==null&&exp<=0;
+  const rd=num(c.round),pk=num(c.pick);
+  const cap=num(c.capital);const capPct=cap!==null?Math.round(cap*100):null;
+  const mets=CMET.map(m=>({k:m[0],lab:m[1],u:m[2],low:m[3],v:num(c[m[0]])})).filter(m=>m.v>0);
+  const pcts=mets.map(m=>({...m,p:cPct(p.pos,m.k,m.v,m.low)})).filter(m=>m.p!==null);
+  let h='<section><h2>'+(rook?'Rookie profile — no NFL sample yet':'Out of college')+'</h2>';
+  h+=kv([['School',esc(c.school||'')],['Drafted',rd?('round '+Math.round(rd)+', pick '+Math.round(pk)+' in '+Math.round(num(c.draftYear))):(num(c.draftYear)?'undrafted ('+Math.round(num(c.draftYear))+')':'')],
+    ['Draft capital',capPct!==null?capPct+'/100 <small style="color:var(--mute)">'+(capPct>=70?'premium pick — teams force these on the field':(capPct>=40?'solid investment':'late pick — has to earn the work'))+'</small>':''],
+    ['Age when drafted',num(c.draftAge)?Math.round(num(c.draftAge))+(num(c.draftAge)<=21?' <small style="color:var(--good)">young for his class</small>':''):''],
+    ['Size',[c.height,num(c.weight)?Math.round(num(c.weight))+' lb':''].filter(x=>x).join(' · ')],
+    ['NFL seasons',exp!==null?(exp<=0?'rookie':exp+(exp===1?' year in':' years in'))+' · '+gp+' game'+(gp===1?'':'s')+' played':'']]);
+  if(pcts.length){h+='<div style="margin-top:8px">'+svgBars({labels:pcts.map(m=>m.lab.split(' ')[0]),series:[{vals:pcts.map(m=>m.p),cls:'me',clsAt:pcts.map(m=>m.p>=70?'good':(m.p<=30?'bad':''))}],h:120,line:{v:50,label:'average '+esc(p.pos)}})+'<div class="sub" style="white-space:normal">Percentile against every '+esc(p.pos)+' in the app with a combine number: '+pcts.map(m=>esc(m.lab)+' '+m.v+m.u+' ('+m.p+'th)').join(' · ')+'</div></div>';}
+  const cy=num(c.collYear);
+  if(cy){const ry=num(c.recYds)||0,rt=num(c.recTD)||0,rc=num(c.rec)||0,uy=num(c.rushYds)||0,ut=num(c.rushTD)||0,ca=num(c.car)||0,py=num(c.passYds)||0,pt=num(c.passTD)||0;
+    const sh=num(c.collShare),us=num(c.collUsage);
+    const line=[];if(rc)line.push(rc+' catches, '+Math.round(ry)+' yds, '+Math.round(rt)+' TD');if(ca)line.push(Math.round(ca)+' carries, '+Math.round(uy)+' yds, '+Math.round(ut)+' TD');if(py)line.push(Math.round(py)+' pass yds, '+Math.round(pt)+' TD');
+    const shPct=sh!==null?Math.round(sh*100):null;
+    h+='<h2 style="margin-top:14px">Last college season · '+Math.round(cy)+' '+esc(c.collTeam||'')+'</h2>'+kv([['Production',line.join('<br>')],
+      ['Share of his offense',shPct!==null?shPct+'% <small style="color:var(--mute)">'+(shPct>=30?'carried that offense':(shPct>=20?'a real focal point':(shPct>=10?'one of several options':'a complementary piece')))+'</small>':''],
+      ['Snap usage',us!==null?Math.round(us*100)+'% of his team\'s plays':'']]);
+    const peers=(D&&D.players||[]).filter(x=>x.pos===p.pos&&x.college&&num(x.college.collShare)!==null).map(x=>num(x.college.collShare));
+    if(sh!==null&&peers.length>=8){const below=peers.filter(v=>v<sh).length;const pc=Math.round(100*below/peers.length);
+      h+=svgBars({labels:['His share','Average '+esc(p.pos)],series:[{vals:[sh*100,(peers.reduce((a,b)=>a+b,0)/peers.length)*100],cls:'me',clsAt:[pc>=70?'good':(pc<=30?'bad':''),'them']}],h:110})+'<div class="sub" style="white-space:normal">'+pc+'th percentile college share among '+esc(p.pos)+'s here. College production share is one of the better rookie signals — it survives the jump better than combine speed does.</div>';}
+  }
+  if(rook||gp<8)h+='<div class="sub" style="white-space:normal;margin-top:6px">With this little NFL tape, his projection leans on draft capital and the depth chart rather than his own numbers — treat week-to-week swings with more suspicion than usual.</div>';
+  return h+'</section>';
 }
 // ---------------- COACH ----------------
 function renderCoach(d,name){
