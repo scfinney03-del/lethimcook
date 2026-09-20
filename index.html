@@ -169,10 +169,22 @@ body.big polygon.rad{stroke-width:3.5}
 .vs .face{width:22px;height:22px;flex-basis:22px;vertical-align:middle;margin:0 3px}body.big .search input{font-size:19px;padding:12px}
 .ch rect.b.them{fill:var(--them)}.ch rect.b.proj{fill:var(--proj)}.ch rect.b.good{fill:var(--good)}.ch rect.b.bad{fill:var(--bad)}.ch rect.b.warn{fill:var(--warn)}
 .portal{cursor:pointer}
+.wi-g{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mute);margin:12px 0 6px}
+.wi-ts{display:flex;flex-wrap:wrap;gap:6px}
+.wi-t{display:flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:18px;padding:7px 12px 7px 7px;font:inherit;font-size:14px;cursor:pointer}
+.wi-sw{width:28px;height:16px;border-radius:8px;background:var(--line);position:relative;flex:0 0 28px;transition:background .15s}
+.wi-sw::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#fff;transition:left .15s}
+.wi-t.on{border-color:var(--acc)}.wi-t.on .wi-sw{background:var(--acc)}.wi-t.on .wi-sw::after{left:14px}
+.wi-sum{font-size:15px;margin:4px 0 8px;white-space:normal}
+tr.wi-new td{background:color-mix(in srgb,var(--good) 12%,transparent)}
+a.aa{text-decoration:none;display:inline-block}a.aa.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+button.more[disabled]{opacity:.45}
+.wi-btns{display:flex;gap:6px;margin-top:10px}.wi-btns button.more{flex:1;width:auto;margin:0;padding:9px 4px;font-size:13px}
+body.big .wi-t{font-size:18px;padding:10px 14px 10px 10px}body.big .wi-sw{width:36px;height:20px;flex-basis:36px;border-radius:10px}body.big .wi-sw::after{width:16px;height:16px}body.big .wi-t.on .wi-sw::after{left:18px}body.big .wi-sum{font-size:20px}body.big .wi-g{font-size:16px}
 </style>
 </head>
 <body>
-<header><div><h1>Let Him Cook</h1><div class="hdrbtns"><button class="aa" id="aa" title="Easy-read mode: bigger text, higher contrast" aria-pressed="false">Aa</button><button class="aa show" id="show" title="Hide the private stuff when showing others">Show mode</button></div></div><div class="stamp" id="stamp">loading…</div></header>
+<header><div><h1>Let Him Cook</h1><div class="hdrbtns"><button class="aa" id="aa" title="Easy-read mode: bigger text, higher contrast" aria-pressed="false">Aa</button><a class="aa" id="wibtn" href="#whatif" title="Flip factors on and off">What-if</a><button class="aa show" id="show" title="Hide the private stuff when showing others">Show mode</button></div></div><div class="stamp" id="stamp">loading…</div></header>
 <nav class="nav"><a href="#home" data-v="home">Home</a><a href="#league" data-v="league">League</a><a href="#players" data-v="players">Players</a><a href="#games" data-v="games">Games</a><a href="#injuries" data-v="injuries">Injuries</a><a href="#news" data-v="news">News</a></nav>
 <div class="search"><input id="gs" type="search" placeholder="Search players, teams, managers" autocomplete="off"><div id="gsr"></div></div>
 <div id="app"><section><div class="empty">Waiting for the first refresh…</div></section></div>
@@ -488,8 +500,8 @@ function managerSection(d,pw){
   if(!me&&up.length)h+='<section><h2>On your schedule</h2>'+kv(up.map(s=>['Week '+s.week,'Yahoo gives you '+Math.round((num(s.yahooWin)||0)*100)+'%']))+'</section>';
   if(!me){const tr=(d.trades||[]).filter(x=>x.partner===pw.manager);
     if(tr.length)h+='<section><h2>Trade fits with '+esc(pw.manager)+'</h2>'+tr.slice(0,4).map(x=>'<div class="row" style="padding:8px 0"><div class="main" style="white-space:normal"><div class="name">Give '+pl(x.give)+' · get '+pl(x.get)+'</div><div class="sub" style="white-space:normal">you +'+f1(x.myGain)+'/wk · they '+(num(x.theirGain)>=0?'+':'')+f1(x.theirGain)+' · '+esc(x.timing)+'</div></div><div class="pts"><b>'+f1(x.score)+'</b><small>score</small></div></div>').join('')+'</section>';
-    const rm=(d.rivalMoves||[]).filter(x=>String(x.team)===String(pw.team));
-    if(rm.length)h+='<section><h2>Their likely next move</h2>'+rm.map(x=>'<div class="row" style="padding:8px 0"><div class="main" style="white-space:normal"><div class="name">Claim '+pl(x.target)+(x.drop?' · drop '+pl(x.drop):'')+'</div><div class="sub" style="white-space:normal">+'+f1(x.gain)+' at '+esc(x.slot)+(x.hurt?' · '+esc(x.hurtStatus)+' starter':'')+' · scarcity ×'+f1(x.scarcity)+'</div></div><div class="pts"><b>'+Math.round(x.urgency)+'</b><small>urgency</small></div></div>').join('')+'</section>';}
+    const rm=(pw.likelyMoves||[]);const mine=new Set((d.waivers||[]).map(w=>w.player));
+    h+='<section><h2>'+esc(pw.manager)+'\'s likely moves</h2>'+(rm.length?rm.map((x,i)=>'<div class="row" style="padding:8px 0"><div class="slot">'+(i+1)+'</div><div class="main" style="white-space:normal"><div class="name" style="white-space:normal;overflow:visible">Add '+pl(x.target)+' <small style="color:var(--mute)">'+esc(x.targetPos)+' · '+tl(x.targetTeam)+'</small></div><div class="sub" style="white-space:normal">'+esc(x.kind)+(x.drop?' · likely drop '+pl(x.drop):'')+' · +'+f1(x.gain)+'/wk for them'+(x.hurt?' · replaces a '+esc(x.hurtStatus)+' starter':'')+(num(x.peers)<=1?' · last one like him':' · '+Math.round(x.peers)+' similar still free')+(mine.has(x.target)?' · <span class="flag">also on your list</span>':'')+'</div></div><div class="pts"><b>'+Math.round(x.urgency)+'</b><small>likelihood</small></div></div>').join(''):'<div class="sub" style="white-space:normal">Nothing on the wire beats what they already have — no obvious move.</div>')+'<div class="sub" style="white-space:normal;margin-top:6px">Ranked by how much each move helps <i>them</i>, boosted if a starter is hurt or the player is the last of his kind. For reading the room only — your own calls don\'t depend on it.</div></section>';}
   const act=pw.activity||{};const rec=(act.recent||[]).slice().reverse();
   if(num(act.adds)||num(act.drops)){const bp=act.byPos||{};const fav=Object.keys(bp).sort((a,b)=>bp[b]-bp[a])[0];
     h+='<section><h2>Moves</h2><div class="sub" style="white-space:normal">'+Math.round(act.adds||0)+' adds · '+Math.round(act.drops||0)+' drops tracked'+(fav?' · chases <b>'+esc(fav)+'</b> most':'')+'</div>'+rec.map(x=>'<div class="row" style="padding:6px 0"><div class="slot" style="color:'+(x.action==='Add'?'var(--good)':'var(--bad)')+'">'+esc(x.action)+'</div><div class="main"><div class="name">'+pl(x.player)+'</div><div class="sub">'+esc(x.pos)+' · '+tl(x.nfl)+' · wk '+x.week+' · '+esc(String(x.stamp).slice(5,10).replace('-','/'))+'</div></div></div>').join('')+'</section>';}
@@ -721,6 +733,105 @@ function renderCoach(d,name){
     h+='<section><h2>'+(isDC?'His unit vs our league\'s players':'Players in his '+(isHC?'building':'offense'))+'</h2>'+ps.map(p=>'<div class="row tapp" data-player="'+esc(p.name)+'">'+face(p.sid,p.team,p.pos)+'<div class="main"><div class="name'+(isMine(p.ownerName)?' mine':'')+'">'+esc(p.name)+'</div><div class="sub">'+esc(p.pos)+' · '+(num(p.owner)?esc(isMine(p.ownerName)?'YOU':p.ownerName):'Free agent')+(p.slot?' ('+esc(p.slot)+')':'')+'</div></div><div class="pts"><b>'+f1(p.value)+'</b><small>value</small></div></div>').join('')+'</section>';}
   return h;
 }
+// ---------------- WHAT-IF ----------------
+const WI_F=[
+ {k:'inj',g:'core',n:'Injuries & news',d:'Cuts this week\'s projection when the injury report or news says he may sit (questionable 85%, doubtful 35%, out 0).',hits:'week'},
+ {k:'form',g:'core',n:'Recent form',d:'Blends in his last 3 games, more as he plays more games.',hits:'value'},
+ {k:'hist',g:'core',n:'History',d:'Pulls toward his own track record (2025 or career points per game).',hits:'value'},
+ {k:'snap',g:'core',n:'Snap share',d:'Docks part-timers (under 40% of snaps), bumps every-down players (70%+).',hits:'value'},
+ {k:'trend',g:'core',n:'Trend',d:'±10% when his scoring is clearly rising or falling.',hits:'value'},
+ {k:'week',g:'core',n:'This week\'s projections',d:'Lets this week\'s expert projections count for a quarter of his value.',hits:'value'},
+ {k:'wx',g:'lens',n:'Weather',d:'Rule of thumb: wind, rain and cold cut passing and kicking, and help runners and defenses a little. No effect in domes.',hits:'both'},
+ {k:'ha',g:'lens',n:'Home / away',d:'His own home vs road scoring since 2024, trusted more the more games he has.',hits:'both'},
+ {k:'mu',g:'lens',n:'Matchup',d:'How many fantasy points this week\'s defense gives up to his position vs league average.',hits:'both'},
+ {k:'alt',g:'lens',n:'Altitude',d:'Games in Denver: his own Denver record if he has one; otherwise a small hit for visitors and a boost for kickers.',hits:'both'},
+ {k:'vegas',g:'lens',n:'Game script (Vegas)',d:'His team\'s implied points vs the average game this week. Defenses use the other team\'s.',hits:'both'}];
+function wiDefault(){const o={};WI_F.forEach(f=>o[f.k]=f.g==='core');return o;}
+let WI=wiDefault();try{const j=JSON.parse(localStorage.getItem('lhc_whatif')||'null');if(j)WI=Object.assign(wiDefault(),j)}catch(e){}
+function wiIsReal(){const d0=wiDefault();return WI_F.every(f=>!!WI[f.k]===d0[f.k]);}
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function wiLens(p,on,avgImp){ // returns {m, parts:[[label,mult]]}
+  const g=p.game||{};const pos=p.pos;const parts=[];let m=1;const add=(lab,x)=>{if(x&&Math.abs(x-1)>=0.005){parts.push([lab,x]);m*=x}};
+  if(!g.opp||/progress|final/i.test(g.status||''))return {m:1,parts};
+  if(on.wx){const t={'Heavy wind':{QB:.88,WR:.92,TE:.95,K:.85,RB:1.04,DST:1.05},'Rain likely':{QB:.95,WR:.95,TE:.97,K:.93,RB:1.02,DST:1.03},'Cold':{QB:.97,WR:.97,TE:.98,K:.92,RB:1,DST:1.02},'Breezy':{QB:.97,WR:.98,TE:.99,K:.95,RB:1.01,DST:1.01}}[g.impact];add('weather',t?t[pos]:1);}
+  if(on.ha){const s=p.splits;if(s&&num(s.ppg)>0){const home=g.ha==='Home';const v=num(home?s.home:s.away),n=num(home?s.homeN:s.awayN)||0;if(v!==null&&n>0){const w=n/(n+8);add(home?'home':'road',clamp(1+(v/s.ppg-1)*w,.9,1.1));}}}
+  if(on.mu){const a=p.next3&&p.next3[0]&&p.next3[0].opp!=='bye'?num(p.next3[0].allowed):null;const pa=wiPosAvg[pos];if(a!==null&&pa)add('matchup',clamp(1+(a/pa-1)*0.4,.88,1.12));}
+  if(on.alt&&num(g.altitude)>=5000){const s=p.splits;if(s&&num(s.denverN)>=2&&num(s.notDenver)>0){const w=s.denverN/(s.denverN+6);add('altitude',clamp(1+(s.denver/s.notDenver-1)*w,.9,1.1));}else if(pos==='K')add('altitude',1.05);else if(p.team!=='DEN')add('altitude',.98);}
+  if(on.vegas&&avgImp){let imp=num(g.implied);if(pos==='DST'&&num(g.total)!==null&&imp!==null)imp=num(g.total)-imp;if(imp!==null){const r=imp/avgImp;add('game script',clamp(pos==='DST'?1-(r-1)*0.5:1+(r-1)*0.5,.85,1.15));}}
+  return {m,parts};
+}
+let wiPosAvg={};
+function wiCalc(p,on,W,avgImp){ // {week,value,parts}
+  const L=wiLens(p,on,avgImp);const cons=num(p.cons);const ros=p.ros||{};const fm=p.form||{};
+  let week=cons!==null?cons*(on.inj?(num(p.avail)!==null?p.avail:1):1)*L.m:(num(p.proj)!==null?num(p.proj)*L.m:null);
+  const rosWk=num(ros.cons)!==null?num(ros.cons):(num(ros.sleeper)||0);const gp=num(fm.gp)||0;const wgp=Math.min(gp,3)/3;
+  let core=rosWk;const avg3=num(fm.avg3),hist=num(p.histUsed),snap=num(fm.snap),trend=num(fm.trend);
+  if(on.form&&avg3>0)core=(1-W.w_form*wgp)*rosWk+W.w_form*wgp*avg3;
+  if(on.hist&&hist>0)core=(1-W.w_hist)*core+W.w_hist*hist;
+  if(on.snap&&snap!==null&&snap!==0){const sm=snap<0.4?W.snap_low:(snap>=0.7?W.snap_high:1);core=core*(1+(sm-1)*wgp);}
+  if(on.trend&&trend!==null){if(trend>=3&&(snap===null||snap>=0.5))core*=1.1;else if(trend<=-3)core*=0.9;}
+  let value=(on.week&&cons>0)?(1-W.w_week)*core+W.w_week*cons*L.m:core*(on.week?1:L.m);
+  return {week,value,parts:L.parts};
+}
+function wiLineup(ps,wk){ // ps: my players; wk: name->week proj. returns slot->player
+  const avail=ps.filter(p=>!/^IR/.test(p.slot||'')&&!/^(Out|IR|PUP)$/i.test((p.inj||{}).status||''));
+  const locked=avail.filter(p=>p.game&&/progress|final/i.test(p.game.status||''));
+  const slots=[['QB',['QB']],['RB',['RB']],['RB',['RB']],['WR',['WR']],['WR',['WR']],['TE',['TE']],['W/R/T',['RB','WR','TE']],['K',['K']],['DEF',['DST']]];
+  const used=new Set(),out=[];
+  // keep locked starters where they are
+  const lockStart=locked.filter(p=>p.slot&&!/^(BN|IR)/.test(p.slot));
+  const open=slots.map(s=>({s:s[0],ok:s[1],p:null}));
+  lockStart.forEach(p=>{const o=open.find(x=>!x.p&&(x.s===p.slot||(p.slot==='W/R/T'&&x.s==='W/R/T')));if(o){o.p=p;o.locked=true;used.add(p.name)}});
+  const lockedBench=new Set(locked.filter(p=>/^BN/.test(p.slot||'')).map(p=>p.name));
+  open.forEach(o=>{if(o.p)return;let best=null;avail.forEach(p=>{if(used.has(p.name)||lockedBench.has(p.name)||o.ok.indexOf(p.pos)<0)return;const v=num(wk[p.name]);if(v===null)return;if(!best||v>num(wk[best.name]))best=p});if(best){o.p=best;used.add(best.name)}});
+  return open;
+}
+let WIPOS='FLEX';
+function wiToggle(k){WI[k]=!WI[k];try{localStorage.setItem('lhc_whatif',JSON.stringify(WI))}catch(e){}render();}
+function renderWhatIf(d){
+  if(SHOW)return '<section><div class="empty">What-if is private — turn off Show mode to use it.</div></section>';
+  const W=Object.assign({w_form:.4,w_hist:.2,snap_low:.75,snap_high:1.05,w_week:.25},d.weights||{});
+  wiPosAvg=((d.nflTeams||[])[0]||{}).posAvg||{};
+  const imps=[];(d.games||[]).forEach(g=>{if(num(g.impliedHome)!==null)imps.push(num(g.impliedHome));if(num(g.impliedAway)!==null)imps.push(num(g.impliedAway))});const avgImp=imps.length?imps.reduce((a,b)=>a+b,0)/imps.length:null;
+  const REAL=wiDefault();const ps=(d.players||[]);
+  const R={},X={};ps.forEach(p=>{R[p.name]=wiCalc(p,REAL,W,avgImp);X[p.name]=wiCalc(p,WI,W,avgImp)});
+  const real=wiIsReal();
+  let h='<section><h2>What-if</h2><div class="sub" style="white-space:normal">Flip a factor to see what it\'s doing to your calls. This page only — your board, alerts and trades always run with the real settings.</div>';
+  const grp=(g,t)=>'<div class="wi-g">'+t+'</div><div class="wi-ts">'+WI_F.filter(f=>f.g===g).map(f=>'<button class="wi-t'+(WI[f.k]?' on':'')+'" data-wi="'+f.k+'" aria-pressed="'+(WI[f.k]?'true':'false')+'"><span class="wi-sw"></span>'+esc(f.n)+'</button>').join('')+'</div>';
+  h+=grp('core','In your numbers now')+grp('lens','Extra lenses <small>(not in your numbers — try them)</small>');
+  h+='<div class="wi-btns"><button class="more" id="wi-reset"'+(real?' disabled':'')+'>Back to real</button><button class="more" id="wi-all">Everything on</button><button class="more" id="wi-none">Sources only</button></div>';
+  h+='<details style="margin-top:8px"><summary class="sub">What each switch does</summary>'+WI_F.map(f=>'<div class="sub" style="white-space:normal;margin-top:4px"><b>'+esc(f.n)+'</b> — '+esc(f.d)+' <i>Moves: '+(f.hits==='week'?'this week':(f.hits==='value'?'value (waivers, trades)':'both'))+'</i></div>').join('')+'</details></section>';
+  // my lineup
+  const mine=ps.filter(p=>isMine(p.ownerName));
+  if(mine.length){const rw={},xw={};mine.forEach(p=>{rw[p.name]=R[p.name].week;xw[p.name]=X[p.name].week});
+    const lr=wiLineup(mine,rw),lx=wiLineup(mine,xw);const rSet=new Set(lr.filter(o=>o.p).map(o=>o.p.name));
+    const tr=lr.reduce((a,o)=>a+(o.p?num(rw[o.p.name])||0:0),0),tx=lx.reduce((a,o)=>a+(o.p?num(xw[o.p.name])||0:0),0);
+    const ins=lx.filter(o=>o.p&&!rSet.has(o.p.name)).map(o=>o.p.name);const xSet=new Set(lx.filter(o=>o.p).map(o=>o.p.name));const outs=lr.filter(o=>o.p&&!xSet.has(o.p.name)).map(o=>o.p.name);
+    h+='<section><h2>Your best lineup</h2><div class="wi-sum">'+(real?'Real settings — this is the lineup your numbers pick.':(ins.length?'<b>'+ins.length+' change'+(ins.length>1?'s':'')+'</b>: start '+ins.map(pl).join(', ')+' over '+outs.map(pl).join(', ')+'.':'<b>No change</b> — your lineup holds up with these settings.'))+'</div>';
+    h+=svgBars({labels:['Real','What-if'],series:[{vals:[tr,tx],cls:'me',clsAt:['them','me']}],h:90})+'<div class="sub">starters\' projected points: '+f1(tr)+' real → '+f1(tx)+' what-if</div>';
+    h+='<table style="margin-top:6px"><tr><th style="width:44px">Slot</th><th>Player</th><th class="n" style="width:48px">Real</th><th class="n" style="width:56px">What-if</th></tr>'+lx.map(o=>{if(!o.p)return '<tr><td>'+esc(o.s)+'</td><td class="sub">empty</td><td></td><td></td></tr>';const p=o.p;const new_=!rSet.has(p.name);const dv=(num(xw[p.name])||0)-(num(rw[p.name])||0);const pt=X[p.name].parts;
+      return '<tr'+(new_?' class="wi-new"':'')+'><td style="color:var(--mute)">'+esc(o.s)+'</td><td style="white-space:normal">'+pl(p.name)+(new_?' <span class="flag">IN</span>':'')+(o.locked?' <small class="sub">locked</small>':'')+(pt.length?'<br><span class="sub">'+pt.map(x=>x[0]+' '+(x[1]>=1?'+':'')+Math.round((x[1]-1)*100)+'%').join(' · ')+'</span>':'')+'</td><td class="n">'+f1(rw[p.name])+'</td><td class="n"><b>'+f1(xw[p.name])+'</b>'+(Math.abs(dv)>=0.05?'<br><small style="color:'+(dv>0?'var(--good)':'var(--bad)')+'">'+(dv>0?'+':'')+f1(dv)+'</small>':'')+'</td></tr>'}).join('')+'</table>';
+    if(outs.length)h+='<div class="sub" style="white-space:normal;margin-top:6px">Benched by these settings: '+outs.map(n=>pl(n)+' ('+f1(xw[n])+')').join(', ')+'</div>';
+    h+='</section>';
+    // all my players, biggest movers
+    const mv=mine.map(p=>({p,dw:(num(X[p.name].week)||0)-(num(R[p.name].week)||0),dv:(num(X[p.name].value)||0)-(num(R[p.name].value)||0)})).sort((a,b)=>Math.abs(b.dw)+Math.abs(b.dv)-Math.abs(a.dw)-Math.abs(a.dv));
+    state.ctx=mv.map(x=>x.p.name);state.ctxName='What-if';
+    if(!real){const top=mv.filter(x=>Math.abs(x.dw)>=0.05||Math.abs(x.dv)>=0.05).slice(0,8);
+      if(top.length)h+='<section><h2>Who moved on your roster</h2>'+svgBars({labels:top.map(x=>String(x.p.name).split(' ').slice(-1)[0]),series:[{vals:top.map(x=>Math.abs(x.dw)),cls:'me',clsAt:top.map(x=>x.dw>=0?'good':'bad')}],h:120,legend:[['good','up this week'],['bad','down this week']]})+'<table><tr><th>Player</th><th class="n">Week</th><th class="n">Value</th></tr>'+top.map(x=>'<tr><td>'+pl(x.p.name)+' <small class="sub">'+esc(x.p.pos)+'</small></td><td class="n" style="color:'+(x.dw>=0?'var(--good)':'var(--bad)')+'">'+(x.dw>0?'+':'')+f1(x.dw)+'</td><td class="n" style="color:'+(x.dv>=0?'var(--good)':'var(--bad)')+'">'+(x.dv>0?'+':'')+f1(x.dv)+'</td></tr>').join('')+'</table></section>';
+      else h+='<section><h2>Who moved on your roster</h2><div class="sub">Nobody on your roster moves with these settings.</div></section>';}
+  }
+  // waivers
+  const fa=ps.filter(p=>!num(p.owner)&&!/^(Out|IR|PUP)$/i.test((p.inj||{}).status||'')&&(WIPOS==='FLEX'?['RB','WR','TE']:(WIPOS==='ALL'?['QB','RB','WR','TE']:[WIPOS])).indexOf(p.pos)>=0);
+  const rr=fa.slice().sort((a,b)=>(num(R[b.name].value)||0)-(num(R[a.name].value)||0));const rRank={};rr.forEach((p,i)=>rRank[p.name]=i+1);
+  const xr=fa.slice().sort((a,b)=>(num(X[b.name].value)||0)-(num(X[a.name].value)||0)).slice(0,10);
+  h+='<section><h2>Waiver order</h2><div class="filters"><select id="wi-pos" style="grid-column:1/3">'+[['FLEX','RB / WR / TE'],['ALL','All positions'],['QB','QB'],['RB','RB'],['WR','WR'],['TE','TE']].map(o=>'<option value="'+o[0]+'"'+(WIPOS===o[0]?' selected':'')+'>'+o[1]+'</option>').join('')+'</select></div><table><tr><th style="width:26px">#</th><th>Free agent</th><th class="n" style="width:52px">Value</th><th class="n" style="width:50px">Real #</th></tr>'+xr.map((p,i)=>{const was=rRank[p.name];const mvd=was-(i+1);return '<tr><td>'+(i+1)+'</td><td>'+pl(p.name)+' <small class="sub">'+esc(p.pos)+' · '+esc(p.team||'')+'</small></td><td class="n"><b>'+f1(X[p.name].value)+'</b></td><td class="n">'+(mvd===0?'<span class="sub">'+was+'</span>':'<span style="color:'+(mvd>0?'var(--good)':'var(--bad)')+'">'+was+' '+(mvd>0?'▲':'▼')+'</span>')+'</td></tr>'}).join('')+'</table><div class="sub" style="white-space:normal;margin-top:4px">Top healthy free agents by value. ▲ = climbs with these settings.</div></section>';
+  // trades
+  const trs=(d.trades||[]);
+  if(trs.length){const vv=(n,S)=>{const k=cleanName(n);const q=S[k]||S[n];return q?num(q.value)||0:0};
+    const rows=trs.map(t=>{const delta=(vv(t.get,X)-vv(t.give,X))-(vv(t.get,R)-vv(t.give,R));return {t,delta,ng:(num(t.myGain)||0)+delta}}).sort((a,b)=>b.ng-a.ng);
+    h+='<section><h2>Your trade ideas, re-scored</h2><table><tr><th>Give → get</th><th class="n" style="width:52px">Real</th><th class="n" style="width:58px">What-if</th></tr>'+rows.map(x=>'<tr><td style="white-space:normal">'+pl(x.t.give)+' → '+pl(x.t.get)+'<br><small class="sub">'+esc(x.t.partner)+'</small></td><td class="n">'+(num(x.t.myGain)>=0?'+':'')+f1(x.t.myGain)+'</td><td class="n"><b style="color:'+(x.ng>=0?'var(--good)':'var(--bad)')+'">'+(x.ng>=0?'+':'')+f1(x.ng)+'</b></td></tr>').join('')+'</table><div class="sub" style="white-space:normal;margin-top:4px">Your value gain per week. Only the players\' values are re-run here — the full trade engine (lineup fit, their side, timing) runs on real settings.</div></section>';}
+  return h;
+}
 // ---------------- RADAR ----------------
 function svgRadar(axes,opts){ // axes:[{label,v(0..1),txt}]
   const n=axes.length;if(n<3)return '';const S=300,c=S/2,r=105;const ang=i=>-Math.PI/2+i*2*Math.PI/n;
@@ -810,6 +921,7 @@ function render(){
   else if(v==="games")h=renderGames(d);
   else if(v==="nfl")h=renderNfl(d,state.nfl2);
   else if(v==="coach")h=renderCoach(d,state.coach);
+  else if(v==="whatif")h=renderWhatIf(d);
   else if(v==="injuries")h=renderInjuries(d);
   else if(v==="news")h=renderNews(d);
   else h=renderHome(d);
@@ -818,6 +930,12 @@ function render(){
   document.querySelectorAll(".ctl button[data-cmd]").forEach(b=>b.addEventListener("click",()=>send(b.dataset.cmd,CMDKEY)));
   const ck=$("#cmdsave");if(ck)ck.addEventListener("click",()=>{const v=($("#cmdkey").value||"").trim();if(v){CMDKEY=v;try{localStorage.setItem('lhc_cmd',v)}catch(e){}render()}});
   const cc=$("#cmdclear");if(cc)cc.addEventListener("click",e=>{e.preventDefault();CMDKEY='';try{localStorage.removeItem('lhc_cmd')}catch(e){}render()});
+  document.querySelectorAll('[data-wi]').forEach(b=>b.addEventListener('click',()=>wiToggle(b.dataset.wi)));
+  const wr=$('#wi-reset');if(wr)wr.addEventListener('click',()=>{WI=wiDefault();try{localStorage.removeItem('lhc_whatif')}catch(e){}render()});
+  const wp=$('#wi-pos');if(wp)wp.addEventListener('change',()=>{WIPOS=wp.value;render()});
+  const wa=$('#wi-all');if(wa)wa.addEventListener('click',()=>{WI_F.forEach(f=>WI[f.k]=true);try{localStorage.setItem('lhc_whatif',JSON.stringify(WI))}catch(e){}render()});
+  const wn=$('#wi-none');if(wn)wn.addEventListener('click',()=>{WI_F.forEach(f=>WI[f.k]=false);try{localStorage.setItem('lhc_whatif',JSON.stringify(WI))}catch(e){}render()});
+  const wb=$('#wibtn');if(wb){wb.classList.toggle('on',v==='whatif');wb.style.display=SHOW?'none':'';}
   document.querySelectorAll("[data-team]").forEach(el=>el.addEventListener("click",()=>{location.hash="#team/"+el.dataset.team}));
   document.querySelectorAll("[data-player]").forEach(el=>el.addEventListener("click",()=>{location.hash="#player/"+encodeURIComponent(el.dataset.player)}));
   const fp=$("#f-pos"),fo=$("#f-owner"),fs=$("#f-sort"),fq=$("#f-q"),mo=$("#more");
