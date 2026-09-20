@@ -75,7 +75,11 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .win{color:var(--good);font-weight:700}.loss{color:var(--bad);font-weight:700}
 footer{color:var(--mute);font-size:11px;text-align:center;margin-top:16px}
 .ctl{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
-.ctl button{font:inherit;font-size:14px;font-weight:600;padding:10px 8px;border-radius:10px;border:1px solid var(--line);background:var(--chip);color:var(--ink);cursor:pointer}
+.ctl button{font:inherit;font-size:14px;font-weight:600;padding:10px 8px;border-radius:10px;border:1px solid var(--line);background:var(--chip);color:var(--ink);cursor:pointer;transition:background .12s,color .12s,transform .08s;-webkit-tap-highlight-color:transparent}
+.ctl button:active{transform:scale(.96);background:var(--acc);color:#fff;border-color:var(--acc)}
+.ctl button.sending{background:var(--warn);color:#fff;border-color:var(--warn)}
+.ctl button.sent{background:var(--good);color:#fff;border-color:var(--good)}
+.ctl button.failed{background:var(--bad);color:#fff;border-color:var(--bad)}
 .ctl button:active{opacity:.7}
 .ctl button.warn{color:var(--warn)}.ctl button.go{color:var(--acc)}
 .ctlmsg{font-size:12px;color:var(--mute);margin-top:8px;min-height:16px}
@@ -222,7 +226,7 @@ body.big .wchip{font-size:17px;padding:8px 14px}
 <nav class="nav"><a href="#home" data-v="home">Home</a><a href="#league" data-v="league">League</a><a href="#players" data-v="players">Players</a><a href="#games" data-v="games">Games</a><a href="#injuries" data-v="injuries">Injuries</a><a href="#news" data-v="news">News</a></nav><div class="crumb" id="crumb"></div>
 <div class="search"><input id="gs" type="search" placeholder="Search players, teams, managers" autocomplete="off"><div id="gsr"></div></div>
 <div id="app"><section><div class="empty">Waiting for the first refresh…</div></section></div>
-<footer>Updates every 5 minutes while the laptop is on. Pull down to refresh.</footer>
+<footer>Updates every 5 minutes while the laptop is on. Pull down to reload the page.</footer>
 <script>
 (function(){
 const $=(s)=>document.querySelector(s);
@@ -482,14 +486,18 @@ function renderHome(d){
     if(up.length)h+='<details><summary>Rest of schedule</summary><table>'+up.map(s=>'<tr><td style="width:30px">'+esc(s.week)+'</td><td>'+teamLink(s.opp)+' <small style="color:var(--mute)">'+esc(s.manager)+'</small></td><td class="n">'+(num(s.yahooWin)?Math.round(s.yahooWin*100)+'% Yahoo':'')+'</td></tr>').join("")+'</table></details>';
     h+='</section>';
   }
-  if(!SHOW){
+  return h;
+}
+
+  function laptopPanel(d){
+  if(SHOW)return '';
+  let h='';
     const la=num(d.listenerAge); const lOn=la!==null&&la>=0&&la<180;
     let chk=""; if(d.checkedIso){const cm=Math.round((Date.now()-new Date(d.checkedIso).getTime())/60000);chk=esc(d.checked||"")+(cm<1?" (just now)":" ("+cm+" min ago)");}
     h+='<section><h2>Laptop</h2><div style="margin:2px 0 6px"><span class="badge'+(d.paused?' off':'')+'">'+(d.paused?'PAUSED':'RUNNING')+'</span>'+(d.engine?' <span class="pill">'+esc(d.engine)+' engine · '+esc(d.runSec)+'s</span>':'')+'</div>'
       +'<div class="sub" style="white-space:normal">Last check '+(chk||esc(d.updated||""))+' · last data '+esc(d.updated||"")+'<br><span class="dot'+(lOn?'':' off')+'"></span>Buttons '+(lOn?'online':(la===null||la<0?'unknown':'offline'))+(blank(d.asof)?'':'<br>'+esc(d.asof))+'</div>'
       +(CMDKEY?'<div class="ctl">'+(d.paused?'<button class="start" data-cmd="resume">Resume refresh</button>':'<button class="stop" data-cmd="pause">Pause refresh</button>')+'<button class="go" data-cmd="refresh">Refresh now</button><button class="go" data-cmd="pull">Pull everything</button><button data-cmd="ping">Ping laptop</button><button onclick="location.reload()">Reload page</button></div><div class="ctlmsg" id="ctlmsg"></div><div class="sub" style="white-space:normal;margin-top:4px">Refresh now = recompute from what is already downloaded (about a minute). Pull everything = re-download every projection source and the news feed first (3-5 min).</div><div class="sub" style="margin-top:6px"><a href="#" id="cmdclear" style="color:var(--mute)">forget command key on this phone</a></div>':'<div class="filters" style="margin-top:6px"><input id="cmdkey" type="password" placeholder="Command key (unlocks the buttons on this phone)" style="grid-column:1/3"><button class="more" id="cmdsave" style="grid-column:1/3;margin:0">Unlock buttons</button></div>')+'</section>';
-  }
-  return h;
+    return h;
 }
 
 // ---------------- LEAGUE ----------------
@@ -1203,10 +1211,11 @@ function render(){
   else if(v==="news")h=renderNews(d);
   else h=renderHome(d);
   const _sy=window.scrollY;
+  h+=laptopPanel(d);
   $("#app").innerHTML=h;
   crumbFill(d,v);
   document.querySelectorAll(".nav a").forEach(a=>a.classList.toggle("on",a.dataset.v===(v==="team"||v==="coach"||v==="nfl"?"league":(v==="player"?"players":v))));
-  document.querySelectorAll(".ctl button[data-cmd]").forEach(b=>b.addEventListener("click",()=>send(b.dataset.cmd,CMDKEY)));
+  document.querySelectorAll(".ctl button[data-cmd]").forEach(b=>b.addEventListener("click",()=>send(b.dataset.cmd,CMDKEY,b)));
   const ck=$("#cmdsave");if(ck)ck.addEventListener("click",()=>{const v=($("#cmdkey").value||"").trim();if(v){CMDKEY=v;try{localStorage.setItem('lhc_cmd',v)}catch(e){}render()}});
   const cc=$("#cmdclear");if(cc)cc.addEventListener("click",e=>{e.preventDefault();CMDKEY='';try{localStorage.removeItem('lhc_cmd')}catch(e){}render()});
   const ps2=$('#pinsave');if(ps2)ps2.addEventListener('click',()=>{const val=($('#pinin').value||'').trim();PIN=val;try{localStorage.setItem('lhc_pin',val)}catch(e){}render()});
@@ -1233,9 +1242,16 @@ function render(){
   const nq=$("#nq");if(nq)nq.addEventListener("input",()=>{state.nq=nq.value;const k=nq.selectionStart;render();const q2=$("#nq");if(q2){q2.focus();try{q2.setSelectionRange(k,k)}catch(e){}}});
   if(NAV){if(v!=="players")window.scrollTo(0,0);NAV=false}else if(_sy>0){const _rs=()=>{if(Math.abs(window.scrollY-_sy)>2)window.scrollTo(0,_sy)};_rs();requestAnimationFrame(_rs);setTimeout(_rs,80);setTimeout(_rs,300)}
 }
-function send(cmd,topic){
+function flash(btn,cls,txt,ms){if(!btn)return;const old=btn.dataset.lbl||btn.textContent;btn.dataset.lbl=old;
+  btn.classList.remove('sending','sent','failed');btn.classList.add(cls);if(txt)btn.textContent=txt;
+  if(ms)setTimeout(()=>{btn.classList.remove(cls);btn.textContent=old},ms);}
+function send(cmd,topic,btn){
   const m=$("#ctlmsg"); if(m)m.textContent="Sending…";
-  fetch("https://ntfy.sh/"+topic,{method:"POST",body:cmd}).then(r=>{if(m)m.textContent=r.ok?"Sent. The laptop replies to your phone in a few seconds.":"Couldn't send ("+r.status+").";}).catch(()=>{if(m)m.textContent="Couldn't send — no connection.";});
+  flash(btn,'sending','Sending…');
+  fetch("https://ntfy.sh/"+topic,{method:"POST",body:cmd}).then(r=>{
+    if(m)m.textContent=r.ok?"Sent. The laptop replies to your phone in a few seconds.":"Couldn't send ("+r.status+").";
+    flash(btn,r.ok?'sent':'failed',r.ok?'Sent ✓':'Failed',2600);
+  }).catch(()=>{if(m)m.textContent="Couldn't send — no connection.";flash(btn,'failed','No connection',2600);});
 }
 function load(){
   fetch("data.json?v="+Date.now(),{cache:"no-store"}).then(r=>{if(!r.ok)throw 0;return r.json()}).then(d=>{D=d;try{localStorage.setItem("lhc",JSON.stringify(d))}catch(e){}if(LIVE.stats&&LIVE.at&&(Date.now()-LIVE.at.getTime())<180000)applyLive();render();liveTick(true)})
