@@ -121,7 +121,8 @@ a.back{color:var(--acc);text-decoration:none;font-size:13px;font-weight:600}
 .filters input{grid-column:1/3}
 table.kv{margin-top:6px}table.kv td{white-space:normal}
 button.more{font:inherit;font-weight:600;width:100%;margin-top:8px;padding:10px;border-radius:9px;border:1px solid var(--line);background:var(--chip);color:var(--acc)}
-details.g summary::before{content:none}details.g summary{padding:0}details.g summary > div{display:flex}
+details.g summary::before{content:none}details.g summary{padding:0}
+.g summary .sub{display:block;white-space:normal!important;line-height:1.45}details.g summary > div{display:flex}
 .slot{width:44px;flex:0 0 44px}
 .ch rect.b{fill:var(--barme)}.ch rect.b.them{fill:var(--mute)}.ch rect.b.proj{fill:var(--barme);opacity:.35}.ch rect.b.me{fill:var(--barme)}
 circle.d{fill:var(--mute);opacity:.7}circle.d.me{fill:var(--good);opacity:1}circle.d.fa{fill:var(--acc)}
@@ -192,6 +193,14 @@ body.big body.big body.big body.big .wi-t.on body.big body.big
 .pos{display:inline-block;padding:1px 6px;border-radius:6px;font-size:11px;font-weight:700;color:#fff;letter-spacing:.3px}
 .pos.QB{background:#7c3aed}.pos.RB{background:#0b8a43}.pos.WR{background:#1a6fd4}.pos.TE{background:#d2691e}.pos.K{background:#6b7280}.pos.DST{background:#0f766e}
 .wp{display:flex;align-items:center;gap:8px;margin:6px 0}
+.wrow{display:flex;align-items:center;gap:8px;margin:3px 0;font-size:13px}
+.wrow .nm{flex:0 0 46px;font-weight:700;color:var(--ink)}
+.wrow .tr{flex:1;height:12px;border-radius:6px;background:var(--chip);overflow:hidden}
+.wrow .tr i{display:block;height:100%;background:var(--bar);border-radius:6px}
+.wrow.lead .tr i{background:var(--acc)}
+.wrow .pc{flex:0 0 40px;text-align:right;font-weight:700;color:var(--mute)}
+.wrow.lead .pc{color:var(--acc)}
+body.big .wrow{font-size:17px}body.big .wrow .nm{flex-basis:56px}body.big .wrow .tr{height:16px}
 .wp .track{flex:1;height:14px;border-radius:7px;background:var(--chip);overflow:hidden;display:flex}
 .wp .mine{background:var(--acc)}.wp .theirs{background:var(--bar)}
 .wpn{font-weight:800;font-size:22px}
@@ -693,7 +702,8 @@ function liveWin(g){
   const A=String(g.away||''),Hm=String(g.home||'');
   const when=L.state==='post'?'final':(L.state==='in'?(esc(L.detail||('Q'+L.period))+' · '+Math.round(L.minsLeft)+' min left'):'before kickoff, from the line');
   const sc=L.state==='in'||L.state==='post'?' · '+esc(A)+' '+Math.round(L.awayScore)+'–'+Math.round(L.homeScore)+' '+esc(Hm):'';
-  return '<div class="wp" style="margin-top:6px"><span class="sub" style="width:56px;flex:0 0 56px">'+esc(A)+' '+wa+'%</span><div class="track"><i class="theirs" style="width:'+wa+'%"></i><i class="mine" style="width:'+wh+'%"></i></div><span class="sub" style="width:56px;flex:0 0 56px;text-align:right">'+wh+'% '+esc(Hm)+'</span></div>'
+  const row=(nm,pct,lead)=>'<div class="wrow'+(lead?' lead':'')+'"><span class="nm">'+esc(nm)+'</span><div class="tr"><i style="width:'+pct+'%"></i></div><span class="pc">'+pct+'%</span></div>';
+  return '<div style="margin-top:6px">'+row(A,wa,wa>=wh)+row(Hm,wh,wh>wa)+'</div>'
     +'<div class="sub" style="white-space:normal">'+gl('livewin','Live win chance')+' · '+when+sc+'</div>';
 }
 function gameCharts(g){
