@@ -1013,8 +1013,9 @@ function defRow(m,line){
     +(out?' <span class="flag">'+esc(m.inj||'out')+'</span>':(m.inj?' <span class="flag">'+esc(m.inj)+'</span>':''))
     +'</div><div class="sub" style="white-space:normal">'+line+'</div></div></div>';
 }
-function rushLine(m){const b=[];if(num(m.sack))b.push(f1(m.sack)+' sack'+(num(m.sack)===1?'':'s'));if(num(m.qbh))b.push(Math.round(num(m.qbh))+' QB hits');if(!b.length&&num(m.tkl))b.push(Math.round(num(m.tkl))+' tackles');return b.join(' · ')||'—';}
-function covLine(m){const b=[];if(num(m.dint))b.push(Math.round(num(m.dint))+' INT');if(num(m.pd))b.push(Math.round(num(m.pd))+' passes broken up');if(!b.length&&num(m.tkl))b.push(Math.round(num(m.tkl))+' tackles');return b.join(' \u00b7 ')||'\u2014';}
+function plu(n,one,many){n=num(n)||0;return (Number.isInteger(n)?n:f1(n))+' '+(n===1?one:many);}
+function rushLine(m){const b=[];if(num(m.sack))b.push(plu(m.sack,'sack','sacks'));if(num(m.qbh))b.push(plu(Math.round(num(m.qbh)),'QB hit','QB hits'));if(!b.length&&num(m.tkl))b.push(plu(Math.round(num(m.tkl)),'tackle','tackles'));return b.join(' \u00b7 ')||'\u2014';}
+function covLine(m){const b=[];if(num(m.dint))b.push(plu(Math.round(num(m.dint)),'INT','INTs'));if(num(m.pd))b.push(plu(Math.round(num(m.pd)),'pass broken up','passes broken up'));if(!b.length&&num(m.tkl))b.push(plu(Math.round(num(m.tkl)),'tackle','tackles'));return b.join(' \u00b7 ')||'\u2014';}
 function defUnit(u,heading,intro){
   if(!u)return '';
   const rush=(u.rush||[]).filter(m=>num(m.v)>0),cov=(u.cover||[]).filter(m=>num(m.v)>0),outs=(u.outs||[]);
@@ -1035,7 +1036,7 @@ function defUnit(u,heading,intro){
   }
   if(outs.length){
     h+='<div class="sub" style="font-weight:600;margin-top:10px">Out or doubtful</div>'
-      +outs.map(m=>defRow(Object.assign({out:true},m),(num(m.sack)?f1(m.sack)+' sacks · ':'')+'worth '+f1(m.impact)+' a game to this defence')).join('');
+      +outs.map(m=>defRow(Object.assign({out:true},m),(num(m.sack)?plu(m.sack,'sack','sacks')+' \u00b7 ':'')+'worth '+f1(m.impact)+' a game to this defence')).join('');
   }
   return h+'<div class="sub" style="white-space:normal;margin-top:6px">Built from every defensive snap in the nflverse box scores. Your league has no defensive slots, so nobody here is startable — this is for reading how hard a week your own guys are facing.</div></section>';
 }
