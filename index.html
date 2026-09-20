@@ -121,22 +121,23 @@ path.ln{stroke:var(--barme)}path.ln.them{stroke:var(--mute)}path.ln.proj{stroke:
 .ch rect.b.good{fill:var(--good)}.ch rect.b.bad{fill:var(--bad)}.lg.good{background:var(--good)}.lg.bad{background:var(--bad)}
 
 /* Easy-read mode: bigger, bolder, higher contrast (keratoconus-friendly) */
-body.big{font-size:19px;line-height:1.5;padding-left:10px;padding-right:10px}
-body.big{--mute:#3a4351;--line:#b9c0ca;--bar:#b9c0ca}
-@media (prefers-color-scheme:dark){body.big{--mute:#c9d1dc;--line:#4a5361;--bar:#4a5361}}
-body.big h1{font-size:26px}body.big h2{font-size:15px;letter-spacing:.4px}body.big .stamp{font-size:15px}
-body.big .sub,body.big .flag,body.big .pill,body.big small,body.big .fbar,body.big .mb,body.big .act .where,body.big .act .when,body.big .vs small,body.big .sub *{font-size:16px!important}
-body.big .name{font-size:19px}body.big .pts b{font-size:22px}body.big .vs{font-size:17px;grid-template-columns:46px 1fr auto 1fr}
-body.big table{font-size:17px}body.big th{font-size:14px}body.big td,body.big th{padding:9px 5px}
-body.big .row{padding:12px 0}body.big .slot{font-size:15px;width:52px;flex:0 0 52px}
+body.big{font-size:22px;line-height:1.5;padding-left:8px;padding-right:8px}
+body.big{--ink:#000;--mute:#1e242c;--line:#9aa3af;--bar:#9aa3af;--good:#0b6b31;--bad:#b0160e;--warn:#7a4d00;--acc:#0a4fc2;--barme:#0a4fc2;--card:#fff;--bg:#e9ecf0;--chip:#dfe4ea}
+@media (prefers-color-scheme:dark){body.big{--ink:#fff;--mute:#e3e8ee;--line:#6b7583;--bar:#6b7583;--good:#5ce08a;--bad:#ff7b7b;--warn:#ffd166;--acc:#7fb2ff;--barme:#7fb2ff;--card:#0f1216;--bg:#000;--chip:#2a313b}}
+body.big section{border-width:2px}body.big b,body.big .name{font-weight:800}
+body.big h1{font-size:30px}body.big h2{font-size:17px;letter-spacing:.4px;color:var(--ink)}body.big .stamp{font-size:17px}
+body.big .sub,body.big .flag,body.big .pill,body.big small,body.big .fbar,body.big .mb,body.big .act .where,body.big .act .when,body.big .vs small,body.big .sub *{font-size:19px!important}
+body.big .name{font-size:22px}body.big .pts b{font-size:26px}body.big .vs{font-size:20px;grid-template-columns:50px 1fr auto 1fr}body.big .vs .edge{font-size:16px}
+body.big table{font-size:20px}body.big th{font-size:16px;color:var(--ink)}body.big td,body.big th{padding:9px 5px}
+body.big .row{padding:12px 0}body.big .slot{font-size:17px;width:58px;flex:0 0 58px;color:var(--ink)}
 body.big .bar{height:14px}body.big .fbar .t,body.big .pair .t,body.big .mb i{height:11px}
 body.big .pill{padding:3px 10px;border-radius:12px}body.big .logo{width:34px;height:34px;flex-basis:34px}
-body.big .nav a{font-size:17px;padding:12px 4px}body.big .ctl button,body.big .filters select,body.big .filters input,body.big button.more{font-size:18px;padding:14px 10px}
-body.big svg text{font-size:13px!important}body.big svg{height:auto!important;min-height:190px}body.big path.ln{stroke-width:3.5}body.big circle.d{r:5.5}body.big circle.d.me{r:7}
+body.big .nav a{font-size:19px;padding:14px 4px;color:var(--ink)}body.big .nav a.on{color:#fff}body.big .ctl button,body.big .filters select,body.big .filters input,body.big button.more{font-size:18px;padding:14px 10px}
+body.big svg text{font-size:15px!important;fill:var(--ink)!important}body.big svg{height:auto!important;min-height:190px}body.big path.ln{stroke-width:3.5}body.big circle.d{r:5.5}body.big circle.d.me{r:7}
 body.big a.pl{border-bottom:2px solid var(--acc);font-weight:600}
 body.big .flag{font-weight:700}body.big .score .lbl{font-size:16px;white-space:normal}
 .aa{font:inherit;font-size:13px;font-weight:700;padding:4px 9px;border-radius:8px;border:1px solid var(--line);background:var(--chip);color:var(--ink);cursor:pointer;margin-left:6px}
-body.big .aa{background:var(--acc);color:#fff;border-color:var(--acc);font-size:16px}
+body.big .aa{background:var(--acc);color:#fff;border-color:var(--acc);font-size:18px;padding:6px 12px}
 </style>
 </head>
 <body>
