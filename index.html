@@ -248,7 +248,18 @@ const f2=v=>{const n=num(v);return n===null?"":n.toFixed(2)};
 const pct=v=>{const n=num(v);return n===null?"":Math.round(n*(n<=1?100:1))+"%"};
 const blank=v=>v===null||v===undefined||String(v).trim()==="";
 let D=null, d_week=null, clockTimer=null;
-let NAV=true,LASTSIG='';
+let NAV=true,LASTSIG='',SY=0,USER_SCROLL=0,RESTORING=0;
+window.addEventListener('scroll',()=>{if(!RESTORING){SY=window.scrollY;USER_SCROLL=Date.now()}},{passive:true});
+function keepPlace(y){
+  if(!(y>0))return;
+  const t0=Date.now(),mark=USER_SCROLL;
+  const tick=()=>{
+    if(USER_SCROLL!==mark)return;                 // the user moved: leave them alone
+    if(Math.abs(window.scrollY-y)>2){RESTORING=1;window.scrollTo(0,y);RESTORING=0}
+    if(Date.now()-t0<1200)requestAnimationFrame(tick);
+  };
+  tick();
+}
 let SHOW=false;try{SHOW=localStorage.getItem('lhc_show')==='1'}catch(e){}
 let CMDKEY='';try{CMDKEY=localStorage.getItem('lhc_cmd')||''}catch(e){}
 const WXI={Indoors:'🏟️','Heavy wind':'💨','Rain likely':'🌧️',Cold:'🥶',Breezy:'🍃',Fine:'☀️'};const wxIcon=i=>WXI[i]||'';
@@ -1222,7 +1233,7 @@ function render(){
   else if(v==="injuries")h=renderInjuries(d);
   else if(v==="news")h=renderNews(d);
   else h=renderHome(d);
-  const _sy=window.scrollY;
+  const _sy=Math.max(window.scrollY,SY);
   h+=laptopPanel(d);
   $("#app").innerHTML=h;
   crumbFill(d,v);
@@ -1252,7 +1263,7 @@ function render(){
   const ifl=$("#ifilt");if(ifl)ifl.addEventListener("change",()=>{state.ifilt=ifl.value;render()});
   const nfl=$("#nfilt");if(nfl)nfl.addEventListener("change",()=>{state.nfilt=nfl.value;render()});
   const nq=$("#nq");if(nq)nq.addEventListener("input",()=>{state.nq=nq.value;const k=nq.selectionStart;render();const q2=$("#nq");if(q2){q2.focus();try{q2.setSelectionRange(k,k)}catch(e){}}});
-  if(NAV){if(v!=="players")window.scrollTo(0,0);NAV=false}else if(_sy>0){const _rs=()=>{if(Math.abs(window.scrollY-_sy)>2)window.scrollTo(0,_sy)};_rs();requestAnimationFrame(_rs);setTimeout(_rs,80);setTimeout(_rs,300)}
+  if(NAV){if(v!=="players"){RESTORING=1;window.scrollTo(0,0);RESTORING=0;SY=0}NAV=false}else{keepPlace(_sy)}
 }
 function flash(btn,cls,txt,ms){if(!btn)return;const old=btn.dataset.lbl||btn.textContent;btn.dataset.lbl=old;
   btn.classList.remove('sending','sent','failed');btn.classList.add(cls);if(txt)btn.textContent=txt;
