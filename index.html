@@ -203,6 +203,17 @@ body.big body.big body.big body.big .wi-t.on body.big body.big
 .wrow .pc{flex:0 0 40px;text-align:right;font-weight:700;color:var(--mute)}
 .wrow.lead .pc{color:var(--acc)}
 body.big .wrow{font-size:17px}body.big .wrow .nm{flex-basis:56px}body.big .wrow .tr{height:16px}
+.wrow.win .tr i{background:var(--good)}.wrow.win .pc{color:var(--good)}
+.frow{margin:7px 0}
+.frow .ft{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:13px}
+.frow .fn{font-weight:700;color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.frow .fp{font-weight:700;color:var(--ink);flex:0 0 auto}
+.frow .tr{height:10px;border-radius:5px;background:var(--chip);overflow:hidden;margin:3px 0 2px}
+.frow .tr i{display:block;height:100%;background:var(--bar);border-radius:5px}
+.frow .tr i.neg{background:var(--bad)}
+.frow.mine .fn,.frow.mine .fp{color:var(--good)}.frow.mine .tr i{background:var(--good)}
+.frow .bline{margin:0;color:var(--mute);font-size:11px;white-space:normal}
+body.big .frow .ft{font-size:17px}body.big .frow .bline{font-size:14px}body.big .frow .tr{height:14px}
 .wp .track{flex:1;height:14px;border-radius:7px;background:var(--chip);overflow:hidden;display:flex}
 .wp .mine{background:var(--acc)}.wp .theirs{background:var(--bar)}
 .wpn{font-weight:800;font-size:22px}
@@ -695,7 +706,7 @@ function renderGames(d){
   let h='<section><div class="filters"><select id="gweek" style="grid-column:1/3">'+weeks.map(w=>'<option value="'+w+'"'+(String(w)===String(wkSel)?' selected':'')+'>Week '+w+(String(w)===String(d.week)?' (this week)':'')+'</option>').join('')+'</select></div></section>';
   if(!gs.length)return h+'<section><div class="empty">No games for that week.</div></section>';
   h+=gs.map(g=>{const fin=/final|progress/i.test(g.status);
-    const sc=fin&&!blank(g.awayScore)?'<b>'+esc(g.awayScore)+' – '+esc(g.homeScore)+'</b>':'';
+    const gsc=gameScore(g);const sc=fin&&gsc.has?'<b>'+Math.round(gsc.a)+' – '+Math.round(gsc.h)+'</b>':'';
     const wx=blank(g.impact)?'':wxIcon(g.impact)+' <span class="'+(/wind|rain|cold/i.test(g.impact)?'flag':'sub')+'">'+esc(g.impact)+'</span>'+(blank(g.cond)||/indoor/i.test(g.impact)?'':' <span class="sub">'+esc(g.cond)+'</span>');
     const away=inLeague(g.away),home=inLeague(g.home);
     const side=(t,list)=>'<div style="min-width:0"><div class="sub" style="font-weight:600">'+esc(t)+(num(t===g.home?g.impliedHome:g.impliedAway)!==null?' · implied '+f1(t===g.home?g.impliedHome:g.impliedAway):'')+'</div>'+list.map(p=>'<div class="sub'+(isMine(p.ownerName)?' mine':'')+'" style="white-space:normal;display:flex;gap:6px;align-items:center;padding:2px 0">'+face(p.sid,p.team,p.pos).replace('class="logo face"','class="logo face" style="width:22px;height:22px;flex-basis:22px"')+'<span>'+pl(p.name)+' <small>'+esc(p.pos)+' · '+(isMine(p.ownerName)?'<b style="color:var(--good)">YOU</b>':esc(p.ownerName))+' · '+f1(num(p.game&&p.game.live)!==null&&fin?p.game.live:p.proj)+'</small></span></div>').join("")+'</div>';
@@ -719,12 +730,107 @@ function liveWin(g){
   return '<div style="margin-top:6px">'+row(A,wa,wa>=wh)+row(Hm,wh,wh>wa)+'</div>'
     +'<div class="sub" style="white-space:normal">'+gl('livewin','Live win chance')+' · '+when+sc+'</div>';
 }
+// ---------------- WHAT ACTUALLY HAPPENED (games already played) ----------------
+function gameWeek(g){
+  if(num(g.week)!==null)return num(g.week);
+  const hl=((g.hist||{}).homeLast||[])[0];   // the engine puts the most recent game first
+  if(hl&&String(hl.opp||'').toUpperCase()===String(g.away||'').toUpperCase())return num(hl.week);
+  return num(D&&D.week);
+}
+function gameScore(g){
+  // the engine's score comes from nflverse, which lags a day or two; the phone's scoreboard is live
+  let a=num(g.awayScore),hh=num(g.homeScore),done=/final/i.test(g.status||'');
+  const L=NFLG.by[String(g.home||'').toUpperCase()];
+  if(L&&L.home===String(g.home||'').toUpperCase()&&(L.state==='in'||L.state==='post')){
+    if(num(L.awayScore)!==null)a=num(L.awayScore);
+    if(num(L.homeScore)!==null)hh=num(L.homeScore);
+    done=(L.state==='post');
+  }
+  return {a:a,h:hh,done:done,has:(a!==null&&hh!==null)};
+}
+function logLine(l){
+  const b=[],G=k=>num(l[k])||0;
+  if(G('fga')||G('pat'))b.push(G('fgm')+' of '+G('fga')+' FG'+(G('pat')?', '+G('pat')+' PAT':''));
+  if(G('payd'))b.push(Math.round(G('payd'))+' pass yd');
+  if(G('car'))b.push(G('car')+' car, '+Math.round(G('ruyd'))+' yd');
+  if(G('rec')||G('tgt'))b.push(G('rec')+' of '+G('tgt')+', '+Math.round(G('reyd'))+' yd');
+  if(G('td'))b.push(G('td')+' TD');
+  if(num(l.snap)>0)b.push(Math.round(100*num(l.snap))+'% of snaps');
+  return b.join(' · ');
+}
+function rawLine(sid){
+  const s=(LIVE.stats||{})[sid];if(!s)return '';const G=k=>num(s[k])||0,b=[];
+  if(G('pass_yd'))b.push(Math.round(G('pass_yd'))+' pass yd'+(G('pass_td')?', '+G('pass_td')+' TD':''));
+  if(G('rush_att'))b.push(G('rush_att')+' car, '+Math.round(G('rush_yd'))+' yd'+(G('rush_td')?', '+G('rush_td')+' TD':''));
+  if(G('rec'))b.push(G('rec')+' of '+(G('rec_tgt')||G('rec'))+', '+Math.round(G('rec_yd'))+' yd'+(G('rec_td')?', '+G('rec_td')+' TD':''));
+  return b.join(' · ');
+}
+function shortName(n){const w=cleanName(n).split(/\s+/);if(w.length>2&&/^(St\.|Van|De|Mc|La)$/i.test(w[w.length-2]))return w.slice(-2).join(' ');return w[w.length-1]||n;}
+function boxRows(g){
+  const A=String(g.away||'').toUpperCase(),Hm=String(g.home||'').toUpperCase(),wk=gameWeek(g);
+  const out=[];
+  (D.players||[]).forEach(p=>{
+    const t=String(p.team||'').toUpperCase();if(t!==A&&t!==Hm)return;
+    const opp=(t===Hm)?A:Hm;
+    let pts=null,line='';
+    const lg=(p.log||[]).filter(l=>String(l.opp||'').toUpperCase()===opp&&(wk===null||num(l.week)===wk));
+    if(lg.length){const l=lg[lg.length-1];pts=num(l.ppr);line=logLine(l);
+      // nflverse carries no kicking or team-defense scoring, so a flat 0 there is missing data, not a blank game
+      if(pts===0&&(p.pos==='K'||p.pos==='DST'||p.pos==='DEF')&&!num(l.fga)&&!num(l.pat)){pts=null;line='';}}
+    if(pts===null&&p.game&&String(p.game.opp||'').toUpperCase()===opp&&num(p.game.live)!==null){pts=num(p.game.live);line=rawLine(p.sid);}
+    if(pts===null)return;
+    out.push({name:p.name,sid:p.sid,team:t,pos:p.pos,owner:(num(p.owner)?(p.ownerName||''):''),mine:isMine(p.ownerName),pts:pts,line:line,proj:num(p.proj)});
+  });
+  return out.sort((x,y)=>(y.pts||0)-(x.pts||0));
+}
+function finalBlock(g){
+  const S=gameScore(g);if(!S.has&&!/final|progress/i.test(g.status||''))return '';   // nothing has happened yet
+  const A=String(g.away||''),Hm=String(g.home||'');
+  let h='';
+  if(S.has){
+    const mx=Math.max(S.a,S.h,1);
+    const srow=(nm,v,w)=>'<div class="wrow'+(w?' win':'')+'"><span class="nm">'+esc(nm)+'</span><div class="tr"><i style="width:'+Math.round(100*v/mx)+'%"></i></div><span class="pc">'+Math.round(v)+'</span></div>';
+    h+='<div class="sub" style="font-weight:600;margin-top:10px">'+(S.done?'Final score':'Score so far')+'</div>'+srow(A,S.a,S.a>S.h)+srow(Hm,S.h,S.h>S.a);
+    const ia=num(g.impliedAway),ih=num(g.impliedHome),tot=num(g.total),spr=num(g.spread);
+    if(S.done&&(ia!==null||ih!==null)){
+      h+='<div class="sub" style="font-weight:600;margin-top:10px">Expected vs actual — '+gl('implied','implied points')+'</div>'
+        +svgBars({labels:[A,Hm],series:[{vals:[ia,ih],cls:'proj'},{vals:[S.a,S.h],cls:'me',clsAt:[(ia===null?'':(S.a>=ia?'good':'bad')),(ih===null?'':(S.h>=ih?'good':'bad'))]}],h:120,legend:[['proj','the book expected'],['good','scored more'],['bad','scored less']]});
+      const bits=[];
+      if(ia!==null)bits.push(esc(A)+' '+(S.a>=ia?'beat':'missed')+' its '+f1(ia)+' by '+f1(Math.abs(S.a-ia)));
+      if(ih!==null)bits.push(esc(Hm)+' '+(S.h>=ih?'beat':'missed')+' its '+f1(ih)+' by '+f1(Math.abs(S.h-ih)));
+      if(tot!==null){const act=S.a+S.h;bits.push('the game went '+(act>=tot?'over':'under')+' '+f1(tot)+' by '+f1(Math.abs(act-tot)));}
+      if(spr!==null&&S.done){const marg=S.h-S.a,cov=marg-spr;
+        bits.push(esc(spr>=0?Hm:A)+' '+(spr===0?'was level':'was favoured by '+f1(Math.abs(spr)))+' and '+(Math.abs(cov)<0.01?'landed on the number':((cov>0)===(spr>=0)?'covered':'did not cover')+' by '+f1(Math.abs(cov))));}
+      if(bits.length)h+='<div class="sub" style="white-space:normal">'+bits.join(' · ')+'.</div>';
+    }
+  }
+  const rows=boxRows(g);
+  if(rows.length){
+    const top=rows.slice(0,10),mxp=Math.max.apply(null,top.map(r=>Math.abs(r.pts)).concat([1]));
+    h+='<div class="sub" style="font-weight:600;margin-top:12px">Fantasy points in this game</div>'
+      +top.map(r=>'<div class="frow'+(r.mine?' mine':'')+'"><div class="ft"><span class="fn pl" data-psid="'+esc(r.sid||'')+'">'+esc(r.name)+'</span><span class="fp">'+f1(r.pts)+'</span></div>'
+        +'<div class="tr"><i class="'+(r.pts<0?'neg':'')+'" style="width:'+Math.round(100*Math.abs(r.pts)/mxp)+'%"></i></div>'
+        +'<div class="sub bline">'+esc(r.pos)+' '+esc(r.team)+(r.line?' · '+esc(r.line):'')+' · '+(r.mine?'<b style="color:var(--good)">yours</b>':(r.owner?esc(r.owner):'free agent'))+'</div></div>').join('')
+      +'<div class="sub" style="white-space:normal">Everyone the app tracks who played in this game, best first. Green is yours.</div>';
+    const sw=rows.filter(r=>r.proj!==null&&r.proj>3).map(r=>Object.assign({},r,{diff:r.pts-r.proj})).sort((a,b)=>Math.abs(b.diff)-Math.abs(a.diff)).slice(0,6);
+    if(sw.length>2){
+      const o=sw.slice().sort((a,b)=>b.diff-a.diff);
+      h+='<div class="sub" style="font-weight:600;margin-top:12px">How '+gl('week','our projection')+' did</div>'
+        +svgBars({labels:o.map(r=>shortName(r.name)),series:[{vals:o.map(r=>r.proj),cls:'proj'},{vals:o.map(r=>Math.max(0,r.pts)),cls:'me',clsAt:o.map(r=>r.diff>0?'good':'bad')}],h:130,legend:[['proj','we projected'],['good','he beat it'],['bad','he missed it']]})
+        +'<div class="sub" style="white-space:normal">'+o.map(r=>esc(r.name)+' '+(r.diff>0?'+':'')+f1(r.diff)).join(' · ')+'. This is the same projection the app used before kickoff, so it is scoring itself.</div>';
+    }
+  } else if(S.has&&S.done){
+    h+='<div class="sub" style="white-space:normal">No box score yet — the player-level numbers land a few hours after the game.</div>';
+  }
+  return h;
+}
 function gameCharts(g){
   const hs=g.homeSplits||{},as=g.awaySplits||{},H=g.hist||{};
   const A=String(g.away||''),Hm=String(g.home||'');
-  let h='<div style="margin-top:10px">'+liveWin(g);
+  let h='<div style="margin-top:10px">';
+  const FIN=finalBlock(g);h+=FIN;                       // once there is a score, what happened beats what was expected
   const O=g.odds||{};const ih=num(O.impliedHome)!==null?num(O.impliedHome):num(g.impliedHome),ia=num(O.impliedAway)!==null?num(O.impliedAway):num(g.impliedAway);
-  if(ih!==null||ia!==null)h+='<div class="sub" style="font-weight:600">Vegas expects — '+gl('implied','implied points')+'</div>'+svgBars({labels:[A,Hm],series:[{vals:[ia,ih],cls:'me',clsAt:[((ia||0)>=(ih||0)?'good':''),((ih||0)>(ia||0)?'good':'')]}],h:100,line:{v:22.5,label:'league avg'}})+'<div class="sub" style="white-space:normal">Implied points per side'+((num(O.total)!==null)?' from a live total of '+f1(O.total)+', spread '+f1(O.spread)+' across '+Math.round(O.books||0)+' books':(blank(g.total)?'':' from a total of '+esc(g.total)+', spread '+esc(g.spread)))+'.'+((num(O.move)!==null&&Math.abs(num(O.move))>=1)?' The line has moved '+f1(Math.abs(num(O.move)))+' toward '+esc(num(O.move)<0?g.home:g.away)+' since the week opened.':'')+'</div>';
+  if(!FIN&&(ih!==null||ia!==null))h+='<div class="sub" style="font-weight:600">Vegas expects — '+gl('implied','implied points')+'</div>'+svgBars({labels:[A,Hm],series:[{vals:[ia,ih],cls:'me',clsAt:[((ia||0)>=(ih||0)?'good':''),((ih||0)>(ia||0)?'good':'')]}],h:100,line:{v:22.5,label:'league avg'}})+'<div class="sub" style="white-space:normal">Implied points per side'+((num(O.total)!==null)?' from a live total of '+f1(O.total)+', spread '+f1(O.spread)+' across '+Math.round(O.books||0)+' books':(blank(g.total)?'':' from a total of '+esc(g.total)+', spread '+esc(g.spread)))+'.'+((num(O.move)!==null&&Math.abs(num(O.move))>=1)?' The line has moved '+f1(Math.abs(num(O.move)))+' toward '+esc(num(O.move)<0?g.home:g.away)+' since the week opened.':'')+'</div>';
   if(num(as.all)!==null||num(hs.all)!==null)h+='<div class="sub" style="font-weight:600;margin-top:10px">Scoring since 2024</div>'+svgBars({labels:['All','Home','Away','Bad wx'],series:[{vals:[as.all,as.home,as.away,num(as.badN)>=3?as.badWx:null],cls:'them'},{vals:[hs.all,hs.home,hs.away,num(hs.badN)>=3?hs.badWx:null],cls:'me'}],h:130,legend:[['them',A],['me',Hm]]});
   const hl=(H.homeLast||[]),al=(H.awayLast||[]),h2=(H.h2h||[]);
   if(hl.length>1||al.length>1){const n=Math.max(hl.length,al.length);
