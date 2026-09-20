@@ -379,21 +379,23 @@ function renderHome(d){
   if(m.title||(m.rows||[]).length){
     let lv=null; const lm=/LIVE:\s*You\s+([\d.]+)\s*-\s*(.+?)\s+([\d.]+)/.exec(d.live||""); if(lm)lv={me:+lm[1],them:+lm[3]};
     const anyLive=!!lv||(m.rows||[]).some(r=>num(r.myLive)!==null||num(r.theirLive)!==null);
+    const M=liveMatchup(d);
     const mine=lv?lv.me:(anyLive?num(m.myLive):num(m.myExp)), theirs=lv?lv.them:(anyLive?num(m.theirLive):num(m.theirExp));
     const mx=Math.max(mine||0,theirs||0,num(m.myExp)||0,num(m.theirExp)||0,1);
     h+='<section><h2>'+esc(m.title||"Matchup").replace(/vs\s+(.+?)\s*\(/,(a,b)=>'vs '+b+' (')+'</h2>'+(m.opp?'<div class="sub">'+teamLink(m.opp)+'</div>':'')+'<div class="score">';
-    h+='<div class="lbl">Me'+(anyLive?' (live · expected '+f1(m.myExp)+')':' (expected)')+'</div><div class="num">'+f1(mine)+'</div><div class="bar"><i style="width:'+(100*(mine||0)/mx)+'%"></i></div>';
-    h+='<div class="lbl">'+esc(m.opp||"Them")+(anyLive?' (expected '+f1(m.theirExp)+')':'')+'</div><div class="num">'+f1(theirs)+'</div><div class="bar them"><i style="width:'+(100*(theirs||0)/mx)+'%"></i></div></div>';
-    const wp=num(m.winPct);
-    if(wp!==null&&!SHOW){h+='<div class="wp"><span class="wpn" style="color:'+(wp>=50?'var(--good)':'var(--bad)')+'">'+Math.round(wp)+'%</span><div class="track"><i class="mine" style="width:'+Math.round(wp)+'%"></i><i class="theirs" style="width:'+(100-Math.round(wp))+'%"></i></div><span class="sub">'+(100-Math.round(wp))+'%</span></div><div class="sub" style="white-space:normal">'+gl('winpct','Chance you win')+', worked out from how much each of the nine slots can swing (your spread \u00b1'+f1(m.mySd)+' pts, theirs \u00b1'+f1(m.theirSd)+').</div>';}
+    h+='<div class="lbl">Me'+(anyLive?' (live · expected final '+f1(M.myExp)+')':' (expected)')+'</div><div class="num">'+f1(mine)+'</div><div class="bar"><i style="width:'+(100*(mine||0)/mx)+'%"></i></div>';
+    h+='<div class="lbl">'+esc(m.opp||"Them")+(anyLive?' (expected final '+f1(M.thExp)+')':'')+'</div><div class="num">'+f1(theirs)+'</div><div class="bar them"><i style="width:'+(100*(theirs||0)/mx)+'%"></i></div></div>';
+    const wp=M.rows.length?M.win:num(m.winPct);
+    if(wp!==null&&!SHOW){h+='<div class="wp"><span class="wpn" style="color:'+(wp>=50?'var(--good)':'var(--bad)')+'">'+Math.round(wp)+'%</span><div class="track"><i class="mine" style="width:'+Math.round(wp)+'%"></i><i class="theirs" style="width:'+(100-Math.round(wp))+'%"></i></div><span class="sub">'+(100-Math.round(wp))+'%</span></div><div class="sub" style="white-space:normal">'+gl('winpct','Chance you win')+', worked out from how much each of the nine slots can swing (your spread \u00b1'+f1(M.sdM)+' pts, theirs \u00b1'+f1(M.sdT)+').</div>';}
     h+=(m.rows||[]).map(r=>{
       const e=num(r.edge);const cls=e===null?"":(e>2?"up":(e<-2?"down":""));
       const myv=num(r.myLive)!==null?f1(r.myLive):f1(r.myExp), thv=num(r.theirLive)!==null?f1(r.theirLive):f1(r.theirExp);
       const a=num(myv),b=num(thv),mx2=Math.max(a||0,b||0,num(r.myExp)||0,num(r.theirExp)||0,0.1);
-      return '<div class="vs"><div class="slot">'+esc(r.slot)+'</div><div class="me">'+face(r.mySid,'', '')+pl(r.my)+'<small>'+gamePill(r.myStatus)+' '+myv+'</small></div><div class="edge '+cls+'">'+(e===null?"":(e>0?"+":"")+e.toFixed(1))+(num(r.slotWin)!==null?'<br><small class="pct" style="color:'+(num(r.slotWin)>=50?'var(--good)':'var(--bad)')+'">'+Math.round(r.slotWin)+'%</small>':'')+'</div><div class="them">'+pl(r.their)+face(r.theirSid,'','')+(/ghost/i.test(String(r.ghost||""))?' <span class="pill warn" title="slot not set yet - best bench fit shown">ghost</span>':'')+'<small>'+thv+' '+gamePill(r.theirStatus)+'</small></div><div class="pair"><div class="t"><i style="width:'+(100*Math.max(a||0,0)/mx2)+'%"></i></div><div class="t r"><i style="width:'+(100*Math.max(b||0,0)/mx2)+'%"></i></div></div></div>'}).join("");
+      return '<div class="vs"><div class="slot">'+esc(r.slot)+'</div><div class="me">'+face(r.mySid,'', '')+pl(r.my)+'<small>'+gamePill(r.myStatus)+' '+myv+'</small></div><div class="edge '+cls+'">'+(e===null?"":(e>0?"+":"")+e.toFixed(1))+(function(){const rr=(M.rows||[]).find(x=>x.slot===r.slot&&x.my===r.my)||r;const sw=num(rr.slotWinLive!==undefined?rr.slotWinLive:rr.slotWin);return sw===null?'':'<br><small class="pct" style="color:'+(sw>=50?'var(--good)':'var(--bad)')+'">'+Math.round(sw)+'%</small>'})()+'</div><div class="them">'+pl(r.their)+face(r.theirSid,'','')+(/ghost/i.test(String(r.ghost||""))?' <span class="pill warn" title="slot not set yet - best bench fit shown">ghost</span>':'')+'<small>'+thv+' '+gamePill(r.theirStatus)+'</small></div><div class="pair"><div class="t"><i style="width:'+(100*Math.max(a||0,0)/mx2)+'%"></i></div><div class="t r"><i style="width:'+(100*Math.max(b||0,0)/mx2)+'%"></i></div></div></div>'}).join("");
     const rowsM=(m.rows||[]);const margin=(num(m.myExp)||0)-(num(m.theirExp)||0);const ywin=((d.schedule||[]).find(s=>String(s.week)===String(d.week))||{}).yahooWin;
     h+='<div style="margin-top:10px">'+svgBars({labels:rowsM.map(r=>r.slot),series:[{vals:rowsM.map(r=>num(r.myExp)),cls:'me'},{vals:rowsM.map(r=>num(r.theirExp)),cls:'them'}],h:140,legend:[['me','Me'],['them',m.opp||'Them'],['','live once a game starts']]})+'</div>';
     if(!SHOW)h+='<div class="sub" style="white-space:normal;margin-top:6px"><b style="color:'+(margin>=0?'var(--good)':'var(--bad)')+'">'+(num(m.winPct)!==null?Math.round(num(m.winPct)):winProb(margin))+'% to win</b> by the model (expected margin '+(margin>=0?'+':'')+f1(margin)+')'+(num(ywin)?' · Yahoo says '+Math.round(ywin*100)+'%':'')+'</div>';
+    h+='</section>'+whyBlock(M,m)+'<section>';
     if((m.rows||[]).some(r=>/ghost/i.test(String(r.ghost||""))))h+='<div class="sub" style="white-space:normal;margin-top:6px">ghost = a slot they have not set yet, filled with their best bench fit so the total is realistic.</div>';
     h+='</section>';
   }
@@ -730,6 +732,46 @@ function nflWin(g){
   const mu=(num(L.homeScore)||0)-(num(L.awayScore)||0)+pre*frac;
   const sd=Math.max(0.5,13.5*Math.sqrt(frac));
   return Object.assign({},L,{winHome:Math.round(100*phi(mu/sd))});
+}
+// ---------------- LIVE MATCHUP MODEL (blends live points with the clock) ----------------
+const SDPOS={QB:6.5,RB:6.0,WR:7.0,TE:5.0,K:3.5,DST:6.0,DEF:6.0,'W/R/T':6.5};
+function gameFrac(team,status){
+  const L=NFLG.by[String(team||'').toUpperCase()];
+  if(L){if(L.state==='post')return 0;if(L.state==='in')return Math.max(0,Math.min(1,L.minsLeft/60));return 1;}
+  if(/final/i.test(status||''))return 0;
+  if(/progress/i.test(status||''))return 0.5;       // no clock yet: assume half the game is left
+  return 1;
+}
+function liveMatchup(d){
+  const m=d.matchup||{};const rows=(m.rows||[]).map(r=>{
+    const fM=gameFrac(r.myTeam,r.myStatus),fT=gameFrac(r.theirTeam,r.theirStatus);
+    const lM=num(r.myLive),lT=num(r.theirLive);
+    const pM=num(r.myProj)!==null?num(r.myProj):num(r.myExp),pT=num(r.theirProj)!==null?num(r.theirProj):num(r.theirExp);
+    const eM=lM!==null?(lM+(pM||0)*fM):(pM||0), eT=lT!==null?(lT+(pT||0)*fT):(pT||0);
+    const sl=r.slot==='DEF'?'DST':r.slot;const b=SDPOS[sl]||6;
+    const sM=b*Math.sqrt(Math.max(0.35,(pM||0)/12))*Math.sqrt(fM), sT=b*Math.sqrt(Math.max(0.35,(pT||0)/12))*Math.sqrt(fT);
+    return Object.assign({},r,{fM:fM,fT:fT,expM:eM,expT:eT,sdM:sM,sdT:sT,liveM:lM,liveT:lT,gap:eM-eT});
+  });
+  const myNow=rows.reduce((a,r)=>a+(r.liveM!==null?r.liveM:0),0), thNow=rows.reduce((a,r)=>a+(r.liveT!==null?r.liveT:0),0);
+  const myExp=rows.reduce((a,r)=>a+r.expM,0), thExp=rows.reduce((a,r)=>a+r.expT,0);
+  const vM=rows.reduce((a,r)=>a+r.sdM*r.sdM,0), vT=rows.reduce((a,r)=>a+r.sdT*r.sdT,0);
+  const sd=Math.sqrt(vM+vT);
+  const win=sd<0.01?(myExp>thExp?100:(myExp<thExp?0:50)):Math.round(100*phi((myExp-thExp)/sd));
+  rows.forEach(r=>{const s2=Math.sqrt(r.sdM*r.sdM+r.sdT*r.sdT);r.slotWinLive=s2<0.01?(r.expM>r.expT?100:(r.expM<r.expT?0:50)):Math.round(100*phi((r.expM-r.expT)/s2))});
+  const minsMine=rows.reduce((a,r)=>a+r.fM*60,0), minsTheirs=rows.reduce((a,r)=>a+r.fT*60,0);
+  return {rows:rows,myNow:myNow,thNow:thNow,myExp:myExp,thExp:thExp,sd:sd,sdM:Math.sqrt(vM),sdT:Math.sqrt(vT),win:win,minsMine:minsMine,minsTheirs:minsTheirs,live:(myNow>0||thNow>0)};
+}
+function whyBlock(M,m){
+  const rows=M.rows.slice().sort((a,b)=>a.gap-b.gap);
+  const bad=rows.filter(r=>r.gap<-1).slice(0,3), good=rows.filter(r=>r.gap>1).slice(-3).reverse();
+  const fin=r=>r.fM<=0?'game over':(r.fM>=1?'not started':Math.round(r.fM*60)+' min left');
+  const line=r=>'<div class="row" style="padding:6px 0"><div class="slot">'+esc(r.slot)+'</div><div class="main" style="white-space:normal"><div class="name">'+pl(r.my)+' '+f1(r.expM)+' <span class="sub">vs</span> '+pl(r.their)+' '+f1(r.expT)+'</div><div class="sub" style="white-space:normal">'+(r.liveM!==null?f1(r.liveM)+' so far · '+fin(r):'projection only · '+fin(r))+' · his man '+(r.fT<=0?'is done':(r.fT>=1?'has not played':Math.round(r.fT*60)+' min left'))+'</div></div><div class="pts"><b style="color:'+(r.gap>=0?'var(--good)':'var(--bad)')+'">'+(r.gap>0?'+':'')+f1(r.gap)+'</b><small>swing</small></div></div>';
+  let h='<section><h2>Why it says '+Math.round(M.win)+'%</h2>';
+  h+='<div class="sub" style="white-space:normal">Expected final '+f1(M.myExp)+' – '+f1(M.thExp)+' ('+(M.myExp>=M.thExp?'+':'')+f1(M.myExp-M.thExp)+'). You have <b>'+Math.round(M.minsMine)+' minutes</b> of football left across your starters, they have <b>'+Math.round(M.minsTheirs)+'</b>. A swing of '+f1(Math.abs(M.myExp-M.thExp))+' needs about '+f1(Math.abs(M.myExp-M.thExp)/Math.max(1,M.sd))+'× the normal week-to-week wobble ('+gl('winpct','how this becomes a %')+').</div>';
+  if(bad.length)h+='<div class="sub" style="font-weight:600;margin-top:10px">Costing you most</div>'+bad.map(line).join('');
+  if(good.length)h+='<div class="sub" style="font-weight:600;margin-top:10px">Keeping you in it</div>'+good.map(line).join('');
+  h+='<div style="margin-top:10px">'+svgBars({labels:M.rows.map(r=>r.slot),series:[{vals:M.rows.map(r=>r.gap),cls:'me',clsAt:M.rows.map(r=>r.gap>=0?'good':'bad')}],h:130})+'<div class="sub">points you are ahead (green) or behind (red) in each slot, at expected final</div></div>';
+  return h+'</section>';
 }
 // ---------------- LIVE LAYER (Sleeper, straight from the phone) ----------------
 const LIVE={at:null,stats:null,ok:false};
