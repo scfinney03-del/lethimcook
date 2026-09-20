@@ -191,6 +191,8 @@ let SHOW=false;try{SHOW=localStorage.getItem('lhc_show')==='1'}catch(e){}
 let CMDKEY='';try{CMDKEY=localStorage.getItem('lhc_cmd')||''}catch(e){}
 const WXI={Indoors:'🏟️','Heavy wind':'💨','Rain likely':'🌧️',Cold:'🥶',Breezy:'🍃',Fine:'☀️'};const wxIcon=i=>WXI[i]||'';
 function face(sid,team,pos){if(!sid)return logo(team);if(pos==='DST'||!/^\d+$/.test(String(sid)))return logo(team||sid);return '<img class="logo face portal" data-psid="'+esc(sid)+'" alt="" loading="lazy" src="https://sleepercdn.com/content/nfl/players/thumb/'+esc(sid)+'.jpg" onerror="this.onerror=null;this.src=\'https://a.espncdn.com/i/teamlogos/nfl/500/'+(LOGOFIX[String(team||'').toUpperCase()]||String(team||'').toLowerCase())+'.png\'">';}
+function co(name){if(blank(name)||/^(TBD|vacant|-)$/i.test(name))return esc(name||'');return '<a class="pl" href="#coach/'+encodeURIComponent(name)+'">'+esc(name)+'</a>';}
+function mg(manager,team){if(blank(manager))return '';const t=team!==undefined?team:((D&&D.teams||[]).find(x=>x.manager===manager)||{}).team;return t!==undefined?'<a class="pl" href="#team/'+esc(t)+'">'+esc(manager)+'</a>':esc(manager);}
 function teamLink(name){const t=(D&&D.teams||[]).find(x=>x.name===name);return t?'<a class="pl" href="#team/'+t.team+'">'+esc(name)+'</a>':esc(name);}
 const state={view:"home",team:null,player:null,filters:{pos:"ALL",owner:"ALL",sort:"value",q:""}};
 try{const f=JSON.parse(localStorage.getItem("lhc_filters")||"null");if(f)Object.assign(state.filters,f)}catch(e){}
@@ -311,7 +313,7 @@ function ncdf(z){const t=1/(1+0.2316419*Math.abs(z));const dd=0.3989423*Math.exp
 const winProb=(margin,sd)=>Math.round(100*ncdf(margin/(sd||24)));
 const recsW=d=>(d.season||[]).filter(s=>/^w/i.test(s.result||'')).length;const recsL=d=>(d.season||[]).filter(s=>/^l/i.test(s.result||'')).length;
 const aqiTxt=a=>a<=50?'good ('+a+')':(a<=100?'moderate ('+a+')':(a<=150?'<span class="flag">unhealthy for sensitive ('+a+')</span>':'<span class="flag bad">unhealthy ('+a+')</span>'));
-const coachLine=(c,long)=>!c?'':('HC <b>'+esc(c.hc)+'</b>'+(long?' <small>(since '+esc(c.hcSince)+(c.hcRecord&&c.hcRecord!=='0-0'?', '+esc(c.hcRecord)+(c.hcPlayoffs&&c.hcPlayoffs!=='0-0'?', playoffs '+esc(c.hcPlayoffs):''):', first year')+')</small>':'')+' · OC '+esc(c.oc)+(long?' <small>(\''+String(c.ocSince).slice(2)+')</small>':'')+' · DC '+esc(c.dc)+(long?' <small>(\''+String(c.dcSince).slice(2)+')</small>':''));
+const coachLine=(c,long)=>!c?'':('HC <b>'+co(c.hc)+'</b>'+(long?' <small>(since '+esc(c.hcSince)+(c.hcRecord&&c.hcRecord!=='0-0'?', '+esc(c.hcRecord)+(c.hcPlayoffs&&c.hcPlayoffs!=='0-0'?', playoffs '+esc(c.hcPlayoffs):''):', first year')+')</small>':'')+' · OC '+co(c.oc)+(long?' <small>(\''+String(c.ocSince).slice(2)+')</small>':'')+' · DC '+co(c.dc)+(long?' <small>(\''+String(c.dcSince).slice(2)+')</small>':''));
 const tl=t=>{t=String(t||'').toUpperCase();if(!t||t==='0')return '';return '<a class="pl" href="#nfl/'+t+'">'+t+'</a>';};
 const isMine=n=>/let him cook/i.test(String(n||""));
 
@@ -352,7 +354,7 @@ function renderHome(d){
   const tr=SHOW?[]:(d.trades||[]).filter(x=>!blank(x.get));
   if(tr.length){
     h+='<section><h2>Trades</h2>'+tr.slice(0,6).map((x,i)=>{const ok=num(x.theirGain)>=-0.3;
-      return '<div class="row" style="padding:8px 0"><div class="main" style="white-space:normal"><div class="name">'+(i+1)+'. '+esc(x.partner)+' <small style="color:var(--mute)">'+teamLink(x.teamName)+'</small></div>'
+      return '<div class="row" style="padding:8px 0"><div class="main" style="white-space:normal"><div class="name">'+(i+1)+'. '+mg(x.partner)+' <small style="color:var(--mute)">'+teamLink(x.teamName)+'</small></div>'
         +'<div style="margin:2px 0">Give <b>'+String(x.give).split(" + ").map(pl).join(" + ")+'</b> · get <b>'+String(x.get).split(" + ").map(pl).join(" + ")+'</b></div>'
         +'<div class="sub" style="white-space:normal">You <b style="color:var(--good)">+'+f1(x.myGain)+'/wk</b> (lineup +'+f1(x.lineupGain)+') · them <b style="color:'+(num(x.theirGain)>=0?'var(--good)':'var(--bad)')+'">'+(num(x.theirGain)>=0?'+':'')+f1(x.theirGain)+'</b>'+(num(x.myWeek)!==null&&Math.abs(x.myWeek)>=1?' · this week '+(x.myWeek>0?'+':'')+f1(x.myWeek):'')+(blank(x.h2h)?'':' · you play them wk '+esc(x.h2h))+'</div>'
         +'<div class="sub" style="white-space:normal"><span class="flag'+(ok?' good':'')+'">'+esc(x.ask)+'</span> · '+esc(x.timing)+'</div></div></div>'}).join("")
@@ -361,7 +363,7 @@ function renderHome(d){
 
   const rm=SHOW?[]:(d.rivalMoves||[]);
   if(rm.length){const mx=Math.max.apply(null,rm.map(x=>num(x.urgency)||0).concat([1]));
-    h+='<section><h2>What other teams do next</h2>'+rm.slice(0,8).map(x=>'<div class="row" style="padding:8px 0"><div class="main" style="white-space:normal"><div class="name">'+teamLink(x.teamName)+' <small style="color:var(--mute)">'+esc(x.manager)+'</small></div><div>Likely: claim <b>'+pl(x.target)+'</b> <small>'+esc(x.targetPos)+' · '+esc(x.targetTeam)+'</small> for '+pl(x.drop)+(x.hurt?' <span class="flag bad">'+esc(x.hurtStatus)+'</span>':'')+' <small>('+esc(x.slot)+')</small></div>'+fbar('urgency '+f1(x.urgency),x.urgency,mx,'+'+f1(x.gain)+'/wk',x.urgency>=10?'dn':'')+'<div class="sub" style="white-space:normal">'+(x.peers<=2?'<span class="flag bad">scarce: only '+x.peers+' free '+esc(x.targetPos)+(x.peers==1?'':'s')+' near his value</span>':x.peers+' free '+esc(x.targetPos)+'s near his value')+(x.hurt?' · their starter is '+esc(x.hurtStatus).toLowerCase()+', so this is likely before Tuesday':'')+'</div></div></div>').join('')+'<div class="sub" style="white-space:normal;margin-top:6px">Each team\'s single most valuable pickup by the same value model, weighted by how hurt their starter is and how scarce the position is on waivers. Targets that overlap your waiver list are flagged in Do this.</div></section>';}
+    h+='<section><h2>What other teams do next</h2>'+rm.slice(0,8).map(x=>'<div class="row" style="padding:8px 0"><div class="main" style="white-space:normal"><div class="name">'+teamLink(x.teamName)+' <small style="color:var(--mute)">'+mg(x.manager,x.team)+'</small></div><div>Likely: claim <b>'+pl(x.target)+'</b> <small>'+esc(x.targetPos)+' · '+esc(x.targetTeam)+'</small> for '+pl(x.drop)+(x.hurt?' <span class="flag bad">'+esc(x.hurtStatus)+'</span>':'')+' <small>('+esc(x.slot)+')</small></div>'+fbar('urgency '+f1(x.urgency),x.urgency,mx,'+'+f1(x.gain)+'/wk',x.urgency>=10?'dn':'')+'<div class="sub" style="white-space:normal">'+(x.peers<=2?'<span class="flag bad">scarce: only '+x.peers+' free '+esc(x.targetPos)+(x.peers==1?'':'s')+' near his value</span>':x.peers+' free '+esc(x.targetPos)+'s near his value')+(x.hurt?' · their starter is '+esc(x.hurtStatus).toLowerCase()+', so this is likely before Tuesday':'')+'</div></div></div>').join('')+'<div class="sub" style="white-space:normal;margin-top:6px">Each team\'s single most valuable pickup by the same value model, weighted by how hurt their starter is and how scarce the position is on waivers. Targets that overlap your waiver list are flagged in Do this.</div></section>';}
   const ro=d.roster||[];
   const starters=ro.filter(p=>!/^BN|^IR/i.test(p.slot||"")&&!blank(p.player));
   const bench=ro.filter(p=>/^BN|^IR/i.test(p.slot||"")&&!blank(p.player));
@@ -447,6 +449,8 @@ function renderLeague(d){
     return '<tr class="tap" data-team="'+esc(x.team)+'"'+(me?' style="font-weight:700;color:var(--good)"':'')+'><td>'+(num(x.standing)!==null?Math.round(x.standing):'')+'</td><td style="white-space:normal">'+esc(x.name)+'<small style="display:block;color:var(--mute)">'+esc(x.manager)+(blank(x.playsMe)||x.playsMe==='-'?'':' · plays you wk '+esc(x.playsMe))+'</small></td><td class="n">'+esc(x.record)+'</td><td class="n">'+(num(x.pf)!==null?Math.round(x.pf):'')+'</td><td class="n">'+(num(x.rankRos)!==null?Math.round(x.rankRos):'')+'</td></tr>'}).join("");
   h+='</table>'+nflSection(d)+'<div style="margin-top:10px">'+svgScatter({pts:pw.map(x=>({x:num(x.week),y:num(x.ros),label:x.manager,cls:isMine(x.name)?'me':''})),xl:'This week (starters)',yl:'Rest-of-season power'})+'</div><div style="margin-top:8px">'+svgLine({labels:byStand.map(x=>String(x.manager).split(' ')[0]),series:[{vals:byStand.map(x=>num(x.ros)),cls:'me'},{vals:byStand.map(x=>num(x.week)),cls:'them',dash:true}],h:150,legend:[['me','ROS power'],['them','this week']]})+'<div class="sub">teams in standings order</div></div><div class="sub" style="margin-top:6px;white-space:normal">Tap a team for its roster. ROS = rank by rest-of-season value of starters plus 30% of bench.</div></section>';
   const mx=Math.max.apply(null,pw.map(x=>num(x.ros)||0).concat([1])), mxw=Math.max.apply(null,pw.map(x=>num(x.week)||0).concat([1]));
+  const tx=(d.transactions||[]).slice().reverse().slice(0,15);
+  if(tx.length)h+='<section><h2>League moves</h2>'+tx.map(x=>'<div class="row" style="padding:6px 0"><div class="slot" style="color:'+(x.action==='Add'?'var(--good)':'var(--bad)')+'">'+esc(x.action)+'</div><div class="main"><div class="name">'+pl(x.player)+' <small style="color:var(--mute)">'+esc(x.pos)+' · '+tl(x.nfl)+'</small></div><div class="sub">'+mg(x.manager,x.team)+' · wk '+x.week+'</div></div></div>').join('')+'</section>';
   h+='<section><h2>Power</h2>'+pw.slice().sort((a,b)=>(num(a.rankRos)||99)-(num(b.rankRos)||99)).map(x=>'<div class="row tap" data-team="'+esc(x.team)+'"><div class="slot">'+Math.round(x.rankRos||0)+'</div><div class="main"><div class="name">'+esc(x.name)+' <small style="color:var(--mute)">'+esc(x.manager)+'</small></div>'
     +fbar('ROS '+f1(x.ros),x.ros,mx,'')+fbar('week '+f1(x.week),x.week,mxw,'','')+'<div class="sub">best '+esc(x.best)+' · weakest '+esc(x.weakest)+' · bench '+f1(x.bench)+'</div></div></div>').join("")+'</section>';
   return h;
@@ -457,9 +461,11 @@ function renderTeam(d,t){
   const order={QB:0,RB:1,WR:2,TE:3,"W/R/T":4,K:5,DEF:6,BN:7,IR:8};
   ros.sort((a,b)=>(order[a.slot]??9)-(order[b.slot]??9)||(num(b.value)||0)-(num(a.value)||0));
   const P=n=>findPlayer(n)||{};
-  let h='<section><a class="back" href="#league">← League</a><h2 style="margin-top:8px'+(isMine(pw.name)?';color:var(--good)':'')+'">'+esc(pw.name)+'</h2><div class="sub" style="white-space:normal">'+esc(pw.manager)+' · '+esc(pw.record)+' · PF '+Math.round(num(pw.pf)||0)+' · standing #'+esc(pw.standing)+'</div>';
+  let h='<section><a class="back" href="#league">← League</a><h2 style="margin-top:8px'+(isMine(pw.name)?';color:var(--good)':'')+'">'+esc(pw.name)+'</h2><div class="sub" style="white-space:normal">'+'<b>'+esc(pw.manager)+'</b> · '+esc(pw.record)+(pw.streak?' · '+esc(pw.streak):'')+' · PF '+Math.round(num(pw.pf)||0)+(num(pw.pa)!==null?' / PA '+Math.round(pw.pa):'')+' · standing #'+esc(pw.standing)+'</div>';
   h+=kv([['This week (starters)',f1(pw.week)+' <small style="color:var(--mute)">rank '+esc(pw.rankNow)+'</small>'],['ROS power',f1(pw.ros)+' <small style="color:var(--mute)">rank '+esc(pw.rankRos)+'</small>'],['Bench value',f1(pw.bench)],['Best player',pl(pw.best)],['Weakest starter',pl(pw.weakest)],['Plays you',blank(pw.playsMe)||pw.playsMe==='-'?'':'week '+esc(pw.playsMe)]]);
-  h+='</section><section><h2>Team profile</h2>'+teamRadar(d,pw)+'</section><section><h2>Roster</h2><table><tr><th style="width:38px">Slot</th><th>Player</th><th class="n" style="width:44px">Wk</th><th class="n" style="width:44px">Value</th><th class="n" style="width:44px">ROS</th></tr>';
+  h+='</section><section><h2>Team profile</h2>'+teamRadar(d,pw)+'</section>';
+  h+=managerSection(d,pw);
+  h+='<section><h2>Roster</h2><table><tr><th style="width:38px">Slot</th><th>Player</th><th class="n" style="width:44px">Wk</th><th class="n" style="width:44px">Value</th><th class="n" style="width:44px">ROS</th></tr>';
   state.ctx=ros.map(p=>cleanName(p.player));state.ctxName=pw.name;
   h+=ros.map(p=>{const x=P(p.player);const g=x.game||{};
     return '<tr><td style="color:var(--mute)">'+esc(p.slot)+'</td><td style="white-space:normal"><div style="display:flex;gap:8px;align-items:center">'+face(p.sid,p.nfl,p.pos)+'<div style="min-width:0">'+pl(p.player)+'<br><span class="sub">'+(g.status?gamePill(g.status)+' ':'')+esc(p.pos)+' · '+tl(p.nfl)+(g.opp?' · '+(g.ha==='Home'?'v ':'@ ')+tl(g.opp):'')+(p.bye?' · bye '+esc(p.bye):'')+(x.inj&&!blank(x.inj.status)?' · <span class="flag'+(/out|ir/i.test(x.inj.status)?' bad':'')+'">'+esc(x.inj.status)+'</span>':'')+'</span></div></div></td><td class="n">'+(num(g.live)!==null&&/progress|final/i.test(g.status||'')?'<b>'+f1(g.live)+'</b>':f1(p.week))+'</td><td class="n">'+f1(p.value)+'</td><td class="n">'+f1(p.ros)+'</td></tr>'}).join("");
@@ -467,6 +473,29 @@ function renderTeam(d,t){
   return h;
 }
 
+function managerSection(d,pw){
+  let h='';const me=isMine(pw.name);const pwAll=(d.power||[]);
+  const hist=(pw.history||[]).filter(x=>num(x.week)!==null).sort((a,b)=>a.week-b.week);
+  if(hist.length>1)h+='<section><h2>'+esc(pw.manager)+' week by week</h2>'+svgLine({labels:hist.map(x=>'wk'+x.week),series:[{vals:hist.map(x=>x.pts),cls:'me'},{vals:hist.map(x=>x.ros),cls:'them',dash:true}],h:150,legend:[['me','starters that week'],['them','ROS power']]})+'<div class="sub" style="white-space:normal">Standing: '+hist.map(x=>'wk'+x.week+' #'+Math.round(x.standing||0)).join(' → ')+'</div></section>';
+  else if(hist.length===1)h+='<section><h2>'+esc(pw.manager)+' week by week</h2><div class="sub" style="white-space:normal">Tracking started week '+hist[0].week+' — the chart fills in as the season goes.</div></section>';
+  const pv=pw.posValue||{};const poss=['QB','RB','WR','TE','K','DST'].filter(k=>num(pv[k])!==null);
+  if(poss.length){const avg={};poss.forEach(k=>{const v=pwAll.map(x=>x.posValue&&num(x.posValue[k])).filter(v=>v!==null);avg[k]=v.length?v.reduce((a,b)=>a+b,0)/v.length:null});
+    const strong=poss.filter(k=>num(avg[k])&&pv[k]>avg[k]*1.15),weak=poss.filter(k=>num(avg[k])&&pv[k]<avg[k]*0.85);
+    h+='<section><h2>Where the roster is stacked</h2>'+svgBars({labels:poss,series:[{vals:poss.map(k=>pv[k]),cls:'me',clsAt:poss.map(k=>strong.indexOf(k)>=0?'good':(weak.indexOf(k)>=0?'bad':''))},{vals:poss.map(k=>avg[k]),cls:'them'}],h:130,legend:[['me','this roster'],['them','league average'],['good','surplus'],['bad','thin']]})+'<div class="sub" style="white-space:normal">Total value per week by position. '+(!me&&strong.length?'<b>Surplus:</b> '+strong.join(', ')+' — ask for one of these. ':'')+(!me&&weak.length?'<b>Thin:</b> '+weak.join(', ')+' — what they\'ll be shopping for.':'')+'</div></section>';}
+  const vs=(pw.vsMe||[]);
+  if(!me&&vs.length){const w=vs.filter(x=>num(x.my)>num(x.their)).length;h+='<section><h2>Head to head with you</h2><div class="sub" style="white-space:normal">You are '+w+'-'+(vs.length-w)+' against '+esc(pw.manager)+' this season.</div><table><tr><th>Wk</th><th class="n">You</th><th class="n">'+esc(pw.manager)+'</th></tr>'+vs.map(x=>'<tr><td>'+x.week+'</td><td class="n '+(num(x.my)>num(x.their)?'win':'loss')+'">'+f1(x.my)+'</td><td class="n">'+f1(x.their)+'</td></tr>').join('')+'</table></section>';}
+  const up=(d.schedule||[]).filter(s=>s.manager===pw.manager&&num(s.week)>=num(d.week));
+  if(!me&&up.length)h+='<section><h2>On your schedule</h2>'+kv(up.map(s=>['Week '+s.week,'Yahoo gives you '+Math.round((num(s.yahooWin)||0)*100)+'%']))+'</section>';
+  if(!me){const tr=(d.trades||[]).filter(x=>x.partner===pw.manager);
+    if(tr.length)h+='<section><h2>Trade fits with '+esc(pw.manager)+'</h2>'+tr.slice(0,4).map(x=>'<div class="row" style="padding:8px 0"><div class="main" style="white-space:normal"><div class="name">Give '+pl(x.give)+' · get '+pl(x.get)+'</div><div class="sub" style="white-space:normal">you +'+f1(x.myGain)+'/wk · they '+(num(x.theirGain)>=0?'+':'')+f1(x.theirGain)+' · '+esc(x.timing)+'</div></div><div class="pts"><b>'+f1(x.score)+'</b><small>score</small></div></div>').join('')+'</section>';
+    const rm=(d.rivalMoves||[]).filter(x=>String(x.team)===String(pw.team));
+    if(rm.length)h+='<section><h2>Their likely next move</h2>'+rm.map(x=>'<div class="row" style="padding:8px 0"><div class="main" style="white-space:normal"><div class="name">Claim '+pl(x.target)+(x.drop?' · drop '+pl(x.drop):'')+'</div><div class="sub" style="white-space:normal">+'+f1(x.gain)+' at '+esc(x.slot)+(x.hurt?' · '+esc(x.hurtStatus)+' starter':'')+' · scarcity ×'+f1(x.scarcity)+'</div></div><div class="pts"><b>'+Math.round(x.urgency)+'</b><small>urgency</small></div></div>').join('')+'</section>';}
+  const act=pw.activity||{};const rec=(act.recent||[]).slice().reverse();
+  if(num(act.adds)||num(act.drops)){const bp=act.byPos||{};const fav=Object.keys(bp).sort((a,b)=>bp[b]-bp[a])[0];
+    h+='<section><h2>Moves</h2><div class="sub" style="white-space:normal">'+Math.round(act.adds||0)+' adds · '+Math.round(act.drops||0)+' drops tracked'+(fav?' · chases <b>'+esc(fav)+'</b> most':'')+'</div>'+rec.map(x=>'<div class="row" style="padding:6px 0"><div class="slot" style="color:'+(x.action==='Add'?'var(--good)':'var(--bad)')+'">'+esc(x.action)+'</div><div class="main"><div class="name">'+pl(x.player)+'</div><div class="sub">'+esc(x.pos)+' · '+tl(x.nfl)+' · wk '+x.week+' · '+esc(String(x.stamp).slice(5,10).replace('-','/'))+'</div></div></div>').join('')+'</section>';}
+  else h+='<section><h2>Moves</h2><div class="sub" style="white-space:normal">No adds or drops seen yet — every roster change from here on is logged automatically.</div></section>';
+  return h;
+}
 // ---------------- PLAYERS ----------------
 const SORTS={value:["Value /wk",p=>p.value],proj:["This week",p=>p.proj],ros:["ROS /wk",p=>p.ros&&p.ros.cons],cons:["Consensus",p=>p.cons],avg3:["Last 3 wks",p=>p.form&&p.form.avg3],last:["Last week",p=>p.form&&p.form.last],adds:["Adds 24h",p=>p.adds],ecr:["Expert rank",p=>p.ecr?-p.ecr.rank:null],snap:["Snap %",p=>p.form&&p.form.snap],buzz:["Buzz",p=>p.buzz]};
 function renderPlayers(d){
@@ -630,7 +659,7 @@ function nflSection(d){
   let h='<div class="filters" style="margin-top:10px"><select id="nflsel" style="grid-column:1/3"><option value="">NFL teams — coaches, scoring, context…</option>'+ts.map(x=>'<option value="'+x.team+'"'+(x.team===sel?' selected':'')+'>'+esc(x.name)+'</option>').join('')+'</select></div>';
   if(t){const sp=t.splits||{};const inL=(d.players||[]).filter(p=>p.team===t.team&&num(p.owner)).sort((a,b)=>(num(b.value)||0)-(num(a.value)||0));
     h+='<div style="display:flex;gap:10px;align-items:center;margin-top:8px">'+logo(t.team)+'<div><b>'+esc(t.name)+'</b><div class="sub" style="white-space:normal">this week '+esc(t.thisWeek)+(t.bye?' · bye wk '+t.bye:'')+(num(t.altitude)?' · ⛰️ '+Math.round(t.altitude).toLocaleString()+' ft':'')+'</div></div></div>';
-    h+=kv([['Head coach','<b>'+esc(t.hc)+'</b> <small>since '+esc(t.hcSince)+(t.hcRecord&&t.hcRecord!=='0-0'?' · '+esc(t.hcRecord)+(t.hcPlayoffs&&t.hcPlayoffs!=='0-0'?' · playoffs '+esc(t.hcPlayoffs):''):' · first year')+'</small>'],['Offensive coordinator',esc(t.oc)+' <small>since '+esc(t.ocSince)+'</small>'],['Defensive coordinator',esc(t.dc)+' <small>since '+esc(t.dcSince)+'</small>'],['Scoring 2024–26',num(sp.all)?f1(sp.all)+' ppg · home '+f1(sp.home)+' / away '+f1(sp.away)+(num(sp.badN)>=3?' · bad weather '+f1(sp.badWx):'')+(num(sp.domeN)>=3?' · dome '+f1(sp.dome):''):'']]);
+    h+=kv([['Head coach','<b>'+co(t.hc)+'</b> <small>since '+esc(t.hcSince)+(t.hcRecord&&t.hcRecord!=='0-0'?' · '+esc(t.hcRecord)+(t.hcPlayoffs&&t.hcPlayoffs!=='0-0'?' · playoffs '+esc(t.hcPlayoffs):''):' · first year')+'</small>'],['Offensive coordinator',co(t.oc)+' <small>since '+esc(t.ocSince)+'</small>'],['Defensive coordinator',co(t.dc)+' <small>since '+esc(t.dcSince)+'</small>'],['Scoring 2024–26',num(sp.all)?f1(sp.all)+' ppg · home '+f1(sp.home)+' / away '+f1(sp.away)+(num(sp.badN)>=3?' · bad weather '+f1(sp.badWx):'')+(num(sp.domeN)>=3?' · dome '+f1(sp.dome):''):'']]);
     if(num(sp.all)){const rows=[['Home',sp.home],['Away',sp.away],['Good wx',sp.all],['Bad wx',sp.badWx]].filter(r=>num(r[1]));h+=svgBars({labels:rows.map(r=>r[0]),series:[{vals:rows.map(r=>r[1]),cls:'me'}],h:110});}
     if(inL.length)h+='<div class="sub" style="margin-top:6px;white-space:normal"><b>In our league:</b> '+inL.map(p=>pl(p.name)+' <small>'+esc(p.pos)+' · '+esc(isMine(p.ownerName)?'YOU':p.ownerName)+'</small>').join(' · ')+'</div>';
   }
@@ -641,7 +670,7 @@ function renderNfl(d,abbr){
   const sp=t.splits||{};const inL=(d.players||[]).filter(p=>p.team===t.team&&num(p.owner)).sort((a,b)=>(num(b.value)||0)-(num(a.value)||0));
   const fa=(d.players||[]).filter(p=>p.team===t.team&&!num(p.owner)&&(num(p.value)||0)>3).sort((a,b)=>(num(b.value)||0)-(num(a.value)||0)).slice(0,6);
   let h='<section><a class="back" href="javascript:history.back()">← Back</a><div style="display:flex;gap:10px;align-items:center;margin-top:8px">'+logo(t.team).replace('class="logo"','class="logo" style="width:56px;height:56px;flex-basis:56px"')+'<div><div style="font-size:19px;font-weight:700">'+esc(t.name)+'</div><div class="sub" style="white-space:normal">'+(num(t.wins)!==null?Math.round(t.wins)+'-'+Math.round(t.losses)+' since 2024 · ':'')+'this week '+esc(t.thisWeek)+(t.bye?' · bye wk '+t.bye:'')+(num(t.altitude)?' · ⛰️ '+Math.round(t.altitude).toLocaleString()+' ft':'')+'</div></div></div></section>';
-  h+='<section><h2>Coaches</h2>'+kv([['Head coach','<b>'+esc(t.hc)+'</b> <small>since '+esc(t.hcSince)+(t.hcRecord&&t.hcRecord!=='0-0'?' · '+esc(t.hcRecord)+(t.hcPlayoffs&&t.hcPlayoffs!=='0-0'?' · playoffs '+esc(t.hcPlayoffs):''):' · first year with the team')+'</small>'],['Offensive coordinator','<b>'+esc(t.oc)+'</b> <small>since '+esc(t.ocSince)+'</small>'+(num(sp.all)?'<br><span class="sub">offense: '+f1(sp.all)+' ppg · home '+f1(sp.home)+' / away '+f1(sp.away)+(num(sp.badN)>=3?' · bad weather '+f1(sp.badWx):'')+'</span>':'')],['Defensive coordinator','<b>'+esc(t.dc)+'</b> <small>since '+esc(t.dcSince)+'</small>'+(num(t.pa)?'<br><span class="sub">defense: '+f1(t.pa)+' allowed · home '+f1(t.paHome)+' / away '+f1(t.paAway)+'</span>':'')]])+'<div class="sub" style="white-space:normal;margin-top:4px">Records and scoring are the team\'s 2024–26 numbers; a coordinator hired since then only owns the part of that he has coached.</div></section>';
+  h+='<section><h2>Coaches</h2>'+kv([['Head coach','<b>'+co(t.hc)+'</b> <small>since '+esc(t.hcSince)+(t.hcRecord&&t.hcRecord!=='0-0'?' · '+esc(t.hcRecord)+(t.hcPlayoffs&&t.hcPlayoffs!=='0-0'?' · playoffs '+esc(t.hcPlayoffs):''):' · first year with the team')+'</small>'],['Offensive coordinator','<b>'+co(t.oc)+'</b> <small>since '+esc(t.ocSince)+'</small>'+(num(sp.all)?'<br><span class="sub">offense: '+f1(sp.all)+' ppg · home '+f1(sp.home)+' / away '+f1(sp.away)+(num(sp.badN)>=3?' · bad weather '+f1(sp.badWx):'')+'</span>':'')],['Defensive coordinator','<b>'+co(t.dc)+'</b> <small>since '+esc(t.dcSince)+'</small>'+(num(t.pa)?'<br><span class="sub">defense: '+f1(t.pa)+' allowed · home '+f1(t.paHome)+' / away '+f1(t.paAway)+'</span>':'')]])+'<div class="sub" style="white-space:normal;margin-top:4px">Records and scoring are the team\'s 2024–26 numbers; a coordinator hired since then only owns the part of that he has coached.</div></section>';
   const hc=(t.hcRecord||'').split('-');
   if(hc.length===2&&(+hc[0]+ +hc[1])>0)h+='<section><h2>'+esc(t.hc)+' with the '+esc(t.name.split(' ').pop())+'</h2>'+svgBars({labels:['Wins','Losses','Playoff W','Playoff L'],series:[{vals:[+hc[0],+hc[1],+((t.hcPlayoffs||'0-0').split('-')[0]),+((t.hcPlayoffs||'0-0').split('-')[1])],cls:'me',clsAt:['good','bad','good','bad']}],h:120})+'</section>';
   if(num(sp.all)||num(t.pa)){const rows=[['Scored',sp.all],['Allowed',t.pa],['Scored home',sp.home],['Scored away',sp.away],['Allowed home',t.paHome],['Allowed away',t.paAway]].filter(r=>num(r[1]));
@@ -653,6 +682,43 @@ function renderNfl(d,abbr){
   if(inL.length){state.ctx=inL.concat(fa).map(p=>p.name);state.ctxName=t.name;}
   if(inL.length)h+='<section><h2>In our league</h2>'+inL.map(p=>'<div class="row tapp" data-player="'+esc(p.name)+'">'+face(p.sid,p.team,p.pos)+'<div class="main"><div class="name'+(isMine(p.ownerName)?' mine':'')+'">'+esc(p.name)+'</div><div class="sub">'+esc(p.pos)+' · '+esc(isMine(p.ownerName)?'YOU':p.ownerName)+(p.slot?' ('+esc(p.slot)+')':'')+'</div></div><div class="pts"><b>'+f1(p.value)+'</b><small>value</small></div></div>').join('')+'</section>';
   if(fa.length)h+='<section><h2>Free agents on this team</h2>'+fa.map(p=>'<div class="row tapp" data-player="'+esc(p.name)+'">'+face(p.sid,p.team,p.pos)+'<div class="main"><div class="name">'+esc(p.name)+'</div><div class="sub">'+esc(p.pos)+' · wk '+f1(p.proj)+'</div></div><div class="pts"><b>'+f1(p.value)+'</b><small>value</small></div></div>').join('')+'</section>';
+  return h;
+}
+// ---------------- COACH ----------------
+function renderCoach(d,name){
+  const ts=(d.nflTeams||[]);const nm=String(name||'').toLowerCase();
+  const hits=[];ts.forEach(t=>{[['hc','Head coach','hcSince'],['oc','Offensive coordinator','ocSince'],['dc','Defensive coordinator','dcSince']].forEach(r=>{if(String(t[r[0]]).toLowerCase()===nm)hits.push({t:t,role:r[0],title:r[1],since:t[r[2]]})})});
+  if(!hits.length)return '<section><a class="back" href="javascript:history.back()">← Back</a><div class="empty">No coach named '+esc(name)+' in the data.</div></section>';
+  const H=hits[0],t=H.t,sp=t.splits||{},isHC=H.role==='hc',isDC=H.role==='dc';const since=num(H.since);
+  const seasons=(t.seasons||[]).filter(x=>num(x.games)>0);const own=seasons.filter(x=>!since||num(x.season)>=since);
+  let h='<section><a class="back" href="javascript:history.back()">← Back</a><div style="display:flex;gap:10px;align-items:center;margin-top:8px">'+logo(t.team).replace('class="logo"','class="logo portal" data-nfl="'+t.team+'" style="width:56px;height:56px;flex-basis:56px"')+'<div><div style="font-size:19px;font-weight:700">'+esc(t[H.role])+'</div><div class="sub" style="white-space:normal">'+esc(H.title)+' · <a class="pl" href="#nfl/'+t.team+'">'+esc(t.name)+'</a>'+(H.since?' · since '+esc(H.since):'')+(hits.length>1?' · also '+hits.slice(1).map(x=>x.title.toLowerCase()).join(', '):'')+'</div></div></div>';
+  const rows=[['Team this week',esc(t.thisWeek)+(t.bye?' · bye wk '+t.bye:'')]];
+  if(isHC){rows.push(['Record with the team',(t.hcRecord&&t.hcRecord!=='0-0'?esc(t.hcRecord):'first year')+(t.hcPlayoffs&&t.hcPlayoffs!=='0-0'?' · playoffs '+esc(t.hcPlayoffs):'')]);rows.push(['Offensive coordinator',co(t.oc)+' <small>since '+esc(t.ocSince)+'</small>']);rows.push(['Defensive coordinator',co(t.dc)+' <small>since '+esc(t.dcSince)+'</small>']);}
+  else{rows.push(['Head coach',co(t.hc)+' <small>since '+esc(t.hcSince)+'</small>']);rows.push([isDC?'Offensive coordinator':'Defensive coordinator',co(isDC?t.oc:t.dc)+' <small>since '+esc(isDC?t.ocSince:t.dcSince)+'</small>']);}
+  if(own.length){const g=own.reduce((a,x)=>a+(num(x.games)||0),0),w=own.reduce((a,x)=>a+(num(x.w)||0),0),l=own.reduce((a,x)=>a+(num(x.l)||0),0);const ppg=own.reduce((a,x)=>a+(num(x.ppg)||0)*(num(x.games)||0),0)/(g||1),pa=own.reduce((a,x)=>a+(num(x.pa)||0)*(num(x.games)||0),0)/(g||1);
+    rows.push(['Games in charge, 2024 on',g+' · '+w+'-'+l]);rows.push([isDC?'Points allowed':'Points scored',f1(isDC?pa:ppg)+' per game'+(isHC?' · allowed '+f1(pa):'')]);}
+  if(num(sp.all)&&!isDC)rows.push(['Home / away scoring',f1(sp.home)+' / '+f1(sp.away)+(num(sp.badN)>=3?' · bad weather '+f1(sp.badWx):'')+(num(sp.domeN)>=3?' · dome '+f1(sp.dome):'')+' <small>(team, 2024–26)</small>']);
+  if(num(t.pa)&&(isDC||isHC))rows.push(['Home / away allowed',f1(t.paHome)+' / '+f1(t.paAway)+' <small>(team, 2024–26)</small>']);
+  if(num(t.altitude))rows.push(['Home altitude','⛰️ '+Math.round(t.altitude).toLocaleString()+' ft']);
+  h+=kv(rows)+'<div class="sub" style="white-space:normal;margin-top:4px">Seasons before '+(H.since?esc(H.since):'his hire')+' are shown for context — they belong to the previous staff.</div></section>';
+  const poss=['QB','RB','WR','TE'];const pa=t.posAvg||{};
+  if(seasons.length){const lab=seasons.map(x=>String(x.season)+(since&&num(x.season)<since?'*':''));
+    h+='<section><h2>Season by season</h2><table><tr><th>Season</th><th class="n">G</th><th class="n">W-L</th><th class="n">'+(isDC?'Allowed':'Scored')+'</th><th class="n">'+(isDC?'Scored':'Allowed')+'</th></tr>'+seasons.map(x=>'<tr'+(since&&num(x.season)<since?' style="color:var(--mute)"':'')+'><td>'+x.season+(since&&num(x.season)<since?' <small>prev staff</small>':'')+'</td><td class="n">'+Math.round(x.games)+'</td><td class="n">'+Math.round(x.w)+'-'+Math.round(x.l)+'</td><td class="n"><b>'+f1(isDC?x.pa:x.ppg)+'</b></td><td class="n">'+f1(isDC?x.ppg:x.pa)+'</td></tr>').join('')+'</table>';
+    h+=svgBars({labels:lab,series:[{vals:seasons.map(x=>x.ppg),cls:'me',name:'scored'},{vals:seasons.map(x=>x.pa),cls:'them',name:'allowed'}],h:130,legend:[['me','points scored /g'],['them','points allowed /g']]})+'<div class="sub">* = before this coach arrived</div></section>';
+    const cur=seasons[seasons.length-1];
+    if(!isDC&&cur&&cur.prod&&poss.some(k=>num(cur.prod[k])!==null)){
+      h+='<section><h2>Fantasy points his offense produces · '+cur.season+'</h2>'+svgBars({labels:poss,series:[{vals:poss.map(k=>cur.prod[k]),cls:'me',clsAt:poss.map(k=>num(pa[k])&&cur.prod[k]>pa[k]*1.1?'good':(num(pa[k])&&cur.prod[k]<pa[k]*0.9?'bad':''))},{vals:poss.map(k=>pa[k]),cls:'them'}],h:130,legend:[['me','this offense'],['them','league average'],['good','feeds the position'],['bad','starves it']]});
+      if(seasons.length>1)h+='<div style="margin-top:8px">'+svgLine({labels:lab,series:poss.map((k,i)=>({vals:seasons.map(x=>x.prod?x.prod[k]:null),cls:['me','them','proj','fa'][i]})),h:150,legend:poss.map((k,i)=>[['me','them','proj','fa'][i],k])})+'<div class="sub">per game, by season</div></div>';
+      h+='</section>';}
+  }
+  const da=t.defAllowed||{};
+  if((isDC||isHC)&&poss.some(k=>num(da[k])!==null))h+='<section><h2>Fantasy points his defense allows</h2>'+svgBars({labels:poss,series:[{vals:poss.map(k=>da[k]),cls:'me',clsAt:poss.map(k=>da[k]>pa[k]*1.1?'bad':(da[k]<pa[k]*0.9?'good':''))},{vals:poss.map(k=>pa[k]),cls:'them'}],h:130,legend:[['me','this defense allows'],['them','league average'],['bad','soft spot'],['good','tough']]})+'<div class="sub" style="white-space:normal">Start your guys against a soft spot; this feeds the Next-3 index on every player card.</div></section>';
+  if(num(sp.all)&&!isDC){const r2=[['Home',sp.home],['Away',sp.away],['Bad wx',sp.badWx],['Dome',sp.dome]].filter(r=>num(r[1]));if(r2.length>1)h+='<section><h2>His offense by conditions</h2>'+svgBars({labels:r2.map(r=>r[0]),series:[{vals:r2.map(r=>r[1]),cls:'me'}],h:110})+'<div class="sub">team points per game, 2024–26</div></section>';}
+  const sc=(t.sched||[]);
+  if(sc.length)h+='<section><h2>Schedule</h2><table><tr><th style="width:30px">Wk</th><th>Opponent</th><th></th><th class="n">Result</th></tr>'+sc.map(x=>{const fin=/final/i.test(x.status)&&x.pts!=='';const w=fin&&(+x.pts>+x.oppPts);return '<tr'+(String(x.week)===String(d.week)?' style="font-weight:700"':'')+'><td>'+x.week+'</td><td>'+(x.opp==='bye'?'<span class="sub">bye</span>':(x.ha==='Home'?'v ':'@ ')+tl(x.opp))+'</td><td>'+(x.opp==='bye'?'':gamePill(x.status)+' <span class="sub">'+esc(x.kick)+'</span>')+'</td><td class="n '+(fin?(w?'win':'loss'):'')+'">'+(fin?esc(x.pts)+'–'+esc(x.oppPts):'')+'</td></tr>'}).join('')+'</table></section>';
+  const ps=(d.players||[]).filter(p=>p.team===t.team&&(num(p.owner)||(num(p.value)||0)>3)).sort((a,b)=>(num(b.value)||0)-(num(a.value)||0)).slice(0,14);
+  if(ps.length){state.ctx=ps.map(p=>p.name);state.ctxName=t[H.role];
+    h+='<section><h2>'+(isDC?'His unit vs our league\'s players':'Players in his '+(isHC?'building':'offense'))+'</h2>'+ps.map(p=>'<div class="row tapp" data-player="'+esc(p.name)+'">'+face(p.sid,p.team,p.pos)+'<div class="main"><div class="name'+(isMine(p.ownerName)?' mine':'')+'">'+esc(p.name)+'</div><div class="sub">'+esc(p.pos)+' · '+(num(p.owner)?esc(isMine(p.ownerName)?'YOU':p.ownerName):'Free agent')+(p.slot?' ('+esc(p.slot)+')':'')+'</div></div><div class="pts"><b>'+f1(p.value)+'</b><small>value</small></div></div>').join('')+'</section>';}
   return h;
 }
 // ---------------- RADAR ----------------
@@ -714,7 +780,8 @@ function renderNews(d){
 // ---------------- SEARCH ----------------
 function searchHits(q){q=q.toLowerCase();if(q.length<2)return [];const out=[];
   (D.nflTeams||[]).forEach(t=>{if(String(t.name).toLowerCase().indexOf(q)>=0||String(t.team).toLowerCase()===q||String(t.hc).toLowerCase().indexOf(q)>=0||String(t.oc).toLowerCase().indexOf(q)>=0||String(t.dc).toLowerCase().indexOf(q)>=0)out.push({t:'nfl',label:t.name,sub:'HC '+t.hc+' · OC '+t.oc+' · DC '+t.dc,href:'#nfl/'+t.team,team:t.team})});
-  (D.teams||[]).forEach(t=>{if(String(t.name).toLowerCase().indexOf(q)>=0||String(t.manager).toLowerCase().indexOf(q)>=0)out.push({t:'team',label:t.name,sub:t.manager,href:'#team/'+t.team})});
+  (D.teams||[]).forEach(t=>{if(String(t.name).toLowerCase().indexOf(q)>=0||String(t.manager).toLowerCase().indexOf(q)>=0)out.push({t:'team',label:t.manager,sub:'Manager · '+t.name,href:'#team/'+t.team})});
+  (D.nflTeams||[]).forEach(t=>{[['hc','Head coach'],['oc','Offensive coordinator'],['dc','Defensive coordinator']].forEach(r=>{const n=t[r[0]];if(n&&String(n).toLowerCase().indexOf(q)>=0)out.push({t:'nfl',label:n,sub:r[1]+' · '+t.name,href:'#coach/'+encodeURIComponent(n),team:t.team})})});
   (D.players||[]).filter(p=>String(p.name).toLowerCase().indexOf(q)>=0).sort((a,b)=>(num(b.value)||0)-(num(a.value)||0)).slice(0,8).forEach(p=>out.push({t:'player',label:p.name,sub:[p.pos,p.team,num(p.owner)?p.ownerName:'Free agent'].join(' · '),href:'#player/'+encodeURIComponent(p.name),sid:p.sid,team:p.team,pos:p.pos}));
   return out.slice(0,10);}
 
@@ -726,6 +793,7 @@ function route(){
   if(state.view==="team")state.team=parts[1];
   if(state.view==="player")state.player=parts.slice(1).join("/");
   if(state.view==="nfl")state.nfl2=parts[1];
+  if(state.view==="coach")state.coach=parts.slice(1).join("/");
   render();
 }
 function render(){
@@ -741,11 +809,12 @@ function render(){
   else if(v==="player")h=renderPlayer(d,state.player);
   else if(v==="games")h=renderGames(d);
   else if(v==="nfl")h=renderNfl(d,state.nfl2);
+  else if(v==="coach")h=renderCoach(d,state.coach);
   else if(v==="injuries")h=renderInjuries(d);
   else if(v==="news")h=renderNews(d);
   else h=renderHome(d);
   $("#app").innerHTML=h;
-  document.querySelectorAll(".nav a").forEach(a=>a.classList.toggle("on",a.dataset.v===(v==="team"?"league":(v==="player"?"players":v))));
+  document.querySelectorAll(".nav a").forEach(a=>a.classList.toggle("on",a.dataset.v===(v==="team"||v==="coach"||v==="nfl"?"league":(v==="player"?"players":v))));
   document.querySelectorAll(".ctl button[data-cmd]").forEach(b=>b.addEventListener("click",()=>send(b.dataset.cmd,CMDKEY)));
   const ck=$("#cmdsave");if(ck)ck.addEventListener("click",()=>{const v=($("#cmdkey").value||"").trim();if(v){CMDKEY=v;try{localStorage.setItem('lhc_cmd',v)}catch(e){}render()}});
   const cc=$("#cmdclear");if(cc)cc.addEventListener("click",e=>{e.preventDefault();CMDKEY='';try{localStorage.removeItem('lhc_cmd')}catch(e){}render()});
@@ -776,6 +845,7 @@ function load(){
 (function(){const inp=document.getElementById('gs'),box=document.getElementById('gsr');if(!inp)return;
   inp.addEventListener('input',()=>{if(!D){box.innerHTML='';return}const hits=searchHits(inp.value);box.innerHTML=hits.map(x=>'<a class="hit" href="'+x.href+'">'+(x.t==='player'?face(x.sid,x.team,x.pos):(x.t==='nfl'?logo(x.team):'<div class="logo"></div>'))+'<div><div class="name">'+esc(x.label)+'</div><div class="sub">'+esc(x.sub)+'</div></div></a>').join('');box.style.display=hits.length?'block':'none';});
   box.addEventListener('click',()=>{box.style.display='none';inp.value='';});inp.addEventListener('blur',()=>setTimeout(()=>{box.style.display='none'},250));})();
+(function(){const b=document.getElementById('aa');if(!b)return;let big=false;try{big=localStorage.getItem('lhc_big')==='1'}catch(e){}const ap=()=>{document.body.classList.toggle('big',big);b.setAttribute('aria-pressed',big?'true':'false');b.classList.toggle('on',big)};ap();b.addEventListener('click',()=>{big=!big;try{localStorage.setItem('lhc_big',big?'1':'0')}catch(e){}ap()});})();
 (function(){const b=document.getElementById('show');if(!b)return;const ap=()=>{b.textContent=SHOW?'Show mode on':'Show mode';b.classList.toggle('on',SHOW);document.body.classList.toggle('show',SHOW)};ap();b.addEventListener('click',()=>{SHOW=!SHOW;try{localStorage.setItem('lhc_show',SHOW?'1':'0')}catch(e){}ap();render()});})();
 document.getElementById('app').addEventListener('click',e=>{const el=e.target.closest('[data-nfl],[data-psid]');if(!el)return;if(el.dataset.psid){const p=(D&&D.players||[]).find(x=>String(x.sid)===String(el.dataset.psid));if(p){e.preventDefault();e.stopPropagation();location.hash='#player/'+encodeURIComponent(p.name);return}}if(el.dataset.nfl&&(D&&D.nflTeams||[]).some(t=>t.team===el.dataset.nfl)){e.preventDefault();e.stopPropagation();location.hash='#nfl/'+el.dataset.nfl}});
 (function(){let sx=0,sy=0,st=0;const app=document.getElementById('app');
@@ -784,6 +854,7 @@ document.getElementById('app').addEventListener('click',e=>{const el=e.target.cl
     const dir=dx<0?1:-1;
     if(state.view==='player'){const ctx=state.ctx||[];const ci=ctx.findIndex(n=>String(n).toLowerCase()===cleanName(state.player).toLowerCase());const ni=ci+dir;if(ci>=0&&ni>=0&&ni<ctx.length)location.hash='#player/'+encodeURIComponent(ctx[ni]);}
     else if(state.view==='team'){const pw=(D.power||[]).slice().sort((a,b)=>(num(a.standing)||99)-(num(b.standing)||99));const i=pw.findIndex(x=>String(x.team)===String(state.team));const n=i+dir;if(i>=0&&n>=0&&n<pw.length)location.hash='#team/'+pw[n].team;}
+    else if(state.view==='coach'){const ts=(D.nflTeams||[]);let role=null,i=-1;ts.forEach((t,k)=>{['hc','oc','dc'].forEach(r=>{if(String(t[r]).toLowerCase()===String(state.coach).toLowerCase()){role=r;i=k}})});const n=i+dir;if(role&&n>=0&&n<ts.length)location.hash='#coach/'+encodeURIComponent(ts[n][role]);}
     else if(state.view==='nfl'){const ts=(D.nflTeams||[]);const i=ts.findIndex(x=>x.team===String(state.nfl2).toUpperCase());const n=i+dir;if(i>=0&&n>=0&&n<ts.length)location.hash='#nfl/'+ts[n].team;}
     else{const tabs=['home','league','players','games','injuries','news'];const i=tabs.indexOf(state.view);const n=i+dir;if(i>=0&&n>=0&&n<tabs.length)location.hash='#'+tabs[n];}
   },{passive:true});})();
