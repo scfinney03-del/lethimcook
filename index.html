@@ -113,14 +113,42 @@ table.kv{margin-top:6px}table.kv td{white-space:normal}
 button.more{font:inherit;font-weight:600;width:100%;margin-top:8px;padding:10px;border-radius:9px;border:1px solid var(--line);background:var(--chip);color:var(--acc)}
 details.g summary::before{content:none}details.g summary{padding:0}details.g summary > div{display:flex}
 .slot{width:44px;flex:0 0 44px}
+.ch rect.b{fill:var(--barme)}.ch rect.b.them{fill:var(--mute)}.ch rect.b.proj{fill:var(--barme);opacity:.35}.ch rect.b.me{fill:var(--barme)}
+circle.d{fill:var(--mute);opacity:.7}circle.d.me{fill:var(--good);opacity:1}circle.d.fa{fill:var(--acc)}
+.lg{display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--mute);vertical-align:-1px;margin-right:3px}.lg.me{background:var(--barme)}.lg.them{background:var(--mute)}.lg.proj{background:var(--barme);opacity:.35}.lg.fa{background:var(--acc)}
+.name.mine,.sub.mine a{color:var(--good)}
+path.ln{stroke:var(--barme)}path.ln.them{stroke:var(--mute)}path.ln.proj{stroke:var(--barme);opacity:.6}circle.pt{fill:var(--barme)}circle.pt.them{fill:var(--mute)}circle.pt.proj{fill:var(--barme);opacity:.6}
+.ch rect.b.good{fill:var(--good)}.ch rect.b.bad{fill:var(--bad)}.lg.good{background:var(--good)}.lg.bad{background:var(--bad)}
+
+/* Easy-read mode: bigger, bolder, higher contrast (keratoconus-friendly) */
+body.big{font-size:19px;line-height:1.5;padding-left:10px;padding-right:10px}
+body.big{--mute:#3a4351;--line:#b9c0ca;--bar:#b9c0ca}
+@media (prefers-color-scheme:dark){body.big{--mute:#c9d1dc;--line:#4a5361;--bar:#4a5361}}
+body.big h1{font-size:26px}body.big h2{font-size:15px;letter-spacing:.4px}body.big .stamp{font-size:15px}
+body.big .sub,body.big .flag,body.big .pill,body.big small,body.big .fbar,body.big .mb,body.big .act .where,body.big .act .when,body.big .vs small,body.big .sub *{font-size:16px!important}
+body.big .name{font-size:19px}body.big .pts b{font-size:22px}body.big .vs{font-size:17px;grid-template-columns:46px 1fr auto 1fr}
+body.big table{font-size:17px}body.big th{font-size:14px}body.big td,body.big th{padding:9px 5px}
+body.big .row{padding:12px 0}body.big .slot{font-size:15px;width:52px;flex:0 0 52px}
+body.big .bar{height:14px}body.big .fbar .t,body.big .pair .t,body.big .mb i{height:11px}
+body.big .pill{padding:3px 10px;border-radius:12px}body.big .logo{width:34px;height:34px;flex-basis:34px}
+body.big .nav a{font-size:17px;padding:12px 4px}body.big .ctl button,body.big .filters select,body.big .filters input,body.big button.more{font-size:18px;padding:14px 10px}
+body.big svg text{font-size:13px!important}body.big svg{height:auto!important;min-height:190px}body.big path.ln{stroke-width:3.5}body.big circle.d{r:5.5}body.big circle.d.me{r:7}
+body.big a.pl{border-bottom:2px solid var(--acc);font-weight:600}
+body.big .flag{font-weight:700}body.big .score .lbl{font-size:16px;white-space:normal}
+.aa{font:inherit;font-size:13px;font-weight:700;padding:4px 9px;border-radius:8px;border:1px solid var(--line);background:var(--chip);color:var(--ink);cursor:pointer;margin-left:6px}
+body.big .aa{background:var(--acc);color:#fff;border-color:var(--acc);font-size:16px}
 </style>
 </head>
 <body>
-<header><h1>Let Him Cook</h1><div class="stamp" id="stamp">loading…</div></header>
+<header><h1>Let Him Cook <button class="aa" id="aa" title="Easy-read mode: bigger text, higher contrast" aria-pressed="false">Aa</button></h1><div class="stamp" id="stamp">loading…</div></header>
 <nav class="nav"><a href="#home" data-v="home">Home</a><a href="#league" data-v="league">League</a><a href="#players" data-v="players">Players</a><a href="#games" data-v="games">Games</a></nav>
 <div id="app"><section><div class="empty">Waiting for the first refresh…</div></section></div>
 <footer>Updates every 5 minutes while the laptop is on. Pull down to refresh.</footer>
 <script>
+
+(function(){const b=document.body,btn=document.getElementById('aa');let on=false;try{on=localStorage.getItem('lhc_big')==='1'}catch(e){}
+const apply=()=>{b.classList.toggle('big',on);btn.setAttribute('aria-pressed',on?'true':'false');btn.textContent=on?'Aa on':'Aa'};apply();
+btn.addEventListener('click',()=>{on=!on;try{localStorage.setItem('lhc_big',on?'1':'0')}catch(e){}apply()});})();
 (function(){
 const $=(s)=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -200,6 +228,55 @@ function stamp(d){
   st.innerHTML=esc((d.week?"Week "+d.week+(recs.length?" · "+recs[recs.length-1]:"")+" · ":"")+(d.updated||"")+(age?" ("+age+")":""))+'<br><span id="clock" style="font-size:11px">'+esc(clockText(d))+'</span>'+(LIVE.at?'<br><span style="font-size:11px;color:var(--good)">live scores '+esc(LIVE.at.toLocaleTimeString([],{hour:'numeric',minute:'2-digit',second:'2-digit'}))+(anyLiveNow()?' · refreshing every 45 s':'')+'</span>':'');
 }
 
+
+// ---------------- CHARTS (inline SVG, bars + one scatter) ----------------
+function svgBars(o){ // o: {labels:[], series:[{vals:[],cls:'',name:''}], line:{v,label}, h}
+  const W=360,H=o.h||150,L=30,B=22,T=10,R=6;const n=o.labels.length;if(!n)return '';
+  const all=[].concat.apply([],o.series.map(s=>s.vals.map(v=>num(v)||0))).concat([o.line?num(o.line.v)||0:0,1]);
+  const mx=Math.max.apply(null,all)*1.08;const sc=v=>(H-B)-((H-B-T)*(Math.max(0,num(v)||0)/mx));
+  const gw=(W-L-R)/n,bw=Math.max(2,(gw-4)/o.series.length);
+  let h='<svg class="ch" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" style="width:100%;height:'+H+'px;display:block">';
+  [0,0.5,1].forEach(t=>{const y=sc(mx/1.08*t);h+='<line x1="'+L+'" y1="'+y+'" x2="'+(W-R)+'" y2="'+y+'" stroke="var(--line)" stroke-width="1"/><text x="'+(L-4)+'" y="'+(y+4)+'" font-size="9" text-anchor="end" fill="var(--mute)">'+Math.round(mx/1.08*t)+'</text>'});
+  o.series.forEach((s,si)=>{s.vals.forEach((v,i)=>{if(num(v)===null)return;const x=L+i*gw+2+si*bw,y=sc(v);h+='<rect class="b '+(s.cls||'')+(s.clsAt&&s.clsAt[i]?' '+s.clsAt[i]:'')+'" x="'+x+'" y="'+y+'" width="'+bw+'" height="'+((H-B)-y)+'" rx="2"/>'})});
+  if(o.line&&num(o.line.v)!==null){const y=sc(o.line.v);h+='<line x1="'+L+'" y1="'+y+'" x2="'+(W-R)+'" y2="'+y+'" stroke="var(--warn)" stroke-width="1.5" stroke-dasharray="4 3"/><text x="'+(W-R)+'" y="'+(y-3)+'" font-size="9" text-anchor="end" fill="var(--warn)">'+esc(o.line.label||'')+'</text>'}
+  o.labels.forEach((l,i)=>{if(n>12&&i%2)return;h+='<text x="'+(L+i*gw+gw/2)+'" y="'+(H-6)+'" font-size="9" text-anchor="middle" fill="var(--mute)">'+esc(l)+'</text>'});
+  h+='</svg>';
+  if(o.legend)h+='<div class="sub" style="white-space:normal">'+o.legend.map(x=>'<span class="lg '+x[0]+'"></span>'+esc(x[1])).join(' &nbsp; ')+'</div>';
+  return h;
+}
+function svgScatter(o){ // o:{pts:[{x,y,label,cls}], xl, yl, h}
+  const W=360,H=o.h||220,L=34,B=26,T=12,R=10;const pts=o.pts.filter(p=>num(p.x)!==null&&num(p.y)!==null);if(!pts.length)return '';
+  const xs=pts.map(p=>p.x),ys=pts.map(p=>p.y);const x0=Math.min.apply(null,xs),x1=Math.max.apply(null,xs),y0=Math.min.apply(null,ys),y1=Math.max.apply(null,ys);
+  const px=v=>L+((W-L-R)*((v-x0)/((x1-x0)||1))),py=v=>(H-B)-((H-B-T)*((v-y0)/((y1-y0)||1)));
+  let h='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" style="width:100%;height:'+H+'px;display:block">';
+  h+='<line x1="'+L+'" y1="'+(H-B)+'" x2="'+(W-R)+'" y2="'+(H-B)+'" stroke="var(--line)"/><line x1="'+L+'" y1="'+T+'" x2="'+L+'" y2="'+(H-B)+'" stroke="var(--line)"/>';
+  h+='<text x="'+((W+L)/2)+'" y="'+(H-4)+'" font-size="10" text-anchor="middle" fill="var(--mute)">'+esc(o.xl||'')+'</text><text x="9" y="'+((H-B+T)/2)+'" font-size="10" text-anchor="middle" fill="var(--mute)" transform="rotate(-90 9 '+((H-B+T)/2)+')">'+esc(o.yl||'')+'</text>';
+  h+='<text x="'+L+'" y="'+(H-B+10)+'" font-size="9" fill="var(--mute)">'+f1(x0)+'</text><text x="'+(W-R)+'" y="'+(H-B+10)+'" font-size="9" text-anchor="end" fill="var(--mute)">'+f1(x1)+'</text><text x="'+(L-3)+'" y="'+(T+4)+'" font-size="9" text-anchor="end" fill="var(--mute)">'+f1(y1)+'</text><text x="'+(L-3)+'" y="'+(H-B)+'" font-size="9" text-anchor="end" fill="var(--mute)">'+f1(y0)+'</text>';
+  pts.forEach(p=>{h+='<circle class="d '+(p.cls||'')+'" cx="'+px(p.x)+'" cy="'+py(p.y)+'" r="'+(p.cls==='me'?5:3.5)+'"/>'+(p.label?'<text x="'+(px(p.x)+5)+'" y="'+(py(p.y)-4)+'" font-size="9" fill="var(--ink)">'+esc(p.label)+'</text>':'')});
+  h+='</svg>';return h;
+}
+
+function svgLine(o){ // o:{labels:[], series:[{vals:[],cls:'',dash:bool}], h}
+  const W=360,H=o.h||150,L=34,B=22,T=10,R=8;const n=o.labels.length;if(n<2)return '';
+  const all=[].concat.apply([],o.series.map(s=>s.vals.filter(v=>num(v)!==null).map(v=>+v))).concat([1]);
+  const mx=Math.max.apply(null,all)*1.06,mn=Math.min(0,Math.min.apply(null,all));
+  const px=i=>L+((W-L-R)*i/(n-1)),py=v=>(H-B)-((H-B-T)*((v-mn)/((mx-mn)||1)));
+  let h='<svg class="ch" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" style="width:100%;height:'+H+'px;display:block">';
+  [0,0.5,1].forEach(t=>{const v=mn+(mx-mn)*t,y=py(v);h+='<line x1="'+L+'" y1="'+y+'" x2="'+(W-R)+'" y2="'+y+'" stroke="var(--line)"/><text x="'+(L-4)+'" y="'+(y+4)+'" font-size="9" text-anchor="end" fill="var(--mute)">'+Math.round(v)+'</text>'});
+  o.series.forEach(s=>{let d='',started=false;s.vals.forEach((v,i)=>{if(num(v)===null){started=false;return}d+=(started?' L':' M')+px(i).toFixed(1)+' '+py(+v).toFixed(1);started=true});
+    h+='<path class="ln '+(s.cls||'')+'" d="'+d.trim()+'" fill="none" stroke-width="2.2"'+(s.dash?' stroke-dasharray="5 4"':'')+' stroke-linejoin="round"/>';
+    s.vals.forEach((v,i)=>{if(num(v)===null)return;h+='<circle class="pt '+(s.cls||'')+'" cx="'+px(i)+'" cy="'+py(+v)+'" r="2.6"/>'});});
+  o.labels.forEach((l,i)=>{if(n>12&&i%2&&i!==n-1)return;h+='<text x="'+px(i)+'" y="'+(H-6)+'" font-size="9" text-anchor="'+(i===0?'start':(i===n-1?'end':'middle'))+'" fill="var(--mute)">'+esc(l)+'</text>'});
+  h+='</svg>';
+  if(o.legend)h+='<div class="sub" style="white-space:normal">'+o.legend.map(x=>'<span class="lg '+x[0]+'"></span>'+esc(x[1])).join(' &nbsp; ')+'</div>';
+  return h;
+}
+
+function ncdf(z){const t=1/(1+0.2316419*Math.abs(z));const dd=0.3989423*Math.exp(-z*z/2);let p=dd*t*(0.3193815+t*(-0.3565638+t*(1.781478+t*(-1.821256+t*1.330274))));if(z>0)p=1-p;return p;}
+const winProb=(margin,sd)=>Math.round(100*ncdf(margin/(sd||24)));
+const recsW=d=>(d.season||[]).filter(s=>/^w/i.test(s.result||'')).length;const recsL=d=>(d.season||[]).filter(s=>/^l/i.test(s.result||'')).length;
+const isMine=n=>/let him cook/i.test(String(n||""));
+
 // ---------------- HOME ----------------
 function renderHome(d){
   let h="";
@@ -225,6 +302,9 @@ function renderHome(d){
       const myv=num(r.myLive)!==null?f1(r.myLive):f1(r.myExp), thv=num(r.theirLive)!==null?f1(r.theirLive):f1(r.theirExp);
       const a=num(myv),b=num(thv),mx2=Math.max(a||0,b||0,num(r.myExp)||0,num(r.theirExp)||0,0.1);
       return '<div class="vs"><div class="slot">'+esc(r.slot)+'</div><div class="me">'+pl(r.my)+'<small>'+gamePill(r.myStatus)+' '+myv+'</small></div><div class="edge '+cls+'">'+(e===null?"":(e>0?"+":"")+e.toFixed(1))+'</div><div class="them">'+pl(r.their)+(/ghost/i.test(String(r.ghost||""))?' <span class="pill warn" title="slot not set yet - best bench fit shown">ghost</span>':'')+'<small>'+thv+' '+gamePill(r.theirStatus)+'</small></div><div class="pair"><div class="t"><i style="width:'+(100*Math.max(a||0,0)/mx2)+'%"></i></div><div class="t r"><i style="width:'+(100*Math.max(b||0,0)/mx2)+'%"></i></div></div></div>'}).join("");
+    const rowsM=(m.rows||[]);const margin=(num(m.myExp)||0)-(num(m.theirExp)||0);const ywin=((d.schedule||[]).find(s=>String(s.week)===String(d.week))||{}).yahooWin;
+    h+='<div style="margin-top:10px">'+svgBars({labels:rowsM.map(r=>r.slot),series:[{vals:rowsM.map(r=>num(r.myExp)),cls:'me'},{vals:rowsM.map(r=>num(r.theirExp)),cls:'them'}],h:140,legend:[['me','Me'],['them',m.opp||'Them'],['','live once a game starts']]})+'</div>';
+    h+='<div class="sub" style="white-space:normal;margin-top:6px"><b style="color:'+(margin>=0?'var(--good)':'var(--bad)')+'">'+winProb(margin)+'% to win</b> by the model (expected margin '+(margin>=0?'+':'')+f1(margin)+')'+(num(ywin)?' · Yahoo says '+Math.round(ywin*100)+'%':'')+'</div>';
     if((m.rows||[]).some(r=>/ghost/i.test(String(r.ghost||""))))h+='<div class="sub" style="white-space:normal;margin-top:6px">ghost = a slot they have not set yet, filled with their best bench fit so the total is realistic.</div>';
     h+='</section>';
   }
@@ -289,7 +369,17 @@ function renderHome(d){
     const smx=Math.max.apply(null,se.map(s=>Math.max(num(s.my)||0,num(s.their)||0)).concat([1]));
     h+=se.map(s=>'<tr><td>'+esc(s.week)+'</td><td>'+esc(s.opp)+'<div class="mb"><i style="width:'+(60*(num(s.my)||0)/smx)+'%"></i><span>'+f1(s.my)+'</span></div><div class="mb"><i class="them" style="width:'+(60*(num(s.their)||0)/smx)+'%"></i><span>'+f1(s.their)+'</span></div></td><td class="n">'+f1(s.my)+'</td><td class="n">'+f1(s.their)+'</td><td class="'+(/^w/i.test(s.result||"")?'win':(/^l/i.test(s.result||"")?'loss':''))+'">'+esc(s.result||"")+'</td></tr>').join("");
     h+='</table>';
+    const rowsS=(d.season||[]).filter(s=>!blank(s.opp)&&(num(s.my)!==null||String(s.week)===String(d.week)));
+    if(rowsS.length){const m2=d.matchup||{};h+='<div style="margin-top:8px">'+svgBars({labels:rowsS.map(s=>'Wk '+s.week),series:[{vals:rowsS.map(s=>num(s.my)!==null?s.my:(String(s.week)===String(d.week)?m2.myExp:null)),cls:'me'},{vals:rowsS.map(s=>num(s.their)!==null?s.their:(String(s.week)===String(d.week)?m2.theirExp:null)),cls:'them'}],legend:[['me','Me'],['them','Them'],['','current week = expected']]})+'</div>';
+      h+='<div style="margin-top:8px">'+svgLine({labels:rowsS.map(s=>'Wk '+s.week),series:[{vals:rowsS.map(s=>num(s.my)!==null?s.my:(String(s.week)===String(d.week)?m2.myExp:null)),cls:'me'},{vals:rowsS.map(s=>num(s.their)!==null?s.their:(String(s.week)===String(d.week)?m2.theirExp:null)),cls:'them'}],h:130})+'</div>';}
     const up=(d.schedule||[]).filter(s=>num(s.week)>num(d.week));
+    const pwMe=(d.power||[]).find(x=>isMine(x.name));const pwBy={};(d.power||[]).forEach(x=>{pwBy[x.name]=x});
+    if(up.length&&pwMe){const preds=up.map(s=>{const o=pwBy[s.opp]||{};const mg=Math.round(((num(pwMe.ros)||0)-(num(o.ros)||0))*10)/10;return {week:s.week,opp:s.opp,margin:mg,model:winProb(mg),yahoo:num(s.yahooWin)?Math.round(s.yahooWin*100):null}});
+      const expW=preds.reduce((a,p)=>a+p.model/100,0);
+      h+='</section><section><h2>Predictions · rest of season</h2><div class="sub" style="white-space:normal">Your ROS power vs each opponent\'s (starters + 30% bench). Projected finish: <b>'+((recsW(d))+Math.round(expW))+'-'+((recsL(d))+up.length-Math.round(expW))+'</b></div>'
+        +'<div style="margin-top:6px">'+svgBars({labels:preds.map(p=>'Wk '+p.week),series:[{vals:preds.map(p=>Math.abs(p.margin)),cls:'me',clsAt:preds.map(p=>p.margin>=0?'good':'bad')}],h:130,legend:[['good','favored (margin)'],['bad','underdog (margin)']]})+'</div>'
+        +'<div style="margin-top:6px">'+svgLine({labels:preds.map(p=>'Wk '+p.week),series:[{vals:preds.map(p=>p.model),cls:'me'},{vals:preds.map(p=>p.yahoo),cls:'them',dash:true}],h:130,legend:[['me','model win %'],['them','Yahoo win %']]})+'</div>'
+        +'<table><tr><th>Wk</th><th>Opponent</th><th class="n">Margin</th><th class="n">Model</th><th class="n">Yahoo</th></tr>'+preds.map(p=>'<tr><td>'+p.week+'</td><td>'+esc(p.opp)+'</td><td class="n '+(p.margin>=0?'win':'loss')+'">'+(p.margin>=0?'+':'')+f1(p.margin)+'</td><td class="n">'+p.model+'%</td><td class="n">'+(p.yahoo===null?'':p.yahoo+'%')+'</td></tr>').join("")+'</table>';}
     if(up.length)h+='<details><summary>Rest of schedule</summary><table>'+up.map(s=>'<tr><td style="width:30px">'+esc(s.week)+'</td><td>'+esc(s.opp)+' <small style="color:var(--mute)">'+esc(s.manager)+'</small></td><td class="n">'+(num(s.yahooWin)?Math.round(s.yahooWin*100)+'% Yahoo':'')+'</td></tr>').join("")+'</table></details>';
     h+='</section>';
   }
@@ -311,8 +401,8 @@ function renderLeague(d){
   const byStand=pw.slice().sort((a,b)=>(num(a.standing)||99)-(num(b.standing)||99)||(num(b.pf)||0)-(num(a.pf)||0));
   let h='<section><h2>Standings</h2><table><tr><th style="width:28px">#</th><th>Team</th><th class="n" style="width:46px">Rec</th><th class="n" style="width:52px">PF</th><th class="n" style="width:40px">ROS</th></tr>';
   h+=byStand.map(x=>{const me=/let him cook/i.test(x.name);
-    return '<tr class="tap" data-team="'+esc(x.team)+'"'+(me?' style="font-weight:700"':'')+'><td>'+(num(x.standing)!==null?Math.round(x.standing):'')+'</td><td style="white-space:normal">'+esc(x.name)+'<small style="display:block;color:var(--mute)">'+esc(x.manager)+(blank(x.playsMe)||x.playsMe==='-'?'':' · plays you wk '+esc(x.playsMe))+'</small></td><td class="n">'+esc(x.record)+'</td><td class="n">'+(num(x.pf)!==null?Math.round(x.pf):'')+'</td><td class="n">'+(num(x.rankRos)!==null?Math.round(x.rankRos):'')+'</td></tr>'}).join("");
-  h+='</table><div class="sub" style="margin-top:6px;white-space:normal">Tap a team for its roster. ROS = rank by rest-of-season value of starters plus 30% of bench.</div></section>';
+    return '<tr class="tap" data-team="'+esc(x.team)+'"'+(me?' style="font-weight:700;color:var(--good)"':'')+'><td>'+(num(x.standing)!==null?Math.round(x.standing):'')+'</td><td style="white-space:normal">'+esc(x.name)+'<small style="display:block;color:var(--mute)">'+esc(x.manager)+(blank(x.playsMe)||x.playsMe==='-'?'':' · plays you wk '+esc(x.playsMe))+'</small></td><td class="n">'+esc(x.record)+'</td><td class="n">'+(num(x.pf)!==null?Math.round(x.pf):'')+'</td><td class="n">'+(num(x.rankRos)!==null?Math.round(x.rankRos):'')+'</td></tr>'}).join("");
+  h+='</table><div style="margin-top:10px">'+svgScatter({pts:pw.map(x=>({x:num(x.week),y:num(x.ros),label:x.manager,cls:isMine(x.name)?'me':''})),xl:'This week (starters)',yl:'Rest-of-season power'})+'</div><div style="margin-top:8px">'+svgLine({labels:byStand.map(x=>String(x.manager).split(' ')[0]),series:[{vals:byStand.map(x=>num(x.ros)),cls:'me'},{vals:byStand.map(x=>num(x.week)),cls:'them',dash:true}],h:150,legend:[['me','ROS power'],['them','this week']]})+'<div class="sub">teams in standings order</div></div><div class="sub" style="margin-top:6px;white-space:normal">Tap a team for its roster. ROS = rank by rest-of-season value of starters plus 30% of bench.</div></section>';
   const mx=Math.max.apply(null,pw.map(x=>num(x.ros)||0).concat([1])), mxw=Math.max.apply(null,pw.map(x=>num(x.week)||0).concat([1]));
   h+='<section><h2>Power</h2>'+pw.slice().sort((a,b)=>(num(a.rankRos)||99)-(num(b.rankRos)||99)).map(x=>'<div class="row tap" data-team="'+esc(x.team)+'"><div class="slot">'+Math.round(x.rankRos||0)+'</div><div class="main"><div class="name">'+esc(x.name)+' <small style="color:var(--mute)">'+esc(x.manager)+'</small></div>'
     +fbar('ROS '+f1(x.ros),x.ros,mx,'')+fbar('week '+f1(x.week),x.week,mxw,'','')+'<div class="sub">best '+esc(x.best)+' · weakest '+esc(x.weakest)+' · bench '+f1(x.bench)+'</div></div></div>').join("")+'</section>';
@@ -324,7 +414,7 @@ function renderTeam(d,t){
   const order={QB:0,RB:1,WR:2,TE:3,"W/R/T":4,K:5,DEF:6,BN:7,IR:8};
   ros.sort((a,b)=>(order[a.slot]??9)-(order[b.slot]??9)||(num(b.value)||0)-(num(a.value)||0));
   const P=n=>findPlayer(n)||{};
-  let h='<section><a class="back" href="#league">← League</a><h2 style="margin-top:8px">'+esc(pw.name)+'</h2><div class="sub" style="white-space:normal">'+esc(pw.manager)+' · '+esc(pw.record)+' · PF '+Math.round(num(pw.pf)||0)+' · standing #'+esc(pw.standing)+'</div>';
+  let h='<section><a class="back" href="#league">← League</a><h2 style="margin-top:8px'+(isMine(pw.name)?';color:var(--good)':'')+'">'+esc(pw.name)+'</h2><div class="sub" style="white-space:normal">'+esc(pw.manager)+' · '+esc(pw.record)+' · PF '+Math.round(num(pw.pf)||0)+' · standing #'+esc(pw.standing)+'</div>';
   h+=kv([['This week (starters)',f1(pw.week)+' <small style="color:var(--mute)">rank '+esc(pw.rankNow)+'</small>'],['ROS power',f1(pw.ros)+' <small style="color:var(--mute)">rank '+esc(pw.rankRos)+'</small>'],['Bench value',f1(pw.bench)],['Best player',pl(pw.best)],['Weakest starter',pl(pw.weakest)],['Plays you',blank(pw.playsMe)||pw.playsMe==='-'?'':'week '+esc(pw.playsMe)]]);
   h+='</section><section><h2>Roster</h2><table><tr><th style="width:38px">Slot</th><th>Player</th><th class="n" style="width:44px">Wk</th><th class="n" style="width:44px">Value</th><th class="n" style="width:44px">ROS</th></tr>';
   h+=ros.map(p=>{const x=P(p.player);const g=x.game||{};
@@ -351,9 +441,11 @@ function renderPlayers(d){
   list.sort((a,b)=>(num(key(b))??-1e9)-(num(key(a))??-1e9));
   const mx=Math.max.apply(null,list.slice(0,80).map(p=>Math.abs(num(key(p))||0)).concat([1]));
   const n=Math.min(list.length,state.limit||60);
+  const top=list.slice(0,60).filter(p=>num(p.value)!==null&&num(p.proj)!==null);
+  if(top.length>2)h+='<section><h2>Value vs this week</h2>'+svgScatter({pts:top.map(p=>({x:num(p.proj),y:num(p.value),label:(num(p.owner)===5||top.indexOf(p)<6)?p.name.split(' ').pop():'',cls:num(p.owner)===5?'me':(num(p.owner)?'':'fa')})),xl:'This week projection',yl:'Value per week',h:240})+'<div class="sub" style="white-space:normal"><span class="lg me"></span>yours &nbsp; <span class="lg fa"></span>free agents &nbsp; <span class="lg"></span>other teams · above the trend = more season value than this week suggests</div></section>';
   h+='<section><h2>'+list.length+' players · sorted by '+SORTS[f.sort][0]+'</h2>';
   h+=list.slice(0,n).map(p=>{const v=num(key(p));const g=p.game||{};
-    return '<div class="row tapp" data-player="'+esc(p.name)+'">'+logo(p.team)+'<div class="main"><div class="name">'+esc(p.name)+(p.inj&&!blank(p.inj.status)?' <span class="flag'+(/out|ir/i.test(p.inj.status)?' bad':'')+'" style="font-weight:400">'+esc(p.inj.status)+'</span>':'')+'</div><div class="sub">'+esc([p.pos,p.team,num(p.owner)?p.ownerName+(p.slot?' ('+p.slot+')':''):'Free agent'].join(' · '))+'</div>'
+    return '<div class="row tapp" data-player="'+esc(p.name)+'">'+logo(p.team)+'<div class="main"><div class="name'+(num(p.owner)===5?' mine':'')+'">'+esc(p.name)+(p.inj&&!blank(p.inj.status)?' <span class="flag'+(/out|ir/i.test(p.inj.status)?' bad':'')+'" style="font-weight:400">'+esc(p.inj.status)+'</span>':'')+'</div><div class="sub">'+esc([p.pos,p.team,num(p.owner)?p.ownerName+(p.slot?' ('+p.slot+')':''):'Free agent'].join(' · '))+'</div>'
       +'<div class="fbar" style="margin-top:2px"><div class="t"><i style="width:'+(100*Math.abs(v||0)/mx)+'%"></i></div></div>'
       +'<div class="sub">wk '+f1(p.proj)+' · value '+f1(p.value)+' · ROS '+f1(p.ros&&p.ros.cons)+(p.form&&num(p.form.avg3)!==null?' · 3wk '+f1(p.form.avg3):'')+(p.ecr&&p.ecr.grade?' · <b style="color:'+gradeColor(p.ecr.grade)+'">'+esc(p.ecr.grade)+'</b>':'')+(g.opp?' · '+(g.ha==='Home'?'v ':'@ ')+esc(g.opp):'')+'</div></div><div class="pts"><b>'+(f.sort==='ecr'?(p.ecr?Math.round(p.ecr.rank):''):(f.sort==='snap'?pct(v):(f.sort==='adds'?Math.round(v||0):f1(v))))+'</b></div></div>'}).join("");
   if(list.length>n)h+='<button class="more" id="more">Show more</button>';
@@ -380,7 +472,9 @@ function renderPlayer(d,name){
   const src=p.sources||{}; const sk=Object.keys(src);
   if(sk.length){const mx=Math.max.apply(null,sk.map(k=>num(src[k])||0).concat([num(p.cons)||0,1]));
     h+='<div style="margin-top:8px"><b>Consensus '+f1(p.cons)+'</b> <small style="color:var(--mute)">'+p.nsrc+' sources'+(num(p.spread)!==null?', spread '+f1(p.spread):'')+(num(p.avail)!==null&&p.avail<1?', × availability = '+f1(p.proj):'')+'</small></div>';
-    h+=sk.sort((a,b)=>(num(src[b])||0)-(num(src[a])||0)).map(k=>fbar(k,src[k],mx)).join("");}
+    const ks=sk.sort((a,b)=>(num(src[b])||0)-(num(src[a])||0));
+    h+='<div style="margin-top:6px">'+svgBars({labels:ks,series:[{vals:ks.map(k=>num(src[k])),cls:'me'}],line:{v:p.cons,label:'consensus'},h:140})+'</div>';
+    if(e&&num(e.min)!==null)h+='<div style="margin-top:6px">'+svgBars({labels:['best rank','avg rank','worst rank'],series:[{vals:[e.min,e.ave,e.max],cls:'them'}],line:{v:e.rank,label:'ECR #'+Math.round(e.rank)},h:110})+'<div class="sub">expert rank spread across '+Math.round(e.experts)+' experts (lower is better)</div></div>';}
   if(e)h+=kv([['Expert consensus','#'+Math.round(e.rank)+' overall · '+esc(e.posRank)+' · grade <b style="color:'+gradeColor(e.grade)+'">'+esc(e.grade)+'</b>'],['Expert spread','ranks '+Math.round(e.min)+'–'+Math.round(e.max)+' (std '+f1(e.std)+', '+Math.round(e.experts)+' experts)'],['FantasyPros pts',f1(e.pts)]]);
   if(num(p.wvv)!==null)h+='<div class="sub" style="white-space:normal;margin-top:6px">This week vs his usual value: <b>'+Math.round(p.wvv*100)+'%</b>'+(p.wvv>=1.25?' — big week projected, hold through it':(p.wvv<=0.7?' — weak week projected':''))+'</div>';
   h+='</section>';
@@ -403,6 +497,14 @@ function renderPlayer(d,name){
   // next 3
   const n3=(p.next3||[]);
   if(n3.length&&p.pos!=='K'&&p.pos!=='DST')h+='<section><h2>Next 3</h2><table><tr><th style="width:40px">Wk</th><th>Opponent</th><th class="n">Pts allowed to '+esc(p.pos)+' (2025)</th></tr>'+n3.map(x=>'<tr><td>'+esc(x.week)+'</td><td>'+esc(x.opp)+'</td><td class="n">'+(num(x.allowed)!==null?f1(x.allowed):'')+'</td></tr>').join("")+'</table></section>';
+  // season: actual so far, projected the rest of the way
+  const wkNow=num(d.week);const lgA={};(p.log||[]).forEach(x=>{lgA[x.week]=x.ppr});const wkP={};(p.weekly||[]).forEach(x=>{wkP[x.week]=x.proj});
+  const labs=[],va=[],vp=[],cls=[];for(let w=1;w<=17;w++){labs.push(''+w);const a=lgA[w],pr=wkP[w];if(a!==undefined&&w<wkNow){va.push(a);vp.push(null)}else if(a!==undefined&&w===wkNow&&(/final|progress/i.test(g.status||''))){va.push(a);vp.push(null)}else{va.push(null);vp.push(pr===undefined?(p.bye===w?0:null):pr)}}
+  if(va.some(v=>v!==null)||vp.some(v=>v!==null)){const tot=vp.reduce((a,v)=>a+(num(v)||0),0),done=va.reduce((a,v)=>a+(num(v)||0),0);
+    h+='<section><h2>Season</h2>'+svgBars({labels:labs,series:[{vals:va,cls:'me'},{vals:vp,cls:'proj'}],line:{v:p.value,label:'value/wk'},legend:[['me','actual'],['proj','projected (Sleeper, week by week)']]})+(function(){let c=0;const ca=[],cp=[];let lastA=null;for(let i=0;i<labs.length;i++){if(va[i]!==null){c+=va[i];ca.push(Math.round(c*10)/10);cp.push(null);lastA=i}else{ca.push(null);}}let c2=c;for(let i=0;i<labs.length;i++){if(va[i]===null){c2+=(num(vp[i])||0);cp[i]=Math.round(c2*10)/10}}if(lastA!==null)cp[lastA]=ca[lastA];return '<div style="margin-top:8px">'+svgLine({labels:labs,series:[{vals:ca,cls:'me'},{vals:cp,cls:'proj',dash:true}],h:130,legend:[['me','points so far'],['proj','season pace']]})+'</div>'})()
++'<div class="sub" style="white-space:normal;margin-top:4px">'+Math.round(done)+' scored so far · '+Math.round(tot)+' projected the rest of the way · '+Math.round(done+tot)+' season pace'+(p.bye?' · bye week '+p.bye:'')+'</div></section>';}
+  if((p.log||[]).length>1){const L2=(p.log||[]);const avg=L2.map((x,i)=>{const w=L2.slice(Math.max(0,i-2),i+1).map(y=>num(y.ppr)||0);return Math.round(w.reduce((a,b)=>a+b,0)/w.length*10)/10});
+    h+='<section><h2>Week by week</h2>'+svgLine({labels:L2.map(x=>'Wk '+x.week),series:[{vals:L2.map(x=>x.ppr),cls:'me'},{vals:avg,cls:'them',dash:true}],h:140,legend:[['me','points'],['them','3-week average']]})+'</section>';}
   // game log
   const lg=(p.log||[]);
   if(lg.length){const isQB=p.pos==='QB';
@@ -425,7 +527,7 @@ function renderGames(d){
     const sc=fin&&!blank(g.awayScore)?'<b>'+esc(g.awayScore)+' – '+esc(g.homeScore)+'</b>':'';
     const wx=blank(g.impact)?'':'<span class="'+(/wind|rain|cold/i.test(g.impact)?'flag':'sub')+'">'+esc(g.impact)+'</span>'+(blank(g.cond)?'':' <span class="sub">'+esc(g.cond)+'</span>');
     const away=inLeague(g.away),home=inLeague(g.home);
-    const side=(t,list)=>'<div style="min-width:0"><div class="sub" style="font-weight:600">'+esc(t)+' · implied '+f1(t===g.home?g.impliedHome:g.impliedAway)+'</div>'+list.map(p=>'<div class="sub" style="white-space:normal">'+pl(p.name)+' <small>'+esc(p.pos)+' · '+esc(/let him cook/i.test(p.ownerName)?'YOU':p.ownerName)+' · '+f1(num(p.game&&p.game.live)!==null&&fin?p.game.live:p.proj)+'</small></div>').join("")+'</div>';
+    const side=(t,list)=>'<div style="min-width:0"><div class="sub" style="font-weight:600">'+esc(t)+' · implied '+f1(t===g.home?g.impliedHome:g.impliedAway)+'</div>'+list.map(p=>'<div class="sub'+(isMine(p.ownerName)?' mine':'')+'" style="white-space:normal">'+pl(p.name)+' <small>'+esc(p.pos)+' · '+(isMine(p.ownerName)?'<b style="color:var(--good)">YOU</b>':esc(p.ownerName))+' · '+f1(num(p.game&&p.game.live)!==null&&fin?p.game.live:p.proj)+'</small></div>').join("")+'</div>';
     return '<section><details><summary style="color:var(--ink);font-size:14px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div style="display:flex;align-items:center;gap:6px">'+logo(g.away)+'<b>'+esc(g.away)+'</b><span class="sub">@</span>'+logo(g.home)+'<b>'+esc(g.home)+'</b></div><div style="text-align:right">'+gamePill(g.status)+' <span class="sub">'+esc(g.kick)+'</span>'+(sc?'<br>'+sc:'')+'</div></div>'
       +'<div class="sub" style="white-space:normal;margin-top:4px">'+(blank(g.spread)?'':'spread '+esc(g.spread)+' · total '+esc(g.total)+' · ')+esc(g.roof||'')+(wx?' · '+wx:'')+'</div></summary>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">'+side(g.away,away)+side(g.home,home)+'</div></details></section>'}).join("");
