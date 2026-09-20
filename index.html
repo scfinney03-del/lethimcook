@@ -136,6 +136,16 @@ body.big .nav a{font-size:19px;padding:14px 4px;color:var(--ink)}body.big .nav a
 body.big svg text{font-size:15px!important;fill:var(--ink)!important}body.big svg{height:auto!important;min-height:190px}body.big path.ln{stroke-width:3.5}body.big circle.d{r:5.5}body.big circle.d.me{r:7}
 body.big a.pl{border-bottom:2px solid var(--acc);font-weight:600}
 body.big .flag{font-weight:700}body.big .score .lbl{font-size:16px;white-space:normal}
+
+body.big .vs{grid-template-columns:58px 1fr auto;row-gap:4px}
+body.big .vs .me,body.big .vs .them{white-space:normal;overflow:visible;text-overflow:clip;text-align:left}
+body.big .vs .slot{grid-column:1;grid-row:1}body.big .vs .me{grid-column:2;grid-row:1}body.big .vs .them{grid-column:2;grid-row:2}body.big .vs .edge{grid-column:3;grid-row:1/3;align-self:center}body.big .pair{grid-row:3}
+body.big .vs .them::before{content:"vs ";color:var(--mute);font-weight:400}
+body.big .pair{grid-column:1/4;padding-left:58px}
+body.big .name,body.big .sub,body.big .score .lbl{white-space:normal;overflow:visible;text-overflow:clip}
+body.big .pill{white-space:nowrap}
+body.big .pts{max-width:36%}body.big .main{min-width:0}
+body.big .vs .pill{font-size:15px!important;padding:2px 7px}
 .aa{font:inherit;font-size:13px;font-weight:700;padding:4px 9px;border-radius:8px;border:1px solid var(--line);background:var(--chip);color:var(--ink);cursor:pointer;margin-left:6px}
 body.big .aa{background:var(--acc);color:#fff;border-color:var(--acc);font-size:18px;padding:6px 12px}
 </style>
