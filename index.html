@@ -596,6 +596,7 @@ function renderPlayer(d,name){
   if(num(p.wvv)!==null)h+='<div class="sub" style="white-space:normal;margin-top:6px">This week vs his usual value: <b>'+Math.round(p.wvv*100)+'%</b>'+(p.wvv>=1.25?' — big week projected, hold through it':(p.wvv<=0.7?' — weak week projected':''))+'</div>';
   h+='</section>';
   // value
+  h+=tradeCheck(d,p);
   h+=envSection(p);
   h+='<section><h2>'+gl('value','Value')+'</h2>';
   const rmx=Math.max.apply(null,[rs.cons,rs.sleeper,rs.espn,rs.fantasypros,p.value].map(v=>num(v)||0).concat([1]));
@@ -844,6 +845,63 @@ function envSection(p){
   if(parts.length)h+=svgBars({labels:parts.map(x=>x[1].split(' ')[0]),series:[{vals:parts.map(x=>Math.round((num(x[2])-1)*100)),cls:'me',clsAt:parts.map(x=>num(x[2])>=1?'good':'bad')}],h:110})
     +'<div class="sub" style="white-space:normal">'+parts.map(x=>esc(x[1])+' <b style="color:'+(num(x[2])>=1?'var(--good)':'var(--bad)')+'">'+pc(num(x[2]))+'</b>').join(' · ')+'. Combined and damped to '+pc(t)+'.</div>';
   return h+'</section>';
+}
+// ---------------- TRADE CHECK (tap any rival's player) ----------------
+const SLOTS=[['QB',['QB']],['RB',['RB']],['RB',['RB']],['WR',['WR']],['WR',['WR']],['TE',['TE']],['FLEX',['RB','WR','TE']],['K',['K']],['DEF',['DST']]];
+function myTeamId(d){const me=(d.power||[]).find(x=>isMine(x.name));return me?me.team:null;}
+function rosterOf(d,tid){return (d.league||[]).filter(r=>String(r.team)===String(tid)&&!/^IR/.test(r.slot||''));}
+function lineupPts(rows,key){
+  const used={},out=[];
+  SLOTS.forEach(s=>{let best=null;rows.forEach(p=>{if(used[p.player])return;if(s[1].indexOf(p.pos)<0)return;const v=num(p[key])||0;if(!best||v>(num(best[key])||0))best=p});
+    if(best){used[best.player]=1;out.push(best)}});
+  return out.reduce((a,p)=>a+(num(p[key])||0),0);
+}
+function asRow(p){return {player:p.name,pos:p.pos,value:p.value,ros:(p.ros&&p.ros.cons),week:p.proj,slot:'BN',nfl:p.team,bye:p.bye};}
+function tradeCheck(d,p){
+  if(SHOW)return '';
+  const tid=myTeamId(d);if(tid===null)return '';
+  const own=num(p.owner);
+  if(!own||String(own)===String(tid))return '';
+  const mine=rosterOf(d,tid),theirs=rosterOf(d,own);
+  if(!mine.length||!theirs.length)return '';
+  const target=theirs.find(r=>cleanName(r.player)===cleanName(p.name))||asRow(p);
+  const base=lineupPts(mine,'value'),baseT=lineupPts(theirs,'value');
+  const offers=[];
+  mine.forEach(g=>{
+    const newMine=mine.filter(r=>r.player!==g.player).concat([target]);
+    const newTheirs=theirs.filter(r=>cleanName(r.player)!==cleanName(target.player)).concat([g]);
+    offers.push({give:g,gainMe:lineupPts(newMine,'value')-base,gainThem:lineupPts(newTheirs,'value')-baseT});
+  });
+  offers.sort((a,b)=>b.gainMe-a.gainMe);
+  const fair=offers.filter(o=>o.gainThem>=-0.75).sort((a,b)=>b.gainMe-a.gainMe);
+  const best=fair[0]||null;const dream=offers[0]||null;
+  const theirTeam=(d.power||[]).find(x=>String(x.team)===String(own))||{};
+  const pv=theirTeam.posValue||{};const avg={};
+  ['QB','RB','WR','TE','K','DST'].forEach(k=>{const v=(d.power||[]).map(x=>x.posValue&&num(x.posValue[k])).filter(x=>x!==null);avg[k]=v.length?v.reduce((a,b)=>a+b,0)/v.length:null});
+  const theirThin=['QB','RB','WR','TE'].filter(k=>num(avg[k])&&num(pv[k])<avg[k]*0.85);
+  const inj=(p.inj||{}).status||'';
+  const already=(d.trades||[]).find(t=>cleanName(t.get)===cleanName(p.name));
+  let verdict,cls,why;
+  if(!best&&dream&&dream.gainMe>0.15){verdict='They will laugh';cls='bad';why='He would add '+f1(dream.gainMe)+'/wk to your lineup, but every package that gets him costs them '+f1(Math.abs(dream.gainThem))+'/wk. Nobody trades their best player for a lateral piece — you would need to package two.';}
+  else if(!best||best.gainMe<=0.15){verdict='Pass';cls='bad';why='He does not crack your starting nine by enough to matter — the best swap available moves your weekly lineup by '+f1(best?best.gainMe:(dream?dream.gainMe:0))+' points.';}
+  else if(best.gainMe>=1.5&&best.gainThem>=-0.25){verdict='Go get him';cls='good';why='Adds '+f1(best.gainMe)+'/wk to your lineup and barely dents theirs, so it is the rare one they might just accept.';}
+  else if(best.gainMe>=0.8){verdict='Worth asking';cls='warn';why='Adds '+f1(best.gainMe)+'/wk to your lineup. They lose '+f1(Math.abs(best.gainThem))+'/wk, so expect to sweeten it.';}
+  else {verdict='Only if cheap';cls='warn';why='A marginal gain of '+f1(best.gainMe)+'/wk — worth it only if they take a bench piece you do not miss.';}
+  if(/^(IR|Out|PUP|Sus)/i.test(inj)&&verdict!=='Pass'){verdict='Wait';cls='bad';why='He is '+esc(inj)+' right now. Revisit when he practices — buying an injured player only pays if you get a discount, and his manager knows the same news you do.';}
+  let h='<section><details><summary style="color:var(--ink);font-size:15px"><b>Trade for him?</b> <span class="pill '+(cls==='good'?'ok':(cls==='bad'?'bad':'warn'))+'">'+esc(verdict)+'</span></summary>';
+  h+='<div class="sub" style="white-space:normal;margin-top:6px">'+why+'</div>';
+  h+=kv([['Owner',mg(theirTeam.manager,own)+' <small>('+esc(p.ownerName||'')+')</small>'],
+    ['His value',f1(p.value)+'/wk <small>ROS '+f1(p.ros&&p.ros.cons)+'</small>'],
+    ['They are thin at',theirThin.length?theirThin.join(', '):'<span class="sub">nothing obvious</span>'],
+    ['Trade engine',already?'already lists him — give '+pl(already.give)+', score '+f1(already.score):'<span class="sub">not in this week\'s top trades</span>']]);
+  const show=fair.slice(0,3);
+  if(show.length){h+='<div class="sub" style="font-weight:600;margin-top:8px">Best packages from your roster</div>';
+    h+=show.map(o=>'<div class="row" style="padding:8px 0"><div class="main" style="white-space:normal"><div class="name">Give '+pl(o.give.player)+' <small class="sub">'+esc(o.give.pos)+' · '+f1(o.give.value)+'/wk</small></div><div class="sub" style="white-space:normal">you '+(o.gainMe>=0?'+':'')+f1(o.gainMe)+'/wk · they '+(o.gainThem>=0?'+':'')+f1(o.gainThem)+'/wk'+(o.gainThem<-0.75?' — they say no':(o.gainThem>=0?' — helps them too':' — close enough to ask'))+'</div></div><div class="pts"><b style="color:'+(o.gainMe>0?'var(--good)':'var(--bad)')+'">'+(o.gainMe>0?'+':'')+f1(o.gainMe)+'</b><small>your lineup</small></div></div>').join('');
+    h+=svgBars({labels:show.map(o=>String(o.give.player).split(' ').slice(-1)[0].slice(0,8)),series:[{vals:show.map(o=>o.gainMe),cls:'me'},{vals:show.map(o=>o.gainThem),cls:'them'}],h:120,legend:[['me','your gain'],['them','their gain']]});
+  } else if(dream){h+='<div class="sub" style="font-weight:600;margin-top:8px">Closest you could get</div>'
+    +'<div class="row" style="padding:8px 0"><div class="main" style="white-space:normal"><div class="name">Give '+pl(dream.give.player)+' <small class="sub">'+esc(dream.give.pos)+' · '+f1(dream.give.value)+'/wk</small></div><div class="sub" style="white-space:normal">you '+(dream.gainMe>=0?'+':'')+f1(dream.gainMe)+'/wk · they '+f1(dream.gainThem)+'/wk — they turn this down</div></div></div>';}
+  h+='<div class="sub" style="white-space:normal;margin-top:6px">Gains are per week, measured on each side\'s best starting nine by '+gl('value','value')+' — not raw points, so a backup who never starts counts for nothing.</div>';
+  return h+'</details></section>';
 }
 // ---------------- COLLEGE / DRAFT ----------------
 const CMET=[['forty','40-yard dash','s',true],['vertical','Vertical','in',false],['broad','Broad jump','in',false],['bench','Bench reps','',false],['cone','3-cone','s',true],['shuttle','Shuttle','s',true]];
