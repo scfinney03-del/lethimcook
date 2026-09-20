@@ -651,6 +651,8 @@ function renderPlayer(d,name){
   // value
   h+=tradeCheck(d,p);
   h+=envSection(p);
+  if(p.pos==='DST'||p.pos==='DEF')h+=defUnit(p.unit,'This defence','Who actually generates the sacks and takeaways this unit gets paid for.');
+  else if(p.oppDef)h+=defUnit(p.oppDef,'The defence he faces'+(p.game&&p.game.opp?' \u00b7 '+String(p.game.opp):''),'The men across from him this week, and who is not playing.');
   h+='<section><h2>'+gl('value','Value')+'</h2>';
   const rmx=Math.max.apply(null,[rs.cons,rs.sleeper,rs.espn,rs.fantasypros,p.value].map(v=>num(v)||0).concat([1]));
   h+='<div><b>'+f1(p.value)+' per week</b> <small style="color:var(--mute)">blended: ROS consensus + recent form + usage + history, plus 25% of this week</small></div>';
@@ -995,16 +997,53 @@ function renderNfl(d,abbr){
   const sc=(t.sched||[]);
   if(sc.length)h+='<section><h2>Schedule</h2><table><tr><th style="width:30px">Wk</th><th>Opponent</th><th></th><th class="n">Result</th></tr>'+sc.map(x=>{const fin=/final/i.test(x.status)&&x.pts!=='';const w=fin&&(+x.pts>+x.oppPts);return '<tr'+(String(x.week)===String(d.week)?' style="font-weight:700"':'')+'><td>'+x.week+'</td><td>'+(x.opp==='bye'?'<span class="sub">bye</span>':(x.ha==='Home'?'v ':'@ ')+tl(x.opp))+'</td><td>'+(x.opp==='bye'?'':gamePill(x.status)+' <span class="sub">'+esc(x.kick)+'</span>')+'</td><td class="n '+(fin?(w?'win':'loss'):'')+'">'+(fin?esc(x.pts)+'–'+esc(x.oppPts):'')+'</td></tr>'}).join('')+'</table></section>';
   if(inL.length){state.ctx=inL.concat(fa).map(p=>p.name);state.ctxName=t.name;}
+  h+=defUnit(t.defense,'Defence','Who does the damage on this side of the ball.');
   if(inL.length)h+='<section><h2>In our league</h2>'+inL.map(p=>'<div class="row tapp" data-player="'+esc(p.name)+'">'+face(p.sid,p.team,p.pos)+'<div class="main"><div class="name'+(isMine(p.ownerName)?' mine':'')+'">'+esc(p.name)+'</div><div class="sub">'+posChip(p.pos)+' '+esc(isMine(p.ownerName)?'YOU':p.ownerName)+(p.slot?' ('+esc(p.slot)+')':'')+'</div></div><div class="pts"><b>'+f1(p.value)+'</b><small>value</small></div></div>').join('')+'</section>';
   if(fa.length)h+='<section><h2>Free agents on this team</h2>'+fa.map(p=>'<div class="row tapp" data-player="'+esc(p.name)+'">'+face(p.sid,p.team,p.pos)+'<div class="main"><div class="name">'+esc(p.name)+'</div><div class="sub">'+esc(p.pos)+' · wk '+f1(p.proj)+'</div></div><div class="pts"><b>'+f1(p.value)+'</b><small>value</small></div></div>').join('')+'</section>';
   return h;
 }
 
 
+
+// ---------------- DEFENSIVE PERSONNEL ----------------
+function defRow(m,line){
+  const out=!!m.out;
+  return '<div class="row" style="padding:5px 0"><div class="main"><div class="name" style="white-space:normal;overflow:visible'+(out?';color:var(--bad)':'')+'">'+esc(m.name)
+    +' <small style="color:var(--mute);font-weight:400">'+esc(m.pos||'')+(num(m.snap)>0?' · '+Math.round(100*num(m.snap))+'% of snaps':'')+'</small>'
+    +(out?' <span class="flag">'+esc(m.inj||'out')+'</span>':(m.inj?' <span class="flag">'+esc(m.inj)+'</span>':''))
+    +'</div><div class="sub" style="white-space:normal">'+line+'</div></div></div>';
+}
+function rushLine(m){const b=[];if(num(m.sack))b.push(f1(m.sack)+' sack'+(num(m.sack)===1?'':'s'));if(num(m.qbh))b.push(Math.round(num(m.qbh))+' QB hits');if(!b.length&&num(m.tkl))b.push(Math.round(num(m.tkl))+' tackles');return b.join(' · ')||'—';}
+function covLine(m){const b=[];if(num(m.dint))b.push(Math.round(num(m.dint))+' INT');if(num(m.pd))b.push(Math.round(num(m.pd))+' passes broken up');if(!b.length&&num(m.tkl))b.push(Math.round(num(m.tkl))+' tackles');return b.join(' \u00b7 ')||'\u2014';}
+function defUnit(u,heading,intro){
+  if(!u)return '';
+  const rush=(u.rush||[]).filter(m=>num(m.v)>0),cov=(u.cover||[]).filter(m=>num(m.v)>0),outs=(u.outs||[]);
+  if(!rush.length&&!cov.length&&!outs.length)return '';
+  const missing=Math.round(100*(num(u.outShare)||0));
+  let h='<section><h2>'+esc(heading)+'</h2>';
+  if(intro)h+='<div class="sub" style="white-space:normal">'+intro+'</div>';
+  h+='<div class="sub" style="white-space:normal;margin-top:2px">'+Math.round(num(u.men)||0)+' defenders tracked'
+    +(missing>0?' · <b style="color:var(--warn)">missing '+missing+'% of its defensive production this week</b>':' · everyone who matters is available')+'.</div>';
+  if(rush.length){
+    h+='<div class="sub" style="font-weight:600;margin-top:10px">'+gl('rushv','Pass rush')+'</div>'
+      +svgBars({labels:rush.map(m=>shortName(m.name)),series:[{vals:rush.map(m=>num(m.v)),cls:'me',clsAt:rush.map(m=>m.out?'bad':'')}],h:110})
+      +rush.map(m=>defRow(m,rushLine(m))).join('');
+  }
+  if(cov.length){
+    h+='<div class="sub" style="font-weight:600;margin-top:10px">'+gl('coverv','Coverage')+'</div>'
+      +cov.map(m=>defRow(m,covLine(m))).join('');
+  }
+  if(outs.length){
+    h+='<div class="sub" style="font-weight:600;margin-top:10px">Out or doubtful</div>'
+      +outs.map(m=>defRow(Object.assign({out:true},m),(num(m.sack)?f1(m.sack)+' sacks · ':'')+'worth '+f1(m.impact)+' a game to this defence')).join('');
+  }
+  return h+'<div class="sub" style="white-space:normal;margin-top:6px">Built from every defensive snap in the nflverse box scores. Your league has no defensive slots, so nobody here is startable — this is for reading how hard a week your own guys are facing.</div></section>';
+}
+
 function envSection(p){
   const e=p.env||{};const t=num(e.total);
   if(t===null)return '';
-  const parts=[['wx','Weather',e.wx],['ha','Home / away',e.ha],['matchup','This defence',e.matchup],['alt','Altitude',e.alt],['vegas','Game script',e.vegas]].filter(x=>num(x[2])!==null);
+  const parts=[['wx','Weather',e.wx],['ha','Home / away',e.ha],['matchup','This defence',e.matchup],['dmen','Defenders out',e.dmen],['alt','Altitude',e.alt],['vegas','Game script',e.vegas]].filter(x=>num(x[2])!==null);
   if(!parts.length&&Math.abs(t-1)<0.005)return '';
   const pc=v=>((v-1)*100>=0?'+':'')+Math.round((v-1)*100)+'%';
   let h='<section><h2>'+gl('adjust','Adjustments')+' on this week</h2>';
@@ -1139,6 +1178,9 @@ const GLOSS={
  next3:['Next 3','How friendly his next three defenses are to his position, as a multiplier. 1.0 is average, 1.2 means those defenses give up 20% more than normal to his position, 0.8 means they are tough.'],
  buzz:['Buzz','Net tone of the last 72 hours of news about him, from our keyword list. Negative is bad news piling up, positive is good news. It is a nudge, not a projection.'],
  linemove:['Line move','How far the betting line has shifted since the week opened, in points. Money moves for a reason — a line sliding toward a team usually means the market learned something (a starter is out, weather turned) before the injury reports and projections catch up. A move of 2 points or more is worth a look.'],
+ rushv:['Pass rush','A per-game score for what a defender does to the quarterback: three points a sack, plus a bit for every quarterback hit and tackle for loss. It is not fantasy scoring — nobody in your league starts defenders — it is a way of ranking who actually wrecks a pocket, so you can see at a glance whether the guy your quarterback faces on Sunday is a problem or a name.'],
+ coverv:['Coverage','A per-game score for a defensive back or linebacker in coverage: three points an interception, one a pass broken up. Thin on two weeks of data, so read it as a hint rather than a verdict.'],
+ dmen:['Defenders out','How much of the opposing defence is unavailable this week, weighted by what each missing man is worth per game, then applied to the position it actually helps. A missing edge rusher shows up mostly for your quarterback; a missing corner mostly for your receivers. Capped at 8% and deliberately small, because two weeks of snaps is a thin base to reason from.'],
  livewin:['Live win chance','Who wins the actual NFL game, updated from the score and the clock. It starts at the betting line, then leans harder on the scoreboard as time runs out — a 7-point lead in the first quarter is worth far less than the same lead with four minutes left.'],
  winpct:['Win %','Your chance of winning this week. Every slot is treated as a range rather than a single number — a receiver can swing 20 points, a kicker maybe 6 — and we add those swings up. Players who finished are locked in, players mid-game count part way.'],
  slotwin:['Slot win %','Chance your player outscores theirs in that slot, given how much each can swing from here.'],
