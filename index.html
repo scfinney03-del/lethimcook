@@ -565,9 +565,18 @@ function renderHome(d){
   return h;
 }
 
+// A problem the app can still render around is worse than a crash, because it looks fine. When a
+// self check fails, say so where he already looks rather than only in the engine room.
+function healthBanner(d){
+  const bad=(((d.dev||{}).health)||[]).filter(x=>!x.ok);
+  if(!bad.length)return '';
+  return '<section style="border-left:4px solid var(--bad)"><h2 style="color:var(--bad)">Something is off</h2>'
+    +bad.map(x=>'<div class="sub" style="white-space:normal;margin:4px 0"><b style="color:var(--bad)">'+esc(x.key)+'</b> — '+esc(x.msg)+'</div>').join('')
+    +'<div class="sub" style="white-space:normal;margin-top:6px">The rest of the app still works; these numbers are just older or thinner than they should be.</div></section>';
+}
   function laptopPanel(d){
   if(SHOW)return '';
-  let h='';
+  let h=healthBanner(d);
     const la=num(d.listenerAge); const lOn=la!==null&&la>=0&&la<180;
     let chk=""; if(d.checkedIso){const cm=Math.round((Date.now()-new Date(d.checkedIso).getTime())/60000);chk=esc(d.checked||"")+(cm<1?" (just now)":" ("+cm+" min ago)");}
     h+='<section><h2>Laptop</h2><div style="margin:2px 0 6px"><span class="badge'+(d.paused?' off':'')+'">'+(d.paused?'PAUSED':'RUNNING')+'</span>'+(d.engine?' <span class="pill">'+esc(d.engine)+' engine · '+esc(d.runSec)+'s</span>':'')+'</div>'
@@ -1456,6 +1465,8 @@ function renderDev(d){
   }
   const v=d.dev||{};const W=v.weights||{};const acc=(v.accuracy||{});const ov=acc.overall||[];const wk=acc.weekly||[];
   let h='<section><h2>Engine room</h2><div class="sub" style="white-space:normal">How every number on this app is built. <a href="#" id="pinout" style="color:var(--mute)">lock again</a></div>';
+  const hh=(v.health||[]);
+  if(hh.length){h+='<div style="margin-top:8px">'+hh.map(x=>'<div class="sub" style="white-space:normal;display:flex;gap:8px;align-items:flex-start;padding:2px 0"><span style="color:'+(x.ok?'var(--good)':'var(--bad)')+';font-weight:700">'+(x.ok?'✓':'✕')+'</span><span><b>'+esc(x.key)+'</b>'+(x.ok?'':' — '+esc(x.msg))+'</span></div>').join('')+'</div>';}
   h+=kv([['Week','engine '+esc(v.engineWeek)+' · stats through week '+esc(v.statsWeek)],['Last run',(num(v.runSec)||0)+' seconds'],['Board lines',(v.rules||[]).length]])+'</section>';
   h+='<section><h2>Value recipe</h2><div class="sub" style="white-space:normal">Value per week = rest-of-season consensus, pulled toward recent form and his own history, scaled for snap share and trend, then blended with this week\'s consensus.</div>'
     +kv([['Recent form weight',Math.round((num(W.w_form)||0)*100)+'% <small>(scaled by games played)</small>'],['History weight',Math.round((num(W.w_hist)||0)*100)+'%'],['This-week weight',Math.round((num(W.w_week)||0)*100)+'%'],['Low snaps (under 40%)','×'+f1(W.snap_low)],['Heavy snaps (70%+)','×'+f1(W.snap_high)]])
