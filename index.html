@@ -831,7 +831,13 @@ h+='<section><h2>Team context · '+tl(p.team)+'</h2>'+kv([['Coaches',c?coachLine
   // splits
   const sp=p.splits;
   if(sp&&num(sp.games)>=4){const rows=[['Home',sp.home,sp.homeN],['Away',sp.away,sp.awayN],['Good weather',sp.goodWx,sp.goodN],['Bad weather',sp.badWx,sp.badN],['Dome',sp.dome,sp.domeN],['At Denver',sp.denver,sp.denverN]].filter(r=>num(r[2])>0);
-    h+='<section><h2>Splits · 2024–26</h2>'+svgBars({labels:rows.map(r=>r[0]),series:[{vals:rows.map(r=>r[1]),cls:'me',clsAt:rows.map(r=>num(r[2])<3?'proj':'')}],line:{v:sp.ppg,label:'avg '+f1(sp.ppg)},h:140})+'<div class="sub" style="white-space:normal">'+rows.map(r=>r[0]+' '+f1(r[1])+' ('+Math.round(r[2])+' g)').join(' · ')+'<br>pale bars = under 3 games, not much to go on'+(g.opp?' · this week: '+(g.ha==='Home'?'home':'away')+(g.impact&&/wind|rain|cold/i.test(g.impact)?', bad weather':'')+(g.altitude>=5000?', Denver':''):'')+'</div></section>';}
+    h+='<section><h2>Splits · 2024–26</h2>'+svgBars({labels:rows.map(r=>r[0]),series:[{vals:rows.map(r=>r[1]),cls:'me',clsAt:rows.map(r=>num(r[2])<3?'proj':'')}],line:{v:sp.ppg,label:'avg '+f1(sp.ppg)},h:140})+'<div class="sub" style="white-space:normal">'+rows.map(r=>r[0]+' '+f1(r[1])+' ('+Math.round(r[2])+' g)').join(' · ')+'<br>pale bars = under 3 games, not much to go on'+(g.opp?' · this week: '+(g.ha==='Home'?'home':'away')+(g.impact&&/wind|rain|cold/i.test(g.impact)?', bad weather':'')+(g.altitude>=5000?', Denver':''):'')+'</div>';
+    // his own weather tolerance, condition by condition, against his calm-day average
+    const wx=[['Calm',sp.calm,sp.calmN],['Wind 15+',sp.wind,sp.windN],['Rain',sp.rain,sp.rainN],['Cold 35F-',sp.cold,sp.coldN]].filter(r=>num(r[2])>0);
+    if(wx.length>1&&num(sp.calm)>0){const tol=r=>Math.round(100*num(r[1])/num(sp.calm));
+      h+='<h2 style="margin-top:12px">'+gl('wxtol','Weather tolerance')+'</h2>'+svgBars({labels:wx.map(r=>r[0]),series:[{vals:wx.map(r=>r[1]),cls:'me',clsAt:wx.map(r=>num(r[2])<3?'proj':(tol(r)>=105?'good':(tol(r)<=90?'bad':'')))}],line:{v:sp.calm,label:'calm '+f1(sp.calm)},h:130})
+        +'<div class="sub" style="white-space:normal">'+wx.filter(r=>r[0]!=='Calm').map(r=>r[0]+': <b style="color:'+(tol(r)>=105?'var(--good)':(tol(r)<=90?'var(--bad)':'var(--ink)'))+'">'+tol(r)+'%</b> of his calm-day scoring ('+Math.round(r[2])+' g)').join(' · ')+'. Real kickoff weather at every game since 2024. This is what the weather adjustment uses for him, weighted by how many games back it up.</div>';}
+    h+='</section>';}
   // history
   if(hs)h+='<section><h2>History</h2>'+kv([['2025',num(hs.ppg2025)?f1(hs.ppg2025)+' ppg over '+Math.round(hs.g2025)+' games':'did not play'],['Career',f1(hs.career)+' ppg · '+Math.round(hs.games)+' games · '+Math.round(hs.seasons)+' seasons'],['Range','floor '+f1(hs.floor)+' · ceiling '+f1(hs.ceiling)+' · best '+f1(hs.best)],['Boom / bust',Math.round(hs.boom*100)+'% of games 20+ · '+Math.round(hs.bust*100)+'% under 5'],['Week-to-week swing','±'+f1(hs.std)]])+'</section>';
   // next 3
@@ -1434,6 +1440,8 @@ function envSection(p){
     : '<div class="sub" style="white-space:normal">Sources say <b>'+f1(p.cons)+'</b>'+(num(p.avail)<1?' · health ×'+f1(p.avail):'')+' · conditions <b style="color:'+(t>=1?'var(--good)':'var(--bad)')+'">'+pc(t)+'</b> → <b>'+f1(p.proj)+'</b> projected.</div>');
   if(parts.length)h+=svgBars({labels:parts.map(x=>x[3]),series:[{vals:parts.map(x=>Math.round((num(x[2])-1)*100)),cls:'me',clsAt:parts.map(x=>num(x[2])>=1?'good':'bad')}],h:110})
     +'<div class="sub" style="white-space:normal">'+parts.map(x=>esc(x[1])+' <b style="color:'+(num(x[2])>=1?'var(--good)':'var(--bad)')+'">'+pc(num(x[2]))+'</b>').join(' · ')+'. Combined and damped to '+pc(t)+'.</div>';
+  const w=e.wxWhy;if(w&&num(w.n))h+='<div class="sub" style="white-space:normal;margin-top:4px">Weather is <b>his own</b> number: in '+Math.round(w.n)+' '+esc(w.kind==='wind'?'windy':(w.kind==='rain'?'wet':'cold'))+' games he scored '+f1(w.ppg)+' against '+f1(w.calm)+' on calm days ('+Math.round(100*num(w.ratio))+'%). The generic '+esc(p.pos)+' figure is '+pc(num(w.posTab))+'; his history pulls it to '+pc(num(e.wx))+'.</div>';
+  else if(num(e.wx)!==null&&Math.abs(num(e.wx)-1)>0.001)h+='<div class="sub" style="white-space:normal;margin-top:4px">Weather is the generic '+esc(p.pos)+' figure — fewer than two games of his own in this kind of weather yet.</div>';
   return h+'</section>';
 }
 // ---------------- TRADE CHECK (tap any rival's player) ----------------
@@ -1562,6 +1570,8 @@ const GLOSS={
  next3:['Next 3','How friendly his next three defenses are to his position, as a multiplier. 1.0 is average, 1.2 means those defenses give up 20% more than normal to his position, 0.8 means they are tough.'],
  buzz:['Buzz','Net tone of the last 72 hours of news about him, from our keyword list. Negative is bad news piling up, positive is good news. It is a nudge, not a projection.'],
  linemove:['Line move','How far the betting line has shifted since the week opened, in points. Money moves for a reason — a line sliding toward a team usually means the market learned something (a starter is out, weather turned) before the injury reports and projections catch up. A move of 2 points or more is worth a look.'],
+ tenure:['Coach tenure','Seasons with the team, his rank among the 32 (head coaches by win% with the team; coordinators by what their unit scored or allowed last full season), and a survival model: head coaches leave at about one in five a year, less with a winning record, playoff games and a long run, more with a losing record or a bad current season. Coordinators leave both ways - fired when the unit is bad, hired away when it is great. Expected seasons left is one over that yearly chance, capped at seven.'],
+ wxtol:['Weather tolerance','His scoring in windy (15+ mph), wet and cold (35F or under) games against his calm-day average, using the real weather at every kickoff since 2024. When this week\'s forecast matches one of those, the weather adjustment uses his own rate, trusted in proportion to how many games back it up, instead of a one-size-fits-all cut for his position.'],
  alumni:['Alumni tracker','Every player in the pool grouped by the college he came from. A school\'s total is the sum of its players\' value per week, so it rewards schools that keep sending starters, not just bodies. Draft capital is the average of where its men were picked (100% = first overall).'],
  boom:['Boom or bust','How far each side can still land from its expected final. Each starter swings by an amount set by his position and projection, shrinking as his game runs out. Then the stacks: two of your players from the same offence rise and fall together, so your side swings wider than nine independent players would; one of yours against one of theirs from the same offence partly cancels. That true spread is what the win chance uses. A boom is 15+ points over expected, a bust 15+ under. Each starter\'s own rates come from his career game logs: a boom game is 20+ points, a bust game under 5.'],
  durability:['Injury history','How often he has actually missed games hurt over the last three seasons — counted from weeks on injured reserve plus weeks ruled out, divided by weeks he was on a roster. A backup who simply never plays is not counted as fragile. Shrunk toward a normal 90% when there is only a season or so to go on. It nudges his value by a few percent at most, because the projection sources already price in some fragility.'],
@@ -1735,6 +1745,62 @@ function renderDev(d){
   return h;
 }
 // ---------------- COACH ----------------
+
+// ---------------- COACH TENURE: how long he has been here, where he ranks, how long he lasts ----------------
+// A simple yearly-survival model. Head coaches leave at roughly one in five a year league-wide; a
+// winning record, playoff games and a long tenure pull that down, a losing one and a bad current
+// season push it up. Expected seasons left = 1 / yearly chance of leaving, capped at ten.
+function coachModel(d,t,role){
+  const yr=num(d.nflSeason)||new Date().getFullYear();
+  const since=num(t[role+'Since']);const tenure=since?Math.max(1,yr-since+1):null;
+  const rec=/^(\d+)-(\d+)/.exec(t.hcRecord||'');const w=rec?+rec[1]:0,l=rec?+rec[2]:0,g=w+l;const wp=g?w/g:null;
+  const po=/^(\d+)-(\d+)/.exec(t.hcPlayoffs||'');const pw=po?+po[1]:0,pg=po?(+po[1])+(+po[2]):0;
+  const cur=(t.seasons||[]).find(x=>num(x.season)===yr)||{};const cg=num(cur.games)||0,cwp=cg?(num(cur.w)||0)/cg:null;
+  const seasons=(t.seasons||[]).filter(x=>num(x.games)>0&&(!since||num(x.season)>=since));
+  const gg=seasons.reduce((a,x)=>a+(num(x.games)||0),0);
+  const ppg=gg?seasons.reduce((a,x)=>a+(num(x.ppg)||0)*(num(x.games)||0),0)/gg:null,pa=gg?seasons.reduce((a,x)=>a+(num(x.pa)||0)*(num(x.games)||0),0)/gg:null;
+  let p,why=[];
+  if(role==='hc'){
+    if(g<10){p=0.12;why.push('first season with the team - almost nobody is fired in year one');}
+    else{p=wp>=0.6?0.06:(wp>=0.5?0.14:(wp>=0.4?0.30:0.50));why.push('career '+w+'-'+l+' here ('+Math.round(wp*100)+'%)');}
+    if(pg>0){p*=0.7;why.push('has coached '+pg+' playoff game'+(pg>1?'s':'')+(pw?', won '+pw:''));}
+    if(tenure>=8&&wp>=0.55){p*=0.8;why.push('established: '+tenure+' seasons of winning');}
+    if(cg>=4){if(cwp<=0.3){p*=1.6;why.push('this season is going badly ('+cur.w+'-'+cur.l+')');}else if(cwp>=0.65){p*=0.7;why.push('this season is going well ('+cur.w+'-'+cur.l+')');}}
+  }else{
+    // coordinators move on for two reasons: fired when the unit is bad, hired away when it is great
+    p=0.30;const rk=role==='oc'?t.ocRank:t.dcRank;
+    if(num(rk)!==null){if(rk<=8){p=0.42;why.push('unit ranks #'+rk+' - a head-coach candidate, likely hired away');}else if(rk>=25){p=0.48;why.push('unit ranks #'+rk+' - on the hot seat');}else why.push('unit ranks #'+rk+' - middle of the pack');}
+    if(tenure>=4)p*=0.85;
+  }
+  p=Math.min(0.85,Math.max(0.08,p));   // nobody is safer than about 8% a year: retirements and better offers happen
+  const left=Math.min(7,Math.round(10/p)/10);
+  return {tenure:tenure,since:since,w:w,l:l,wp:wp,pw:pw,pg:pg,cur:cur,p:p,left:left,through:yr+Math.max(0,Math.round(left)-1),ppg:ppg,pa:pa,why:why};
+}
+function coachRanks(d){
+  // every head coach by win% with the team (16+ games, else unranked), every coordinator by his unit
+  const ts=(d.nflTeams||[]);const yr=num(d.nflSeason)||new Date().getFullYear();
+  const hc=ts.map(t=>{const m=coachModel(d,t,'hc');return {t:t,wp:m.w+m.l>=16?m.wp:null,tenure:m.tenure}});
+  const ranked=hc.filter(x=>x.wp!==null).sort((a,b)=>b.wp-a.wp);ranked.forEach((x,i)=>{x.t.hcRank=i+1;x.t.hcRankOf=ranked.length});
+  const byT=hc.slice().sort((a,b)=>(b.tenure||0)-(a.tenure||0));byT.forEach((x,i)=>{x.t.hcTenRank=i+1});
+  const last=ts.map(t=>{const ss=(t.seasons||[]).filter(x=>num(x.games)>=8);const s=ss[ss.length-1]||{};return {t:t,ppg:num(s.ppg),pa:num(s.pa)}});
+  const oc=last.filter(x=>x.ppg!==null).sort((a,b)=>b.ppg-a.ppg);oc.forEach((x,i)=>{x.t.ocRank=i+1});
+  const dc=last.filter(x=>x.pa!==null).sort((a,b)=>a.pa-b.pa);dc.forEach((x,i)=>{x.t.dcRank=i+1});
+  return {hc:hc};
+}
+function coachTenureSection(d,t,role){
+  coachRanks(d);const m=coachModel(d,t,role);if(!m.tenure)return '';
+  const isHC=role==='hc';const yr=num(d.nflSeason)||new Date().getFullYear();
+  const rows=[['Tenure',m.tenure+(m.tenure===1?' season':' seasons')+' <small>(since '+m.since+')</small>'+(isHC&&t.hcTenRank?' · #'+t.hcTenRank+' longest of 32':'')]];
+  if(isHC)rows.push(['Rank',t.hcRank?'#'+t.hcRank+' of '+t.hcRankOf+' head coaches by win% with the team ('+Math.round(m.wp*100)+'%)':'unranked - under 16 games with the team']);
+  else rows.push(['Rank','#'+(role==='oc'?t.ocRank:t.dcRank)+' of 32 by '+(role==='oc'?'points scored':'points allowed')+' last full season']);
+  rows.push(['Chance he is gone after this season','<b style="color:'+(m.p>=0.4?'var(--bad)':(m.p>=0.2?'var(--warn)':'var(--good)'))+'">'+Math.round(m.p*100)+'%</b>']);
+  rows.push(['Projected run','about '+f1(m.left)+' more season'+(m.left>=1.5?'s':'')+' · through '+m.through]);
+  rows.push(['Predicted total tenure','about '+Math.round(m.tenure+m.left)+' seasons with the team']);
+  let h='<section><h2>'+gl('tenure','Tenure and how long he lasts')+'</h2>'+kv(rows)+'<div class="sub" style="white-space:normal">'+(m.why.length?'Why: '+m.why.join('; ')+'.':'')+'</div>';
+  if(isHC){const all=(d.nflTeams||[]).map(x=>({n:shortName(x.hc||''),v:coachModel(d,x,'hc').tenure||0,me:x.team===t.team})).sort((a,b)=>b.v-a.v).slice(0,12);
+    h+=svgBars({labels:all.map(x=>x.n),series:[{vals:all.map(x=>x.v),cls:'me',clsAt:all.map(x=>x.me?'good':'them')}],h:120})+'<div class="sub">longest-tenured head coaches, seasons with the team (green = him)</div>';}
+  return h+'</section>';
+}
 function renderCoach(d,name){
   const ts=(d.nflTeams||[]);const nm=String(name||'').toLowerCase();
   const hits=[];ts.forEach(t=>{[['hc','Head coach','hcSince'],['oc','Offensive coordinator','ocSince'],['dc','Defensive coordinator','dcSince']].forEach(r=>{if(String(t[r[0]]).toLowerCase()===nm)hits.push({t:t,role:r[0],title:r[1],since:t[r[2]]})})});
@@ -1751,6 +1817,7 @@ function renderCoach(d,name){
   if(num(t.pa)&&(isDC||isHC))rows.push(['Home / away allowed',f1(t.paHome)+' / '+f1(t.paAway)+' <small>(team, 2024–26)</small>']);
   if(num(t.altitude))rows.push(['Home altitude','⛰️ '+Math.round(t.altitude).toLocaleString()+' ft']);
   h+=kv(rows)+'<div class="sub" style="white-space:normal;margin-top:4px">Seasons before '+(H.since?esc(H.since):'his hire')+' are shown for context — they belong to the previous staff.</div></section>';
+  h+=coachTenureSection(d,t,H.role);
   const poss=['QB','RB','WR','TE'];const pa=t.posAvg||{};
   if(seasons.length){const lab=seasons.map(x=>String(x.season)+(since&&num(x.season)<since?'*':''));
     h+='<section><h2>Season by season</h2><table><tr><th>Season</th><th class="n">G</th><th class="n">W-L</th><th class="n">'+(isDC?'Allowed':'Scored')+'</th><th class="n">'+(isDC?'Scored':'Allowed')+'</th></tr>'+seasons.map(x=>'<tr'+(since&&num(x.season)<since?' style="color:var(--mute)"':'')+'><td>'+x.season+(since&&num(x.season)<since?' <small>prev staff</small>':'')+'</td><td class="n">'+Math.round(x.games)+'</td><td class="n">'+Math.round(x.w)+'-'+Math.round(x.l)+'</td><td class="n"><b>'+f1(isDC?x.pa:x.ppg)+'</b></td><td class="n">'+f1(isDC?x.ppg:x.pa)+'</td></tr>').join('')+'</table>';
