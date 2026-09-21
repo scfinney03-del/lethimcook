@@ -204,6 +204,7 @@ body.big body.big body.big body.big .wi-t.on body.big body.big
 .wrow.lead .pc{color:var(--acc)}
 body.big .wrow{font-size:17px}body.big .wrow .nm{flex-basis:56px}body.big .wrow .tr{height:16px}
 .wrow.win .tr i{background:var(--good)}.wrow.win .pc{color:var(--good)}
+.wrow.opp .tr i{background:var(--bad)}.wrow.opp .pc{color:var(--bad)}
 .chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .chips .chip{display:inline-block;padding:5px 9px;border-radius:999px;background:var(--chip);color:var(--ink);font-size:12px;font-weight:600;text-decoration:none;border:1px solid transparent}
 .chips .chip.on{background:var(--acc);color:#fff}
@@ -220,7 +221,7 @@ body.big .chips .chip{font-size:15px;padding:7px 12px}
 .frow .bline{margin:0;color:var(--mute);font-size:11px;white-space:normal}
 body.big .frow .ft{font-size:17px}body.big .frow .bline{font-size:14px}body.big .frow .tr{height:14px}
 .wp .track{flex:1;height:14px;border-radius:7px;background:var(--chip);overflow:hidden;display:flex}
-.wp .mine{background:var(--acc)}.wp .theirs{background:var(--bar)}
+.wp .mine{background:var(--acc)}.wp .theirs{background:var(--bad)}
 .wpn{font-weight:800;font-size:22px}
 .pct{font-weight:700}
 .g summary{border-left:4px solid var(--line);padding-left:8px}
@@ -386,7 +387,10 @@ function svgBars(o){ // o: {labels:[], series:[{vals:[],cls:'',name:''}], line:{
     h+='<rect class="b '+(s.cls||'')+(s.clsAt&&s.clsAt[i]?' '+s.clsAt[i]:'')+'" x="'+x+'" y="'+top+'" width="'+bw+'" height="'+ht+'" rx="2"/>'})});
   if(o.line&&num(o.line.v)!==null){const y=sc(o.line.v);h+='<line x1="'+L+'" y1="'+y+'" x2="'+(W-R)+'" y2="'+y+'" stroke="var(--warn)" stroke-width="1.5" stroke-dasharray="4 3"/><text x="'+(W-R)+'" y="'+(y-3)+'" font-size="9" text-anchor="end" fill="var(--warn)">'+esc(o.line.label||'')+'</text>'}
   const wMax=Math.max.apply(null,o.labels.map(l=>String(l).length*5.6+6).concat([1])),stepB=Math.max(1,Math.ceil(wMax/Math.max(1,gw)));
-  o.labels.forEach((l,i)=>{if(stepB>1&&i%stepB)return;h+='<text x="'+(L+i*gw+gw/2)+'" y="'+(H-6)+'" font-size="9" text-anchor="middle" fill="var(--mute)">'+esc(l)+'</text>'});
+  // when labels are too wide, shorten them before hiding any: every bar keeps a name while at
+  // least four letters fit; only past that do we fall back to labelling every other bar
+  const fitC=Math.floor((gw-4)/5.6),cut=(stepB>1&&fitC>=4);
+  o.labels.forEach((l,i)=>{if(stepB>1&&!cut&&i%stepB)return;let t=String(l);if(cut&&t.length>fitC)t=t.slice(0,fitC-1)+'.';h+='<text x="'+(L+i*gw+gw/2)+'" y="'+(H-6)+'" font-size="9" text-anchor="middle" fill="var(--mute)">'+esc(t)+'</text>'});
   h+='</svg>';
   if(o.legend)h+='<div class="sub" style="white-space:normal">'+o.legend.map(x=>'<span class="lg '+x[0]+'"></span>'+esc(x[1])).join(' &nbsp; ')+'</div>';
   return h;
@@ -484,7 +488,7 @@ function renderHome(d){
     const rowsM=(m.rows||[]);const margin=(num(m.myExp)||0)-(num(m.theirExp)||0);const ywin=((d.schedule||[]).find(s=>String(s.week)===String(d.week))||{}).yahooWin;
     h+='<div style="margin-top:10px">'+svgBars({labels:rowsM.map(r=>r.slot),series:[{vals:rowsM.map(r=>num(r.myExp)),cls:'me'},{vals:rowsM.map(r=>num(r.theirExp)),cls:'them'}],h:140,legend:[['me','Me'],['them',m.opp||'Them'],['','live once a game starts']]})+'</div>';
     if(!SHOW)h+='<div class="sub" style="white-space:normal;margin-top:6px"><b style="color:'+(margin>=0?'var(--good)':'var(--bad)')+'">'+(num(m.winPct)!==null?Math.round(num(m.winPct)):winProb(margin))+'% to win</b> by the model (expected margin '+(margin>=0?'+':'')+f1(margin)+')'+(num(ywin)?' · Yahoo says '+Math.round(ywin*100)+'%':'')+'</div>';
-    h+='</section>'+whyBlock(M,m)+'<section>';
+    h+='</section>'+whyBlock(M,m)+boomBust({expA:M.myExp,expB:M.thExp,vA:M.vM,vB:M.vT,cov:M.cov,rowsA:M.rows.filter(r=>r.my).map(r=>({name:r.my,pos:r.slot}))},'You',String(m.opp||'Them'))+'<section>';
     if((m.rows||[]).some(r=>/ghost/i.test(String(r.ghost||""))))h+='<div class="sub" style="white-space:normal;margin-top:6px">ghost = a slot they have not set yet, filled with their best bench fit so the total is realistic.</div>';
     h+='</section>';
   }
@@ -847,17 +851,19 @@ function modelL(A,B){
   const sdr=r=>{if(r.empty)return 0;const b=SDPOS[r.pos]||6;return b*Math.sqrt(Math.max(0.35,(r.proj||0)/12))*Math.sqrt(r.frac)};
   const sum=(L,f)=>L.reduce((s,r)=>s+(f(r)||0),0);
   const ea=sum(A.lineup,r=>r.exp),eb=sum(B.lineup,r=>r.exp),na=sum(A.lineup,r=>r.live),nb=sum(B.lineup,r=>r.live);
-  const va=sum(A.lineup,r=>sdr(r)*sdr(r)),vb=sum(B.lineup,r=>sdr(r)*sdr(r)),sd=Math.sqrt(va+vb);
+  const va=sum(A.lineup,r=>sdr(r)*sdr(r)),vb=sum(B.lineup,r=>sdr(r)*sdr(r));
+  const cov=stackCov(A.lineup.filter(r=>!r.empty).map(r=>({name:r.name,sd:sdr(r)})),B.lineup.filter(r=>!r.empty).map(r=>({name:r.name,sd:sdr(r)})));
+  const sd=Math.sqrt(Math.max(0.01,va+cov.cm+vb+cov.ct-2*cov.cx));
   const win=sd<0.01?(ea>eb?100:(ea<eb?0:50)):Math.round(100*phi((ea-eb)/sd));
   const n=Math.max(A.lineup.length,B.lineup.length),rows=[];
   for(let i=0;i<n;i++){const a=A.lineup[i]||{empty:true,exp:0},b=B.lineup[i]||{empty:true,exp:0};
     const s2=Math.sqrt(sdr(a)*sdr(a)+sdr(b)*sdr(b));
     rows.push({slot:(a.slot||b.slot),a:a,b:b,gap:(a.exp||0)-(b.exp||0),sw:s2<0.01?((a.exp||0)>(b.exp||0)?100:((a.exp||0)<(b.exp||0)?0:50)):Math.round(100*phi(((a.exp||0)-(b.exp||0))/s2))});}
-  return {ea:ea,eb:eb,na:na,nb:nb,win:win,sd:sd,rows:rows,live:(na>0||nb>0),minsA:sum(A.lineup,r=>r.empty?0:r.frac*60),minsB:sum(B.lineup,r=>r.empty?0:r.frac*60),
+  return {ea:ea,eb:eb,na:na,nb:nb,win:win,sd:sd,rows:rows,live:(na>0||nb>0),va:va,vb:vb,cov:cov,minsA:sum(A.lineup,r=>r.empty?0:r.frac*60),minsB:sum(B.lineup,r=>r.empty?0:r.frac*60),
     benchA:sum(A.bench,r=>r.live!==null?r.live:0),benchB:sum(B.bench,r=>r.live!==null?r.live:0)};
 }
 function weekPairs(d,w){return (d.leagueSchedule||[]).filter(x=>String(x.week)===String(w));}
-function mRow(nm,pct,lead){return '<div class="wrow'+(lead?' lead':'')+'"><span class="nm" style="flex-basis:auto;max-width:48%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(nm)+'</span><div class="tr"><i style="width:'+pct+'%"></i></div><span class="pc">'+pct+'%</span></div>';}
+function mRow(nm,pct,lead,opp){return '<div class="wrow'+(lead?' lead':'')+(opp?' opp':'')+'"><span class="nm" style="flex-basis:auto;max-width:48%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(nm)+'</span><div class="tr"><i style="width:'+pct+'%"></i></div><span class="pc">'+pct+'%</span></div>';}
 function renderMatchups(d){
   const cur=num(d.week)||1,wk=num(state.mweek)||cur;
   const weeks=[];for(let w=1;w<=13;w++)weeks.push(w);
@@ -877,7 +883,7 @@ function renderMatchups(d){
     return '<a class="tapp" href="#matchup/'+cur+'/'+c.i+'" style="display:block;text-decoration:none;color:inherit;padding:9px 0;border-top:1px solid var(--line)">'
       +'<div style="display:flex;justify-content:space-between;gap:8px;font-weight:700'+(c.mine?';color:var(--good)':'')+'"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(c.A.team)+'</span><span>'+(M.live?f1(M.na):f1(M.ea))+'</span></div>'
       +'<div style="display:flex;justify-content:space-between;gap:8px;font-weight:700"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(c.B.team)+'</span><span>'+(M.live?f1(M.nb):f1(M.eb))+'</span></div>'
-      +mRow(c.A.mgr||c.A.team,wa,wa>=wb)+mRow(c.B.mgr||c.B.team,wb,wb>wa)
+      +mRow(c.A.mgr||c.A.team,wa,wa>=wb,isMine(c.B.team))+mRow(c.B.mgr||c.B.team,wb,wb>wa,isMine(c.A.team))
       +'<div class="sub">'+(M.live?'live · expected final '+f1(M.ea)+' – '+f1(M.eb):'projected')+(c.close<=10?' · <b style="color:var(--warn)">coin flip</b>':'')+'</div></a>';}).join('')
     +'<div class="sub" style="white-space:normal;margin-top:6px">Yours first, then the closest. Tap any for the slot-by-slot page.</div></section>';
   return h;
@@ -893,7 +899,7 @@ function renderMatchup(d,wk,idx){
     +'<div style="min-width:0"><div class="name" style="white-space:normal'+(isMine(A.team)?';color:var(--good)':'')+'">'+tn(A.team)+'</div><div class="sub">'+mg(A.mgr)+'</div><div class="num" style="font-size:28px;font-weight:800">'+f1(M.live?M.na:M.ea)+'</div></div>'
     +'<div class="sub" style="padding-bottom:8px">vs</div>'
     +'<div style="min-width:0;text-align:right"><div class="name" style="white-space:normal'+(isMine(B.team)?';color:var(--good)':'')+'">'+tn(B.team)+'</div><div class="sub">'+mg(B.mgr)+'</div><div class="num" style="font-size:28px;font-weight:800">'+f1(M.live?M.nb:M.eb)+'</div></div></div>';
-  h+='<div style="margin-top:8px">'+mRow(A.mgr||A.team,wa,wa>=wb)+mRow(B.mgr||B.team,wb,wb>wa)+'</div>';
+  h+='<div style="margin-top:8px">'+mRow(A.mgr||A.team,wa,wa>=wb,isMine(B.team))+mRow(B.mgr||B.team,wb,wb>wa,isMine(A.team))+'</div>';
   h+='<div class="sub" style="white-space:normal">'+gl('winpct','Win chance')+(M.live?' · expected final '+f1(M.ea)+' – '+f1(M.eb)+' · '+Math.round(M.minsA)+' vs '+Math.round(M.minsB)+' player-minutes left':' · projected '+f1(M.ea)+' – '+f1(M.eb)+', each side can swing about ±'+f1(M.sd/Math.SQRT2))+'.</div></section>';
   // slot by slot
   const cell=(r,right)=>{if(r.empty)return '<span class="sub">empty</span>';
@@ -909,6 +915,7 @@ function renderMatchup(d,wk,idx){
   const sw=M.rows.filter(r=>!r.a.empty||!r.b.empty).slice().sort((p,q)=>Math.abs(q.gap)-Math.abs(p.gap)).slice(0,5);
   h+='<section><h2>Where it\'s decided</h2>'+svgBars({labels:sw.map(r=>(r.slot==='W/R/T'?'FLEX':r.slot)),series:[{vals:sw.map(r=>r.a.exp),cls:'me'},{vals:sw.map(r=>r.b.exp),cls:'them'}],h:130,legend:[['me',A.mgr||A.team],['them',B.mgr||B.team]]})
     +'<div class="sub" style="white-space:normal">'+sw.map(r=>esc((r.slot==='W/R/T'?'FLEX':r.slot))+' '+(r.gap>=0?esc(A.mgr||A.team):esc(B.mgr||B.team))+' +'+f1(Math.abs(r.gap))).join(' · ')+'.</div></section>';
+  h+=boomBust({expA:M.ea,expB:M.eb,vA:M.va,vB:M.vb,cov:M.cov,rowsA:A.lineup.filter(r=>!r.empty)},A.mgr||A.team,B.mgr||B.team);
   // benches
   const bl=(S)=>S.bench.length?S.bench.map(r=>'<div class="sub" style="display:flex;justify-content:space-between;gap:8px;padding:2px 0"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+pl(r.name)+' <small>'+esc(r.pos)+' '+esc(r.nfl||'')+'</small></span><span>'+(r.live!==null?'<b>'+f1(r.live)+'</b>':(r.bye?'bye':f1(r.proj)))+'</span></div>').join(''):'<div class="sub">nobody</div>';
   h+='<section><h2>Benches</h2><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div style="min-width:0"><div class="sub" style="font-weight:600">'+tn(A.team)+(M.live&&M.benchA?' · '+f1(M.benchA)+' on the bench':'')+'</div>'+bl(A)+'</div><div style="min-width:0"><div class="sub" style="font-weight:600">'+tn(B.team)+(M.live&&M.benchB?' · '+f1(M.benchB)+' on the bench':'')+'</div>'+bl(B)+'</div></div></section>';
@@ -1094,6 +1101,59 @@ function gameFrac(team,status){
   if(/progress/i.test(status||''))return 0.5;       // no clock yet: assume half the game is left
   return 1;
 }
+
+// ---------------- BOOM OR BUST: players who move together ----------------
+// Two of your starters from the same offence rise and fall together, so your week swings wider
+// than nine independent players would. One of yours against one of theirs from the same offence
+// partly cancels out. Both change the true spread of the matchup, and so the win chance.
+function mateR(a,b){
+  if(!a||!b)return 0;const pa=findPlayer(a),pb=findPlayer(b);
+  const look=(p,n)=>((p&&p.mates)||[]).find(m=>cleanName(m.name).toLowerCase()===cleanName(n).toLowerCase());
+  const m=look(pa,b)||look(pb,a);return m?(num(m.r)||0):0;
+}
+function stackCov(mine,theirs){      // mine/theirs: [{name, sd}] with sd already scaled for time left
+  let cm=0,ct=0,cx=0;const st=[];
+  for(let i=0;i<mine.length;i++)for(let j=i+1;j<mine.length;j++){const r=mateR(mine[i].name,mine[j].name);if(r){cm+=2*r*mine[i].sd*mine[j].sd;st.push({a:mine[i].name,b:mine[j].name,r:r,side:'mine'})}}
+  for(let i=0;i<theirs.length;i++)for(let j=i+1;j<theirs.length;j++){const r=mateR(theirs[i].name,theirs[j].name);if(r){ct+=2*r*theirs[i].sd*theirs[j].sd;st.push({a:theirs[i].name,b:theirs[j].name,r:r,side:'theirs'})}}
+  for(let i=0;i<mine.length;i++)for(let j=0;j<theirs.length;j++){const r=mateR(mine[i].name,theirs[j].name);if(r){cx+=r*mine[i].sd*theirs[j].sd;st.push({a:mine[i].name,b:theirs[j].name,r:r,side:'cross'})}}
+  return {cm:cm,ct:ct,cx:cx,stacks:st};
+}
+function boomBust(M,labA,labB){
+  // M: {expA, expB, vA, vB, cov:{cm,ct,cx,stacks}, rowsA:[{name,pos}], rowsB}
+  const sdA0=Math.sqrt(Math.max(0,M.vA)),sdA=Math.sqrt(Math.max(0.01,M.vA+M.cov.cm));
+  const sdB=Math.sqrt(Math.max(0.01,M.vB+M.cov.ct));
+  const boomA=Math.round(100*(1-phi(15/Math.max(0.01,sdA)))),bustA=Math.round(100*phi(-15/Math.max(0.01,sdA)));
+  const boomB=Math.round(100*(1-phi(15/Math.max(0.01,sdB)))),bustB=Math.round(100*phi(-15/Math.max(0.01,sdB)));
+  const st=M.cov.stacks.slice().sort((x,y)=>Math.abs(y.r)-Math.abs(x.r));
+  let h='<section><h2>'+gl('boom','Boom or bust')+'</h2>';
+  if(sdA<0.5&&sdB<0.5)return h+'<div class="sub">Every player on both sides has finished — nothing left to swing.</div></section>';
+  h+='<div class="sub" style="white-space:normal">How far each side can still land from its expected final, with the stacks counted.</div>'
+    +svgBars({labels:[labA,labB],series:[{vals:[Math.max(0,M.expA-sdA),Math.max(0,M.expB-sdB)],cls:'them'},{vals:[M.expA,M.expB],cls:'proj'},{vals:[M.expA+sdA,M.expB+sdB],cls:'me'}],h:130,legend:[['them','bad day'],['proj','expected'],['me','good day']]})
+    +kv([[esc(labA),'±'+f1(sdA)+' <small>'+(Math.abs(sdA-sdA0)>=0.3?'('+(sdA>sdA0?'wider':'tighter')+' than ±'+f1(sdA0)+' because of stacks)':'')+'</small> · '+boomA+'% chance of 15+ over, '+bustA+'% of 15+ under'],
+         [esc(labB),'±'+f1(sdB)+' · '+boomB+'% chance of 15+ over, '+bustB+'% of 15+ under']]);
+  if(st.length){
+    h+='<div class="sub" style="font-weight:600;margin-top:8px">Stacks in this matchup</div>'
+      +st.slice(0,6).map(x=>'<div class="sub" style="white-space:normal;padding:2px 0">'+pl(x.a)+' + '+pl(x.b)+' <b style="color:'+(x.r>=0?'var(--good)':'var(--bad)')+'">'+(x.r>=0?'+':'')+x.r.toFixed(2)+'</b> · '
+        +(x.side==='cross'?(x.r>=0?'one yours, one theirs — they partly cancel':'one yours, one theirs — they pull apart'):(x.r>=0?'rise and fall together — bigger swings for '+(x.side==='mine'?esc(labA):esc(labB)):'take each other\'s work — steadier for '+(x.side==='mine'?esc(labA):esc(labB))))+'</div>').join('');
+  } else h+='<div class="sub" style="white-space:normal;margin-top:6px">No teammates on either side move together enough to matter — nine independent players each.</div>';
+  // each starter's own boom and bust rate, from his history
+  const rowsA=(M.rowsA||[]).map(r=>({r:r,p:findPlayer(r.name)})).filter(x=>x.p&&x.p.hist&&num(x.p.hist.boom)!==null);
+  if(rowsA.length){
+    // one row per starter so every name shows: green bar = share of his games that were a boom,
+    // red bar = share that were a bust
+    const mxp=Math.max.apply(null,rowsA.map(x=>Math.max(num(x.p.hist.boom)||0,num(x.p.hist.bust)||0)).concat([0.01]));
+    h+='<div class="sub" style="font-weight:600;margin-top:10px">Your starters, boom and bust</div>'
+      +rowsA.map(x=>{const bo=num(x.p.hist.boom)||0,bu=num(x.p.hist.bust)||0;
+        return '<div class="frow"><div class="ft"><span class="fn">'+pl(x.r.name)+' <small class="sub">'+esc(x.r.pos||x.p.pos||'')+'</small></span><span class="fp"><span style="color:var(--good)">'+Math.round(100*bo)+'%</span> / <span style="color:var(--bad)">'+Math.round(100*bu)+'%</span></span></div>'
+          +'<div class="tr"><i style="width:'+Math.round(100*bo/mxp)+'%;background:var(--good)"></i></div>'
+          +'<div class="tr"><i style="width:'+Math.round(100*bu/mxp)+'%;background:var(--bad)"></i></div></div>'}).join('')
+      +'<div class="sub"><span class="lg good"></span>boom: % of his career games at 20+ points &nbsp; <span class="lg bad"></span>bust: % under 5</div>';
+    const noH=(M.rowsA||[]).filter(r=>!rowsA.some(x=>x.r===r)).map(r=>esc(shortName(r.name)));
+    if(noH.length)h+='<div class="sub" style="white-space:normal">No career game log to rate: '+noH.join(', ')+'.</div>';
+  }
+  return h+'</section>';
+}
+
 function liveMatchup(d){
   const m=d.matchup||{};const rows=(m.rows||[]).map(r=>{
     const fM=gameFrac(r.myTeam,r.myStatus),fT=gameFrac(r.theirTeam,r.theirStatus);
@@ -1107,11 +1167,12 @@ function liveMatchup(d){
   const myNow=rows.reduce((a,r)=>a+(r.liveM!==null?r.liveM:0),0), thNow=rows.reduce((a,r)=>a+(r.liveT!==null?r.liveT:0),0);
   const myExp=rows.reduce((a,r)=>a+r.expM,0), thExp=rows.reduce((a,r)=>a+r.expT,0);
   const vM=rows.reduce((a,r)=>a+r.sdM*r.sdM,0), vT=rows.reduce((a,r)=>a+r.sdT*r.sdT,0);
-  const sd=Math.sqrt(vM+vT);
+  const cov=stackCov(rows.filter(r=>r.my).map(r=>({name:r.my,sd:r.sdM})),rows.filter(r=>r.their).map(r=>({name:r.their,sd:r.sdT})));
+  const sd=Math.sqrt(Math.max(0.01,vM+cov.cm+vT+cov.ct-2*cov.cx));
   const win=sd<0.01?(myExp>thExp?100:(myExp<thExp?0:50)):Math.round(100*phi((myExp-thExp)/sd));
   rows.forEach(r=>{const s2=Math.sqrt(r.sdM*r.sdM+r.sdT*r.sdT);r.slotWinLive=s2<0.01?(r.expM>r.expT?100:(r.expM<r.expT?0:50)):Math.round(100*phi((r.expM-r.expT)/s2))});
   const minsMine=rows.reduce((a,r)=>a+r.fM*60,0), minsTheirs=rows.reduce((a,r)=>a+r.fT*60,0);
-  return {rows:rows,myNow:myNow,thNow:thNow,myExp:myExp,thExp:thExp,sd:sd,sdM:Math.sqrt(vM),sdT:Math.sqrt(vT),win:win,minsMine:minsMine,minsTheirs:minsTheirs,live:(myNow>0||thNow>0)};
+  return {rows:rows,myNow:myNow,thNow:thNow,myExp:myExp,thExp:thExp,sd:sd,sdM:Math.sqrt(Math.max(0,vM+cov.cm)),sdT:Math.sqrt(Math.max(0,vT+cov.ct)),win:win,minsMine:minsMine,minsTheirs:minsTheirs,live:(myNow>0||thNow>0),vM:vM,vT:vT,cov:cov};
 }
 function whyBlock(M,m){
   const rows=M.rows.slice().sort((a,b)=>a.gap-b.gap);
@@ -1127,7 +1188,14 @@ function whyBlock(M,m){
 }
 // ---------------- LIVE LAYER (Sleeper, straight from the phone) ----------------
 const LIVE={at:null,stats:null,ok:false};
-function scoreLine(s,pos){if(pos==='K'||pos==='DST'||pos==='DEF')return num(s.pts_ppr);const g=k=>num(s[k])||0;return Math.round((g('pass_yd')/25+4*g('pass_td')-g('pass_int')+g('rush_yd')/10+6*g('rush_td')+g('rec')+g('rec_yd')/10+6*g('rec_td')-2*g('fum_lost'))*100)/100;}
+// Scored with this league's rules (read off its Yahoo settings page): Sleeper docks a point per
+// missed kick and this league does not, so hand those back; its D/ST scoring already matches;
+// and two-point conversions and offensive return TDs were being dropped entirely.
+function scoreLine(s,pos){const g=k=>num(s[k])||0;
+  if(pos==='K')return Math.round((g('pts_ppr')+g('fgmiss')+g('xpmiss'))*100)/100;
+  if(pos==='DST'||pos==='DEF')return num(s.pts_ppr);
+  return Math.round((g('pass_yd')/25+4*g('pass_td')-g('pass_int')+g('rush_yd')/10+6*g('rush_td')+g('rec')+g('rec_yd')/10+6*g('rec_td')-2*g('fum_lost')
+    +2*(g('pass_2pt')+g('rush_2pt')+g('rec_2pt'))+6*(g('kr_td')+g('pr_td')+g('fum_rec_td')))*100)/100;}
 function liveStatus(kickIso,st){if(!kickIso||/final|bye/i.test(st||""))return st;const k=new Date(kickIso).getTime(),now=Date.now();if(isNaN(k))return st;if(now<k)return 'Upcoming';if(now<k+225*60000)return 'In progress';return 'Final';}
 function anyLiveNow(){return (D&&D.games||[]).some(g=>liveStatus(g.kickIso,g.status)==='In progress');}
 function applyLive(){
@@ -1434,6 +1502,7 @@ const GLOSS={
  next3:['Next 3','How friendly his next three defenses are to his position, as a multiplier. 1.0 is average, 1.2 means those defenses give up 20% more than normal to his position, 0.8 means they are tough.'],
  buzz:['Buzz','Net tone of the last 72 hours of news about him, from our keyword list. Negative is bad news piling up, positive is good news. It is a nudge, not a projection.'],
  linemove:['Line move','How far the betting line has shifted since the week opened, in points. Money moves for a reason — a line sliding toward a team usually means the market learned something (a starter is out, weather turned) before the injury reports and projections catch up. A move of 2 points or more is worth a look.'],
+ boom:['Boom or bust','How far each side can still land from its expected final. Each starter swings by an amount set by his position and projection, shrinking as his game runs out. Then the stacks: two of your players from the same offence rise and fall together, so your side swings wider than nine independent players would; one of yours against one of theirs from the same offence partly cancels. That true spread is what the win chance uses. A boom is 15+ points over expected, a bust 15+ under. Each starter\'s own rates come from his career game logs: a boom game is 20+ points, a bust game under 5.'],
  durability:['Injury history','How often he has actually missed games hurt over the last three seasons — counted from weeks on injured reserve plus weeks ruled out, divided by weeks he was on a roster. A backup who simply never plays is not counted as fragile. Shrunk toward a normal 90% when there is only a season or so to go on. It nudges his value by a few percent at most, because the projection sources already price in some fragility.'],
  stack:['Moves with','How much his weekly score rises and falls with a teammate\'s, from every game they played together since 2023 (a correlation from -1 to +1, shrunk toward zero when they have few games together). A quarterback and his top receiver usually sit around +0.26. Two running backs on the same team usually go negative — one\'s good day is the other\'s quiet one. Starting players who move together makes your week more boom-or-bust.'],
  qbeff:['With a backup quarterback','What he scored with his usual quarterback against a backup — same team, same season only, so a team change is never mistaken for a quarterback change. Shrunk toward no effect when there are only a few backup games. It only touches his projection when his usual quarterback is actually out this week.'],
