@@ -1628,7 +1628,9 @@ function renderInjuries(d){
   const ps=(d.players||[]).filter(p=>p.inj&&!blank(p.inj.status));
   const order={Out:0,IR:1,PUP:2,Doubtful:3,Questionable:4,Sus:5,COV:6,NA:7,DNR:8};
   const f=state.ifilt||'ALL';
-  const bodyOf=p=>{const t=String((p.inj&&(p.inj.part||((p.inj.outlook||{}).part)))||'').trim();return t?t.replace(/\s*-.*$/,''):'';};
+  // body parts only: a healthy scratch or a personal matter is not something that heals
+  const bodyOf=p=>{const t=String((p.inj&&(p.inj.part||((p.inj.outlook||{}).part)))||'').trim().replace(/\s*-.*$/,'');
+    return (!t||/not injury|coach|personal|rest|suspen|contract|excused/i.test(t))?'':t;};
   const bf=state.bfilt||'ALL';
   let list=ps.slice();if(f==='MINE')list=list.filter(p=>num(p.owner)===5);else if(f==='LEAGUE')list=list.filter(p=>num(p.owner));else if(f==='FA')list=list.filter(p=>!num(p.owner));else if(f!=='ALL')list=list.filter(p=>p.inj.status===f);
   if(bf!=='ALL')list=list.filter(p=>bodyOf(p)===bf);
@@ -1643,7 +1645,7 @@ function renderInjuries(d){
   const bks=Object.keys(bodies).sort((a,b)=>bodies[b].n-bodies[a].n);
   if(bks.length){
     h+='<section><h2>By body part</h2><div class="sub" style="white-space:normal">Typical weeks missed for each, and what that costs the players carrying it. Tap one to filter the list.</div>'
-      +svgBars({labels:bks.slice(0,8),series:[{vals:bks.slice(0,8).map(k=>bodies[k].n),cls:'them'},{vals:bks.slice(0,8).map(k=>Math.round(bodies[k].wk/Math.max(1,bodies[k].n)*10)/10),cls:'me'}],h:130,legend:[['them','players'],['me','average weeks out']]})
+      +svgBars({labels:bks.slice(0,8).map(k=>k.length>8?k.slice(0,7)+'.':k),series:[{vals:bks.slice(0,8).map(k=>bodies[k].n),cls:'them'},{vals:bks.slice(0,8).map(k=>Math.round(bodies[k].wk/Math.max(1,bodies[k].n)*10)/10),cls:'me'}],h:130,legend:[['them','players'],['me','average weeks out']]})
       +'<div class="chips" style="margin-top:6px"><a class="chip'+(bf==='ALL'?' on':'')+'" href="#" data-bf="ALL">All</a>'
       +bks.map(k=>'<a class="chip'+(bf===k?' on':'')+'" href="#" data-bf="'+esc(k)+'">'+esc(k)+' <b>'+bodies[k].n+'</b></a>').join('')+'</div>'
       +'<div class="chips" style="margin-top:6px"><span class="sub">sort</span>'+[['status','by status'],['weeks','longest out'],['cost','most value lost']].map(x=>'<a class="chip'+(sortBy===x[0]?' on':'')+'" href="#" data-isort="'+x[0]+'">'+x[1]+'</a>').join('')+'</div></section>';
