@@ -204,6 +204,11 @@ body.big body.big body.big body.big .wi-t.on body.big body.big
 .wrow.lead .pc{color:var(--acc)}
 body.big .wrow{font-size:17px}body.big .wrow .nm{flex-basis:56px}body.big .wrow .tr{height:16px}
 .wrow.win .tr i{background:var(--good)}.wrow.win .pc{color:var(--good)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chips .chip{display:inline-block;padding:5px 9px;border-radius:999px;background:var(--chip);color:var(--ink);font-size:12px;font-weight:600;text-decoration:none;border:1px solid transparent}
+.chips .chip.on{background:var(--acc);color:#fff}
+.chips .chip b{font-weight:700;opacity:.7;margin-left:2px}
+body.big .chips .chip{font-size:15px;padding:7px 12px}
 .frow{margin:7px 0}
 .frow .ft{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:13px}
 .frow .fn{font-weight:700;color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -568,15 +573,19 @@ function renderHome(d){
 // The offer window: a rival's man goes down and the first reasonable offer usually gets the
 // conversation. Time-sensitive, so it sits at the top of Home rather than in the trades page.
 function hurtPanel(d){
-  const hr=(d.hurtRivals||[]);if(!hr.length)return '';
+  const hr=(d.hurtRivals||[]).filter(x=>num(x.need)===null||num(x.need)>=30);if(!hr.length)return '';
   const tr=(d.trades||[]);
   return '<section style="border-left:4px solid var(--warn)"><h2>Offer window</h2>'
     +'<div class="sub" style="white-space:normal">Someone else\'s player just went down. Being first in usually gets the conversation, even if the deal takes days.</div>'
     +hr.map(x=>{const best=tr.filter(t=>t.partner===x.manager&&String(t.get||'').indexOf(x.player)<0).sort((a,b)=>(num(b.score)||0)-(num(a.score)||0))[0];
+      const lk={trade:['In the market','var(--good)'],waiver:['Probably claims someone','var(--warn)'],bench:['Covered on their own bench','var(--mute)'],nothing:['Bench man — changes nothing','var(--mute)']}[x.likely]||['',''];
       return '<div class="row" style="padding:8px 0"><div class="main" style="white-space:normal">'
         +'<div class="name" style="white-space:normal;overflow:visible">'+mg(x.manager)+' lost '+pl(x.player)+' <span class="flag">'+esc(x.kw)+'</span></div>'
         +'<div class="sub" style="white-space:normal">'+esc(x.pos)+' · '+(String(x.slot)==='BN'||String(x.slot)==='IR'?'was on their bench':'was in their starting lineup')
-        +(best?' · <b>offer now: give '+pl(best.give)+', get '+pl(best.get)+'</b>':' · nothing scores well against them yet')+'</div></div></div>';}).join('')
+        +' · <b style="color:'+lk[1]+'">'+esc(lk[0])+'</b>'+(num(x.need)!==null?' <span class="sub">('+Math.round(x.need)+'/100 need)</span>':'')+'</div>'
+        +(x.needTxt?'<div class="sub" style="white-space:normal">'+esc(x.needTxt)+'</div>':'')
+        +(best&&x.likely==='trade'?'<div class="sub" style="white-space:normal"><b>Offer now: give '+pl(best.give)+', get '+pl(best.get)+'</b></div>':'')
+        +'</div></div>';}).join('')
     +'<div class="sub" style="white-space:normal;margin-top:4px">Their loss is the reason the window is open, not a reason to take a bad deal — the offer still has to be good for you.</div></section>';
 }
 // A problem the app can still render around is worse than a crash, because it looks fine. When a
@@ -722,6 +731,19 @@ function renderPlayer(d,name){
   // value
   h+=tradeCheck(d,p);
   h+=envSection(p);
+  const iOut=(p.inj||{}).outlook;
+  if(iOut&&num(iOut.weeks)!==null){
+    const w=num(iOut.weeks);const wl=num(d.weeksLeft)||16;
+    h+='<section><h2>'+gl('outweeks','How long he is out')+'</h2>'
+      +kv([['Expected out',(w>=14?'the season':f1(w)+(w===1?' week':' weeks'))+(num(iOut.lo)!==null&&iOut.hi!==iOut.lo?' <small>(range '+f1(iOut.lo)+'–'+f1(iOut.hi)+')</small>':'')],
+           ['Based on',(iOut.basis==='reported'?'<b style="color:var(--good)">a reported timeline</b>':'<b>how this injury normally goes</b>')+(iOut.why?' <small>'+esc(iOut.why)+'</small>':'')],
+           ['Body part',esc(iOut.part||'—')],
+           ['Back around',num(iOut.backWeek)?('week '+Math.round(iOut.backWeek)):'not this season'],
+           ['Value it costs',f1(iOut.pointsLost)+' points <small>('+f1(p.value)+' a week × '+f1(Math.min(w,wl))+' weeks)</small>'],
+           ['Worth from here',f1(iOut.rosAdj)+' a week <small>averaged over the rest of the season, counting the weeks he misses</small>']])
+      +svgBars({labels:['Weeks out','Weeks left'],series:[{vals:[Math.min(w,wl),wl],cls:'me',clsAt:['bad','']}],h:100})
+      +'<div class="sub" style="white-space:normal">'+(iOut.basis==='reported'?'A reporter put this number on it, so it beats the table.':'Nobody has put a number on it yet, so this is how that injury usually goes — treat the range as the honest answer.')+'</div></section>';
+  }
   if(p.pos==='DST'||p.pos==='DEF')h+=defUnit(p.unit,'This defence','Who actually generates the sacks and takeaways this unit gets paid for.');
   else if(p.oppDef)h+=defUnit(p.oppDef,'The defence he faces'+(p.game&&p.game.opp?' \u00b7 '+String(p.game.opp):''),'The men across from him this week, and who is not playing.');
   h+='<section><h2>'+gl('value','Value')+'</h2>';
@@ -1347,6 +1369,7 @@ const GLOSS={
  next3:['Next 3','How friendly his next three defenses are to his position, as a multiplier. 1.0 is average, 1.2 means those defenses give up 20% more than normal to his position, 0.8 means they are tough.'],
  buzz:['Buzz','Net tone of the last 72 hours of news about him, from our keyword list. Negative is bad news piling up, positive is good news. It is a nudge, not a projection.'],
  linemove:['Line move','How far the betting line has shifted since the week opened, in points. Money moves for a reason — a line sliding toward a team usually means the market learned something (a starter is out, weather turned) before the injury reports and projections catch up. A move of 2 points or more is worth a look.'],
+ outweeks:['How long he is out','Two sources, and the app says which one it used. If a reporter has put a number on it — "expected to miss 4-6 weeks", "week to week", "out for the season" — that number wins, and it is marked reported. Otherwise it falls back to how that body part normally goes, marked typical, with a range because a knee can be a one-week sprain or a torn ACL. A designation sets a floor: on IR he cannot return for four games whatever the injury. The points figure is his value per week multiplied by the weeks he misses — what the injury actually costs, rather than just a label.'],
  rushv:['Pass rush','A per-game score for what a defender does to the quarterback: three points a sack, plus a bit for every quarterback hit and tackle for loss. It is not fantasy scoring — nobody in your league starts defenders — it is a way of ranking who actually wrecks a pocket, so you can see at a glance whether the guy your quarterback faces on Sunday is a problem or a name.'],
  coverv:['Coverage','A per-game score for a defensive back or linebacker in coverage: three points an interception, one a pass broken up. Thin on two weeks of data, so read it as a hint rather than a verdict.'],
  dmen:['Defenders out','How much of the opposing defence is unavailable this week, weighted by what each missing man is worth per game, then applied to the position it actually helps. A missing edge rusher shows up mostly for your quarterback; a missing corner mostly for your receivers. Capped at 8% and deliberately small, because two weeks of snaps is a thin base to reason from.'],
@@ -1592,17 +1615,42 @@ function teamRadar(d,pw){
   return svgRadar(ax,{cls:isMine(pw.name)?'me':''});
 }
 // ---------------- INJURIES ----------------
+function outLine(p){
+  const o=(p.inj||{}).outlook;if(!o||num(o.weeks)===null)return '';
+  const w=num(o.weeks);
+  const txt=w>=14?'out for the season':(w<1?'should play':'about '+f1(w)+(w===1?' week':' weeks')+' out'+(num(o.lo)!==null&&o.hi!==o.lo?' ('+f1(o.lo)+'\u2013'+f1(o.hi)+')':''));
+  return '<br><span class="sub">'+gl('outweeks','Out')+': <b style="color:'+(w>=4?'var(--bad)':(w>=1.5?'var(--warn)':'var(--mute)'))+'">'+esc(txt)+'</b>'
+    +(o.basis==='reported'?' <span class="flag good">reported</span>':' <span class="flag">typical</span>')
+    +(o.why?' \u00b7 '+esc(o.why):'')
+    +(num(o.pointsLost)>0?' \u00b7 costs about <b>'+f1(o.pointsLost)+'</b> points of value'+(num(o.backWeek)?', back around week '+Math.round(o.backWeek):''):'')+'</span>';
+}
 function renderInjuries(d){
   const ps=(d.players||[]).filter(p=>p.inj&&!blank(p.inj.status));
   const order={Out:0,IR:1,PUP:2,Doubtful:3,Questionable:4,Sus:5,COV:6,NA:7,DNR:8};
   const f=state.ifilt||'ALL';
+  const bodyOf=p=>{const t=String((p.inj&&(p.inj.part||((p.inj.outlook||{}).part)))||'').trim();return t?t.replace(/\s*-.*$/,''):'';};
+  const bf=state.bfilt||'ALL';
   let list=ps.slice();if(f==='MINE')list=list.filter(p=>num(p.owner)===5);else if(f==='LEAGUE')list=list.filter(p=>num(p.owner));else if(f==='FA')list=list.filter(p=>!num(p.owner));else if(f!=='ALL')list=list.filter(p=>p.inj.status===f);
-  list.sort((a,b)=>(num(b.owner)===5?1:0)-(num(a.owner)===5?1:0)||(order[a.inj.status]??9)-(order[b.inj.status]??9)||(num(b.value)||0)-(num(a.value)||0));
+  if(bf!=='ALL')list=list.filter(p=>bodyOf(p)===bf);
+  const wksOf=p=>num((p.inj&&p.inj.outlook||{}).weeks);
+  const sortBy=state.isort||'status';
+  if(sortBy==='weeks')list.sort((a,b)=>(wksOf(b)||-1)-(wksOf(a)||-1));
+  else if(sortBy==='cost')list.sort((a,b)=>(num((b.inj.outlook||{}).pointsLost)||0)-(num((a.inj.outlook||{}).pointsLost)||0));
+  else list.sort((a,b)=>(num(b.owner)===5?1:0)-(num(a.owner)===5?1:0)||(order[a.inj.status]??9)-(order[b.inj.status]??9)||(num(b.value)||0)-(num(a.value)||0));
   const counts={};ps.forEach(p=>{counts[p.inj.status]=(counts[p.inj.status]||0)+1});const ks=Object.keys(counts).sort((a,b)=>(order[a]??9)-(order[b]??9));
   let h='<section><h2>Injuries · '+ps.length+' players flagged</h2>'+svgBars({labels:ks,series:[{vals:ks.map(k=>counts[k]),cls:'me',clsAt:ks.map(k=>/out|ir|pup|sus/i.test(k)?'bad':(/doubt|quest/i.test(k)?'warn':''))}],h:120})+'<div class="filters" style="margin-top:8px"><select id="ifilt">'+[['ALL','Everyone'],['MINE','My roster'],['LEAGUE','Rostered in league'],['FA','Free agents']].concat(ks.map(k=>[k,k])).map(o=>'<option value="'+o[0]+'"'+(f===o[0]?' selected':'')+'>'+esc(o[1])+'</option>').join('')+'</select></div></section>';
+  const bodies={};ps.forEach(p=>{const t=bodyOf(p);if(!t||/not injury/i.test(t))return;const w=wksOf(p);if(!bodies[t])bodies[t]={n:0,wk:0,cost:0};bodies[t].n++;if(w!==null){bodies[t].wk+=w}bodies[t].cost+=(num((p.inj.outlook||{}).pointsLost)||0)});
+  const bks=Object.keys(bodies).sort((a,b)=>bodies[b].n-bodies[a].n);
+  if(bks.length){
+    h+='<section><h2>By body part</h2><div class="sub" style="white-space:normal">Typical weeks missed for each, and what that costs the players carrying it. Tap one to filter the list.</div>'
+      +svgBars({labels:bks.slice(0,8),series:[{vals:bks.slice(0,8).map(k=>bodies[k].n),cls:'them'},{vals:bks.slice(0,8).map(k=>Math.round(bodies[k].wk/Math.max(1,bodies[k].n)*10)/10),cls:'me'}],h:130,legend:[['them','players'],['me','average weeks out']]})
+      +'<div class="chips" style="margin-top:6px"><a class="chip'+(bf==='ALL'?' on':'')+'" href="#" data-bf="ALL">All</a>'
+      +bks.map(k=>'<a class="chip'+(bf===k?' on':'')+'" href="#" data-bf="'+esc(k)+'">'+esc(k)+' <b>'+bodies[k].n+'</b></a>').join('')+'</div>'
+      +'<div class="chips" style="margin-top:6px"><span class="sub">sort</span>'+[['status','by status'],['weeks','longest out'],['cost','most value lost']].map(x=>'<a class="chip'+(sortBy===x[0]?' on':'')+'" href="#" data-isort="'+x[0]+'">'+x[1]+'</a>').join('')+'</div></section>';
+  }
   state.ctx=list.slice(0,80).map(p=>p.name);state.ctxName='Injuries';
   h+='<section>'+list.slice(0,80).map(p=>{const i=p.inj;const g=p.game||{};
-    return '<div class="row tapp" data-player="'+esc(p.name)+'">'+face(p.sid,p.team,p.pos)+'<div class="main" style="white-space:normal"><div class="name'+(num(p.owner)===5?' mine':'')+'">'+esc(p.name)+' <span class="flag'+(/out|ir|pup|sus/i.test(i.status)?' bad':'')+'" style="font-weight:700">'+esc(i.status)+'</span>'+(blank(i.part)?'':' <span class="sub">'+esc(i.part)+'</span>')+'</div><div class="sub" style="white-space:normal">'+esc([p.pos,p.team,num(p.owner)?p.ownerName:'Free agent',i.practice?'practice: '+i.practice:'',g.opp?(g.ha==='Home'?'v ':'@ ')+g.opp+' '+(g.kick||''):''].filter(x=>!blank(x)).join(' · '))+(blank(i.note)?'':'<br>'+esc(i.note))+(blank(p.statusKw)?'':'<br><span class="flag">news: '+esc(p.statusKw)+'</span>')+'</div></div><div class="pts"><b>'+f1(p.value)+'</b><small>value</small></div></div>'}).join('')+(list.length>80?'<div class="sub">showing 80 of '+list.length+'</div>':'')+'</section>';
+    return '<div class="row tapp" data-player="'+esc(p.name)+'">'+face(p.sid,p.team,p.pos)+'<div class="main" style="white-space:normal"><div class="name'+(num(p.owner)===5?' mine':'')+'">'+esc(p.name)+' <span class="flag'+(/out|ir|pup|sus/i.test(i.status)?' bad':'')+'" style="font-weight:700">'+esc(i.status)+'</span>'+(blank(i.part)?'':' <span class="sub">'+esc(i.part)+'</span>')+'</div><div class="sub" style="white-space:normal">'+esc([p.pos,p.team,num(p.owner)?p.ownerName:'Free agent',i.practice?'practice: '+i.practice:'',g.opp?(g.ha==='Home'?'v ':'@ ')+g.opp+' '+(g.kick||''):''].filter(x=>!blank(x)).join(' · '))+(blank(i.note)?'':'<br>'+esc(i.note))+(blank(p.statusKw)?'':'<br><span class="flag">news: '+esc(p.statusKw)+'</span>')+outLine(p)+'</div></div><div class="pts"><b>'+f1(p.value)+'</b><small>value</small></div></div>'}).join('')+(list.length>80?'<div class="sub">showing 80 of '+list.length+'</div>':'')+'</section>';
   return h;
 }
 // ---------------- NEWS ----------------
@@ -1731,6 +1779,8 @@ function render(){
   const mw=$("#mweek");if(mw)mw.addEventListener("change",()=>{state.mweek=mw.value;render()});
   const ns=$("#nflsel");if(ns)ns.addEventListener("change",()=>{if(ns.value)location.hash='#nfl/'+ns.value});
   const ifl=$("#ifilt");if(ifl)ifl.addEventListener("change",()=>{state.ifilt=ifl.value;render()});
+  document.querySelectorAll('[data-bf]').forEach(el=>el.addEventListener('click',e=>{e.preventDefault();state.bfilt=el.dataset.bf;render()}));
+  document.querySelectorAll('[data-isort]').forEach(el=>el.addEventListener('click',e=>{e.preventDefault();state.isort=el.dataset.isort;render()}));
   const nfl=$("#nfilt");if(nfl)nfl.addEventListener("change",()=>{state.nfilt=nfl.value;render()});
   const nq=$("#nq");if(nq)nq.addEventListener("input",()=>{state.nq=nq.value;const k=nq.selectionStart;render();const q2=$("#nq");if(q2){q2.focus();try{q2.setSelectionRange(k,k)}catch(e){}}});
   if(NAV){const back=SCROLLMEM[PREVHASH];
