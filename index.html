@@ -1736,8 +1736,12 @@ function peerPool(d,p){
 }
 function playerRadar(d,p){
   const peers=peerPool(d,p);
+  // once his game is in the books the week axis is what he actually scored, ranked against what the
+  // others have scored (or are projected for, if they have not played yet) - not his stale projection
+  const wk=num(d.week),played=x=>{const g=(x.log||[]).find(g=>num(g.week)===wk);return g?num(g.ppr):null};
+  const mine=played(p),wkOf=x=>{const a=played(x);return a===null?x.proj:a};
   const ax=[
-    {label:'This week',v:pctRank(p.proj,peers.map(x=>x.proj)),txt:f1(p.proj)},
+    {label:mine===null?'This week':'This week (actual)',v:pctRank(mine===null?p.proj:mine,peers.map(wkOf)),txt:mine===null?f1(p.proj):f1(mine)},
     {label:'Value',v:pctRank(p.value,peers.map(x=>x.value)),txt:f1(p.value)},
     {label:'ROS',v:pctRank(p.ros&&p.ros.cons,peers.map(x=>x.ros&&x.ros.cons)),txt:f1(p.ros&&p.ros.cons)},
     {label:'Experts',v:p.ecr?1-pctRank(p.ecr.rank,peers.filter(x=>x.ecr).map(x=>x.ecr.rank)):0,txt:p.ecr?'#'+Math.round(p.ecr.rank):'—'},
