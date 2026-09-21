@@ -182,6 +182,41 @@ body.big polygon.rad{stroke-width:3.5}
 .vs .face{width:22px;height:22px;flex-basis:22px;vertical-align:middle;margin:0 3px}body.big .search input{font-size:19px;padding:12px}
 .ch rect.b.them{fill:var(--them)}.ch rect.b.proj{fill:var(--proj)}.ch rect.b.good{fill:var(--good)}.ch rect.b.bad{fill:var(--bad)}.ch rect.b.warn{fill:var(--warn)}
 .portal{cursor:pointer}
+
+/* colour scheme forced from Settings (System is the default: the media queries above) */
+:root[data-scheme=dark]{--bg:#0f1216;--card:#181c22;--ink:#e8ebef;--mute:#9aa4b1;--line:#262c35;--acc:#5b9cff;--good:#3ccf6f;--bad:#ff6b6b;--warn:#f0b849;--live:#ff5c5c;--chip:#232932;--bar:#2c3440;--barme:#5b9cff}
+:root[data-scheme=light]{--bg:#f4f5f7;--card:#fff;--ink:#14171c;--mute:#5d6673;--line:#e3e6ea;--acc:#1f6feb;--good:#1a8f4a;--bad:#c0392b;--warn:#b7791f;--live:#d64545;--chip:#eef1f5;--bar:#c9d3e0;--barme:#1f6feb}
+:root[data-scheme=dark] body.big{--ink:#fff;--mute:#e3e8ee;--line:#6b7583;--bar:#6b7583;--good:#5ce08a;--bad:#ff7b7b;--warn:#ffd166;--acc:#7fb2ff;--barme:#7fb2ff;--card:#0f1216;--bg:#000;--chip:#2a313b}
+:root[data-scheme=light] body.big{--ink:#000;--mute:#1e242c;--line:#9aa3af;--bar:#9aa3af;--good:#0b6b31;--bad:#b0160e;--warn:#7a4d00;--acc:#0a4fc2;--barme:#0a4fc2;--card:#fff;--bg:#e9ecf0;--chip:#dfe4ea}
+:root[data-scheme=dark]{--me:#5b9cff;--them:#9aa4b1;--proj:#3b5a8a;--fa:#b794f6}
+:root[data-scheme=light]{--me:#1f6feb;--them:#6b7280;--proj:#9ec1ff;--fa:#7c3aed}
+.bar.them i{background:var(--them)}.mb i.them{background:var(--them)}
+.vs .me{color:var(--me)}.vs .them{color:var(--them)}
+/* the two sides get their own tinted columns so the split is obvious before you read a name */
+.vs .me,.vs .them{background:color-mix(in srgb,var(--me) 13%,var(--card));padding:5px 7px;border-radius:8px;align-self:stretch}
+.vs .them{background:color-mix(in srgb,var(--them) 16%,var(--card))}
+.vs .me{border-left:3px solid var(--me)}.vs .them{border-right:3px solid var(--them)}
+body.big .vs .me,body.big .vs .them{background:color-mix(in srgb,var(--me) 22%,var(--card))}body.big .vs .them{background:color-mix(in srgb,var(--them) 26%,var(--card))}
+.pair .t.r i{background:var(--them)}
+.sideA,.sideB{padding:8px 10px;border-radius:10px;background:color-mix(in srgb,var(--me) 13%,var(--card));border-left:3px solid var(--me)}
+.sideB{background:color-mix(in srgb,var(--them) 16%,var(--card));border-left:0;border-right:3px solid var(--them)}
+.score .lbl.meL,.score .num.meL{background:color-mix(in srgb,var(--me) 13%,var(--card));color:var(--ink)}.score .lbl.thL,.score .num.thL{background:color-mix(in srgb,var(--them) 16%,var(--card));color:var(--ink)}
+.score .lbl.meL,.score .lbl.thL{padding:3px 7px;border-radius:7px 0 0 7px;border-left:3px solid var(--me)}.score .lbl.thL{border-left-color:var(--them)}
+.score .num.meL,.score .num.thL{padding:3px 8px;border-radius:0 7px 7px 0}
+.vs .me a.pl,.vs .them a.pl{color:inherit}
+.wrow.lead .tr i{background:var(--me)}.wrow.lead .pc{color:var(--me)}
+.wp .mine{background:var(--me)}
+.sw{display:inline-flex;gap:3px;vertical-align:middle;margin-right:6px}.sw i{display:inline-block;width:14px;height:14px;border-radius:3px}
+.opt{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px}
+.opt button{font:inherit;font-size:14px;padding:7px 11px;border-radius:9px;border:1px solid var(--line);background:var(--chip);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:4px}
+.opt button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+.opt button.on .sw i{outline:1px solid #fff}
+.tog{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--line);gap:10px}.tog:first-of-type{border-top:0}
+.tog .tl{min-width:0}.tog .tl small{display:block;color:var(--mute);font-size:12px;white-space:normal}
+.tog button{font:inherit;font-size:13px;font-weight:700;padding:6px 12px;border-radius:9px;border:1px solid var(--line);background:var(--chip);color:var(--ink);cursor:pointer;flex:0 0 auto}
+.tog button.on{background:var(--good);color:#fff;border-color:var(--good)}
+body.big .opt button,body.big .tog button{font-size:18px;padding:9px 14px}
+
 .wi-t.on .wi-t.on tr.wi-new td{background:color-mix(in srgb,var(--good) 12%,transparent)}
 a.aa{text-decoration:none;display:inline-block}a.aa.on{background:var(--acc);color:#fff;border-color:var(--acc)}
 button.more[disabled]{opacity:.45}
@@ -250,7 +285,7 @@ body.big .wchip{font-size:17px;padding:8px 14px}
 </style>
 </head>
 <body>
-<header><div><h1>Let Him Cook</h1><div class="hdrbtns"><button class="aa" id="aa" title="Easy-read mode: bigger text, higher contrast" aria-pressed="false">Aa</button><a class="aa" id="devbtn" href="#dev" title="Engine room (pin)">⚙</a><button class="aa show" id="show" title="Hide the private stuff when showing others">Show mode</button></div></div><div class="stamp" id="stamp">loading…</div></header>
+<header><div><h1>Let Him Cook</h1><div class="hdrbtns"><button class="aa" id="aa" title="Easy-read mode: bigger text, higher contrast" aria-pressed="false">Aa</button><a class="aa" id="devbtn" href="#settings" title="Settings">⚙</a><button class="aa show" id="show" title="Hide the private stuff when showing others">Show mode</button></div></div><div class="stamp" id="stamp">loading…</div></header>
 <div class="stick"><nav class="nav"><a href="#home" data-v="home">Home</a><a href="#matchups" data-v="matchups">Matchups</a><a href="#league" data-v="league">League</a><a href="#players" data-v="players">Players</a><a href="#games" data-v="games">Games</a><a href="#injuries" data-v="injuries">Injuries</a><a href="#news" data-v="news">News</a></nav><div class="crumb" id="crumb"></div></div>
 <div class="search"><input id="gs" type="search" placeholder="Search players, teams, managers" autocomplete="off"><div id="gsr"></div></div>
 <div id="app"><section><div class="empty">Waiting for the first refresh…</div></section></div>
@@ -278,6 +313,7 @@ function keepPlace(y){
   tick();
 }
 let SHOW=false;try{SHOW=localStorage.getItem('lhc_show')==='1'}catch(e){}
+document.addEventListener('DOMContentLoaded',()=>{try{applyLook()}catch(e){}});
 let CMDKEY='';try{CMDKEY=localStorage.getItem('lhc_cmd')||''}catch(e){}
 const WXI={Indoors:'🏟️','Heavy wind':'💨','Rain likely':'🌧️',Cold:'🥶',Breezy:'🍃',Fine:'☀️'};const wxIcon=i=>WXI[i]||'';
 function face(sid,team,pos){if(!sid)return logo(team);if(pos==='DST'||!/^\d+$/.test(String(sid)))return logo(team||sid);return '<img class="logo face portal" data-psid="'+esc(sid)+'" alt="" loading="lazy" src="https://sleepercdn.com/content/nfl/players/thumb/'+esc(sid)+'.jpg" onerror="this.onerror=null;this.src=\'https://a.espncdn.com/i/teamlogos/nfl/500/'+(LOGOFIX[String(team||'').toUpperCase()]||String(team||'').toLowerCase())+'.png\'">';}
@@ -476,8 +512,10 @@ function renderHome(d){
     const mine=lv?lv.me:(anyLive?num(m.myLive):num(m.myExp)), theirs=lv?lv.them:(anyLive?num(m.theirLive):num(m.theirExp));
     const mx=Math.max(mine||0,theirs||0,num(m.myExp)||0,num(m.theirExp)||0,1);
     h+='<section><h2>'+esc(m.title||"Matchup").replace(/vs\s+(.+?)\s*\(/,(a,b)=>'vs '+b+' (')+'</h2>'+(m.opp?'<div class="sub">'+teamLink(m.opp)+'</div>':'')+'<div class="score">';
-    h+='<div class="lbl">Me'+(anyLive?' (live · expected final '+f1(M.myExp)+')':' (expected)')+'</div><div class="num">'+f1(mine)+'</div><div class="bar"><i style="width:'+(100*(mine||0)/mx)+'%"></i></div>';
-    h+='<div class="lbl">'+esc(m.opp||"Them")+(anyLive?' (expected final '+f1(M.thExp)+')':'')+'</div><div class="num">'+f1(theirs)+'</div><div class="bar them"><i style="width:'+(100*(theirs||0)/mx)+'%"></i></div></div>';
+    // a side whose nine have all finished is final, not "expected": say so instead of quoting a forecast
+    const doneM=anyLive&&(m.rows||[]).every(r=>!r.my||gameFrac(r.myTeam,r.myStatus)<=0),doneT=anyLive&&(m.rows||[]).every(r=>!r.their||gameFrac(r.theirTeam,r.theirStatus)<=0);
+    h+='<div class="lbl meL">Me'+(doneM?' (final)':(anyLive?' (live · expected final '+f1(M.myExp)+')':' (expected)'))+'</div><div class="num meL">'+f1(mine)+'</div><div class="bar"><i style="width:'+(100*(mine||0)/mx)+'%"></i></div>';
+    h+='<div class="lbl thL">'+esc(m.opp||"Them")+(doneT?' (final)':(anyLive?' (expected final '+f1(M.thExp)+')':''))+'</div><div class="num thL">'+f1(theirs)+'</div><div class="bar them"><i style="width:'+(100*(theirs||0)/mx)+'%"></i></div></div>';
     const wp=M.rows.length?M.win:num(m.winPct);
     if(wp!==null&&!SHOW){h+='<div class="wp"><span class="wpn" style="color:'+(wp>=50?'var(--good)':'var(--bad)')+'">'+Math.round(wp)+'%</span><div class="track"><i class="mine" style="width:'+Math.round(wp)+'%"></i><i class="theirs" style="width:'+(100-Math.round(wp))+'%"></i></div><span class="sub">'+(100-Math.round(wp))+'%</span></div><div class="sub" style="white-space:normal">'+gl('winpct','Chance you win')+', worked out from how much each of the nine slots can swing (your spread \u00b1'+f1(M.sdM)+' pts, theirs \u00b1'+f1(M.sdT)+').</div>';}
     h+=(m.rows||[]).map(r=>{
@@ -896,9 +934,9 @@ function renderMatchup(d,wk,idx){
   const wa=M.win,wb=100-wa;
   let h='<section><a class="back" href="#matchups">← Matchups</a>';
   h+='<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:end;margin-top:10px">'
-    +'<div style="min-width:0"><div class="name" style="white-space:normal'+(isMine(A.team)?';color:var(--good)':'')+'">'+tn(A.team)+'</div><div class="sub">'+mg(A.mgr)+'</div><div class="num" style="font-size:28px;font-weight:800">'+f1(M.live?M.na:M.ea)+'</div></div>'
+    +'<div class="sideA" style="min-width:0"><div class="name" style="white-space:normal'+(isMine(A.team)?';color:var(--good)':'')+'">'+tn(A.team)+'</div><div class="sub">'+mg(A.mgr)+'</div><div class="num" style="font-size:28px;font-weight:800">'+f1(M.live?M.na:M.ea)+'</div></div>'
     +'<div class="sub" style="padding-bottom:8px">vs</div>'
-    +'<div style="min-width:0;text-align:right"><div class="name" style="white-space:normal'+(isMine(B.team)?';color:var(--good)':'')+'">'+tn(B.team)+'</div><div class="sub">'+mg(B.mgr)+'</div><div class="num" style="font-size:28px;font-weight:800">'+f1(M.live?M.nb:M.eb)+'</div></div></div>';
+    +'<div class="sideB" style="min-width:0;text-align:right"><div class="name" style="white-space:normal'+(isMine(B.team)?';color:var(--good)':'')+'">'+tn(B.team)+'</div><div class="sub">'+mg(B.mgr)+'</div><div class="num" style="font-size:28px;font-weight:800">'+f1(M.live?M.nb:M.eb)+'</div></div></div>';
   h+='<div style="margin-top:8px">'+mRow(A.mgr||A.team,wa,wa>=wb,isMine(B.team))+mRow(B.mgr||B.team,wb,wb>wa,isMine(A.team))+'</div>';
   h+='<div class="sub" style="white-space:normal">'+gl('winpct','Win chance')+(M.live?' · expected final '+f1(M.ea)+' – '+f1(M.eb)+' · '+Math.round(M.minsA)+' vs '+Math.round(M.minsB)+' player-minutes left':' · projected '+f1(M.ea)+' – '+f1(M.eb)+', each side can swing about ±'+f1(M.sd/Math.SQRT2))+'.</div></section>';
   // slot by slot
@@ -918,7 +956,7 @@ function renderMatchup(d,wk,idx){
   h+=boomBust({expA:M.ea,expB:M.eb,vA:M.va,vB:M.vb,cov:M.cov,rowsA:A.lineup.filter(r=>!r.empty)},A.mgr||A.team,B.mgr||B.team);
   // benches
   const bl=(S)=>S.bench.length?S.bench.map(r=>'<div class="sub" style="display:flex;justify-content:space-between;gap:8px;padding:2px 0"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+pl(r.name)+' <small>'+esc(r.pos)+' '+esc(r.nfl||'')+'</small></span><span>'+(r.live!==null?'<b>'+f1(r.live)+'</b>':(r.bye?'bye':f1(r.proj)))+'</span></div>').join(''):'<div class="sub">nobody</div>';
-  h+='<section><h2>Benches</h2><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div style="min-width:0"><div class="sub" style="font-weight:600">'+tn(A.team)+(M.live&&M.benchA?' · '+f1(M.benchA)+' on the bench':'')+'</div>'+bl(A)+'</div><div style="min-width:0"><div class="sub" style="font-weight:600">'+tn(B.team)+(M.live&&M.benchB?' · '+f1(M.benchB)+' on the bench':'')+'</div>'+bl(B)+'</div></div></section>';
+  h+='<section><h2>Benches</h2><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div class="sideA" style="min-width:0"><div class="sub" style="font-weight:600">'+tn(A.team)+(M.live&&M.benchA?' · '+f1(M.benchA)+' on the bench':'')+'</div>'+bl(A)+'</div><div class="sideB" style="min-width:0"><div class="sub" style="font-weight:600">'+tn(B.team)+(M.live&&M.benchB?' · '+f1(M.benchB)+' on the bench':'')+'</div>'+bl(B)+'</div></div></section>';
   return h;
 }
 
@@ -1838,7 +1876,8 @@ function crumbFill(d,v){
   else if(v==='matchup'){deep=true;const x=weekPairs(d,state.mwk)[num(state.midx)];trail=A('Matchups','#matchups')+sep+P(x?(mgrOf(d,x.a)||x.a)+' vs '+(mgrOf(d,x.b)||x.b):'Matchup');}
   else if(v==='injuries')trail=P('Injuries');
   else if(v==='news')trail=P('News');
-  else if(v==='dev')trail=P('Engine room');
+  else if(v==='dev')trail=A('Settings','#settings')+sep+P('Engine room');
+  else if(v==='settings')trail=P('Settings');
   else if(v==='team'){deep=true;const t=(d.power||[]).find(x=>String(x.team)===String(state.team))||{};
     trail=A('League',up('#league'))+sep+P((t.manager||'Team')+(t.name?' · '+t.name:''));}
   else if(v==='player'){deep=true;const nm=cleanName(state.player);const pl2=(d.players||[]).find(x=>String(x.name).toLowerCase()===String(nm).toLowerCase())||{};
@@ -1874,6 +1913,52 @@ function route(){
   PREVHASH='#'+hsh;
   render();
 }
+
+// ---------------- LOOK: colour themes, scheme, colourblind (Settings page) ----------------
+// Every "you vs them" element reads --me / --them, so one theme swap recolours the whole app.
+const THEMES=[
+  {id:'classic',name:'Classic',light:{me:'#1f6feb',them:'#6b7280',proj:'#9ec1ff'},dark:{me:'#5b9cff',them:'#9aa4b1',proj:'#3b5a8a'}},
+  {id:'blazeorange',name:'Blue vs orange',light:{me:'#1f6feb',them:'#e8730c',proj:'#9ec1ff'},dark:{me:'#5b9cff',them:'#ff9a3c',proj:'#3b5a8a'}},
+  {id:'chiefs',name:'Red vs gold',light:{me:'#c8102e',them:'#c99700',proj:'#f2a5b0'},dark:{me:'#ff4d67',them:'#ffcf3d',proj:'#7a2a37'}},
+  {id:'teal',name:'Teal vs purple',light:{me:'#0d9488',them:'#7c3aed',proj:'#99e2db'},dark:{me:'#2dd4bf',them:'#b794f6',proj:'#1f5c56'}},
+  {id:'green',name:'Green vs magenta',light:{me:'#15803d',them:'#c026d3',proj:'#a7e3bb'},dark:{me:'#4ade80',them:'#e879f9',proj:'#1f5a33'}},
+  {id:'mono',name:'Black vs white',light:{me:'#111827',them:'#9ca3af',proj:'#9ca3af'},dark:{me:'#f9fafb',them:'#6b7280',proj:'#4b5563'}}];
+let LOOK={theme:'classic',scheme:'auto',cb:false};
+try{LOOK=Object.assign(LOOK,JSON.parse(localStorage.getItem('lhc_look')||'{}'))}catch(e){}
+function saveLook(){try{localStorage.setItem('lhc_look',JSON.stringify(LOOK))}catch(e){}}
+function isDark(){return LOOK.scheme==='dark'||(LOOK.scheme==='auto'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)}
+function applyLook(){
+  const root=document.documentElement,b=document.body;
+  if(LOOK.scheme==='auto')root.removeAttribute('data-scheme');else root.setAttribute('data-scheme',LOOK.scheme);
+  const t=THEMES.find(x=>x.id===LOOK.theme)||THEMES[0],c=isDark()?t.dark:t.light;
+  // set on <body> so the choice beats the easy-read block (body.big) as well as :root
+  b.style.setProperty('--me',c.me);b.style.setProperty('--them',c.them);b.style.setProperty('--proj',c.proj);
+  b.style.setProperty('--barme',c.me);b.style.setProperty('--acc',c.me);
+  // colourblind-safe: blue for good, vermilion for bad (Okabe-Ito), never red against green
+  if(LOOK.cb){b.style.setProperty('--good',isDark()?'#56b4e9':'#0072b2');b.style.setProperty('--bad',isDark()?'#ff8c42':'#d55e00');}
+  else{b.style.removeProperty('--good');b.style.removeProperty('--bad');}
+  const m=document.querySelector('meta[name=theme-color]');if(m)m.setAttribute('content',isDark()?'#111418':'#f4f5f7');
+}
+if(window.matchMedia)try{window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',applyLook)}catch(e){}
+function renderSettings(d){
+  const t=THEMES.find(x=>x.id===LOOK.theme)||THEMES[0];
+  let big=false;try{big=localStorage.getItem('lhc_big')==='1'}catch(e){}
+  const sw=th=>{const c=isDark()?th.dark:th.light;return '<span class="sw"><i style="background:'+c.me+'"></i><i style="background:'+c.them+'"></i></span>'};
+  let h='<section><h2>Team colours</h2><div class="sub" style="white-space:normal">First swatch is you, second is the other side. Used on every score bar, chart and matchup row.</div><div class="opt">'
+    +THEMES.map(x=>'<button data-look="theme|'+x.id+'" class="'+(x.id===LOOK.theme?'on':'')+'">'+sw(x)+esc(x.name)+'</button>').join('')+'</div>'
+    +'<div class="sub" style="font-weight:600">Preview</div>'
+    +'<div class="score"><div class="lbl meL">You</div><div class="num meL">127.5</div><div class="bar"><i style="width:100%"></i></div><div class="lbl thL">'+esc((d.matchup&&d.matchup.opp)||'Them')+'</div><div class="num thL">107.4</div><div class="bar them"><i style="width:84%"></i></div></div>'
+    +svgBars({labels:['QB','RB','WR','TE'],series:[{vals:[29.8,20.9,8.9,18.1],cls:'me'},{vals:[19.4,17.7,35.2,26],cls:'them'}],h:110,legend:[['me','you'],['them','them'],['proj','projected']]})
+    +'</section>';
+  h+='<section><h2>Light or dark</h2><div class="opt">'+[['auto','Match phone'],['light','Light'],['dark','Dark']].map(x=>'<button data-look="scheme|'+x[0]+'" class="'+(LOOK.scheme===x[0]?'on':'')+'">'+x[1]+'</button>').join('')+'</div></section>';
+  h+='<section><h2>Reading</h2>'
+    +'<div class="tog"><div class="tl">Easy-read<small>Bigger text, heavier lines, higher contrast. Same as the Aa button.</small></div><button data-look="big|toggle" class="'+(big?'on':'')+'">'+(big?'On':'Off')+'</button></div>'
+    +'<div class="tog"><div class="tl">Colourblind-safe<small>Good and bad become blue and orange instead of green and red, everywhere.</small></div><button data-look="cb|toggle" class="'+(LOOK.cb?'on':'')+'">'+(LOOK.cb?'On':'Off')+'</button></div>'
+    +'<div class="tog"><div class="tl">Show mode<small>Hides your private numbers (trade targets, the board) when you show the app to someone in the league.</small></div><button data-look="show|toggle" class="'+(SHOW?'on':'')+'">'+(SHOW?'On':'Off')+'</button></div>'
+    +'</section>';
+  h+='<section><h2>Engine room</h2><div class="sub" style="white-space:normal">Feeds, health checks, every raw number the engine used, and the laptop controls. Needs the pin.</div><div class="opt"><a class="aa" href="#dev" style="text-decoration:none;display:inline-block">Open the engine room</a></div></section>';
+  return h;
+}
 function render(){
   const d=D; if(!d)return;
   if(clockTimer)clearInterval(clockTimer);
@@ -1891,6 +1976,7 @@ function render(){
   else if(v==="nfl")h=renderNfl(d,state.nfl2);
   else if(v==="coach")h=renderCoach(d,state.coach);
   else if(v==="dev")h=renderDev(d);
+  else if(v==="settings")h=renderSettings(d);
   else if(v==="injuries")h=renderInjuries(d);
   else if(v==="news")h=renderNews(d);
   else h=renderHome(d);
@@ -1904,12 +1990,17 @@ function render(){
   const cc=$("#cmdclear");if(cc)cc.addEventListener("click",e=>{e.preventDefault();CMDKEY='';try{localStorage.removeItem('lhc_cmd')}catch(e){}render()});
   const ps2=$('#pinsave');if(ps2)ps2.addEventListener('click',()=>{const val=($('#pinin').value||'').trim().toUpperCase();PIN=val;try{localStorage.setItem('lhc_pin',val)}catch(e){}render()});
   const po=$('#pinout');if(po)po.addEventListener('click',e=>{e.preventDefault();PIN='';try{localStorage.removeItem('lhc_pin')}catch(e){}render()});
-  const db=$('#devbtn');if(db){db.classList.toggle('on',v==='dev');db.style.display=SHOW?'none':'';}
+  const db=$('#devbtn');if(db){db.classList.toggle('on',v==='dev'||v==='settings');}
   document.querySelectorAll('[data-want]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();
     const [m,kind,val]=b.dataset.want.split('|');const w=WANTS[m]||(WANTS[m]={pos:[],offered:[]});
     const arr=kind==='pos'?(w.pos=w.pos||[]):(w.offered=w.offered||[]);
     const i=arr.indexOf(val); if(i>=0)arr.splice(i,1); else arr.push(val);
     saveWants();render();}));
+  document.querySelectorAll('[data-look]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();const [k,val]=b.dataset.look.split('|');
+    if(k==='theme')LOOK.theme=val;else if(k==='scheme')LOOK.scheme=val;else if(k==='cb')LOOK.cb=!LOOK.cb;
+    else if(k==='big'){const a=document.getElementById('aa');if(a)a.click();render();return}
+    else if(k==='show'){const a=document.getElementById('show');if(a)a.click();return}
+    saveLook();applyLook();render()}));
   document.querySelectorAll("[data-team]").forEach(el=>el.addEventListener("click",()=>{location.hash="#team/"+el.dataset.team}));
   document.querySelectorAll("[data-player]").forEach(el=>el.addEventListener("click",()=>{location.hash="#player/"+encodeURIComponent(el.dataset.player)}));
   const fp=$("#f-pos"),fo=$("#f-owner"),fs=$("#f-sort"),fq=$("#f-q"),mo=$("#more");
