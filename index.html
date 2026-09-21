@@ -276,6 +276,12 @@ let CMDKEY='';try{CMDKEY=localStorage.getItem('lhc_cmd')||''}catch(e){}
 const WXI={Indoors:'🏟️','Heavy wind':'💨','Rain likely':'🌧️',Cold:'🥶',Breezy:'🍃',Fine:'☀️'};const wxIcon=i=>WXI[i]||'';
 function face(sid,team,pos){if(!sid)return logo(team);if(pos==='DST'||!/^\d+$/.test(String(sid)))return logo(team||sid);return '<img class="logo face portal" data-psid="'+esc(sid)+'" alt="" loading="lazy" src="https://sleepercdn.com/content/nfl/players/thumb/'+esc(sid)+'.jpg" onerror="this.onerror=null;this.src=\'https://a.espncdn.com/i/teamlogos/nfl/500/'+(LOGOFIX[String(team||'').toUpperCase()]||String(team||'').toLowerCase())+'.png\'">';}
 function co(name){if(blank(name)||/^(TBD|vacant|-)$/i.test(name))return esc(name||'');return '<a class="pl" href="#coach/'+encodeURIComponent(name)+'">'+esc(name)+'</a>';}
+function tn(name){ // a league team name, as a portal to that team's page
+  if(blank(name))return '';
+  const p=(D&&D.power||[]).find(x=>x.name===name)||(D&&D.teams||[]).find(x=>x.name===name);
+  if(!p||p.team===undefined)return esc(name);
+  return '<a class="pl'+(isMine(name)?' mine':'')+'" href="#team/'+esc(p.team)+'">'+esc(name)+'</a>';
+}
 function mg(manager,team){if(blank(manager))return '';const t=team!==undefined?team:((D&&D.teams||[]).find(x=>x.manager===manager)||{}).team;return t!==undefined?'<a class="pl" href="#team/'+esc(t)+'">'+esc(manager)+'</a>':esc(manager);}
 function posChip(p){if(blank(p))return '';const k=String(p).toUpperCase().replace('DEF','DST');return '<span class="pos '+esc(k)+'">'+esc(k)+'</span>';}
 function teamLink(name){const t=(D&&D.teams||[]).find(x=>x.name===name);return t?'<a class="pl" href="#team/'+t.team+'">'+esc(name)+'</a>':esc(name);}
@@ -717,7 +723,7 @@ function renderGames(d){
     const gsc=gameScore(g);const sc=fin&&gsc.has?'<b>'+Math.round(gsc.a)+' – '+Math.round(gsc.h)+'</b>':'';
     const wx=blank(g.impact)?'':wxIcon(g.impact)+' <span class="'+(/wind|rain|cold/i.test(g.impact)?'flag':'sub')+'">'+esc(g.impact)+'</span>'+(blank(g.cond)||/indoor/i.test(g.impact)?'':' <span class="sub">'+esc(g.cond)+'</span>');
     const away=inLeague(g.away),home=inLeague(g.home);
-    const side=(t,list)=>'<div style="min-width:0"><div class="sub" style="font-weight:600">'+esc(t)+(num(t===g.home?g.impliedHome:g.impliedAway)!==null?' · implied '+f1(t===g.home?g.impliedHome:g.impliedAway):'')+'</div>'+list.map(p=>'<div class="sub'+(isMine(p.ownerName)?' mine':'')+'" style="white-space:normal;display:flex;gap:6px;align-items:center;padding:2px 0">'+face(p.sid,p.team,p.pos).replace('class="logo face"','class="logo face" style="width:22px;height:22px;flex-basis:22px"')+'<span>'+pl(p.name)+' <small>'+esc(p.pos)+' · '+(isMine(p.ownerName)?'<b style="color:var(--good)">YOU</b>':esc(p.ownerName))+' · '+f1(num(p.game&&p.game.live)!==null&&fin?p.game.live:p.proj)+'</small></span></div>').join("")+'</div>';
+    const side=(t,list)=>'<div style="min-width:0"><div class="sub" style="font-weight:600">'+esc(t)+(num(t===g.home?g.impliedHome:g.impliedAway)!==null?' · implied '+f1(t===g.home?g.impliedHome:g.impliedAway):'')+'</div>'+list.map(p=>'<div class="sub'+(isMine(p.ownerName)?' mine':'')+'" style="white-space:normal;display:flex;gap:6px;align-items:center;padding:2px 0">'+face(p.sid,p.team,p.pos).replace('class="logo face"','class="logo face" style="width:22px;height:22px;flex-basis:22px"')+'<span>'+pl(p.name)+' <small>'+esc(p.pos)+' · '+(isMine(p.ownerName)?'<b style="color:var(--good)">YOU</b>':tn(p.ownerName))+' · '+f1(num(p.game&&p.game.live)!==null&&fin?p.game.live:p.proj)+'</small></span></div>').join("")+'</div>';
     return '<section><details class="g"><summary style="color:var(--ink);font-size:14px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div style="display:flex;align-items:center;gap:6px">'+logo(g.away)+'<b>'+tl(g.away)+'</b><span class="sub">@</span>'+logo(g.home)+'<b>'+tl(g.home)+'</b></div><div style="text-align:right">'+gamePill(g.status)+' <span class="sub">'+esc(g.kick)+'</span>'+(sc?'<br>'+sc:'')+'</div></div>'
       +liveWin(g)+'<div class="sub" style="white-space:normal;margin-top:4px">'+[blank(g.spread)?'':gl('spread','spread')+' '+((g.odds&&num(g.odds.spread)!==null)?f1(g.odds.spread):esc(g.spread))+' · total '+((g.odds&&num(g.odds.total)!==null)?f1(g.odds.total):esc(g.total))+((g.odds&&Math.abs(num(g.odds.move)||0)>=1)?' <span class="flag'+(num(g.odds.move)<0?' good':'')+'">'+gl('linemove','line')+' '+(num(g.odds.move)>0?'+':'')+f1(g.odds.move)+'</span>':''),esc(g.roof||''),wx,num(g.aqi)!==null?'air '+aqiTxt(g.aqi):'',num(g.altitude)?'⛰️ '+Math.round(g.altitude).toLocaleString()+' ft':''].filter(x=>x).join(' · ')+'</div></summary>'
       +((g.homeSplits||g.awaySplits)?'<div class="sub" style="white-space:normal;margin-top:6px">'+[g.awaySplits?esc(g.away)+' scores '+f1(g.awaySplits.away)+' away / '+f1(g.awaySplits.home)+' home'+(num(g.awaySplits.badN)>=3?', '+f1(g.awaySplits.badWx)+' in bad weather':''):'',g.homeSplits?esc(g.home)+' scores '+f1(g.homeSplits.home)+' home / '+f1(g.homeSplits.away)+' away'+(num(g.homeSplits.badN)>=3?', '+f1(g.homeSplits.badWx)+' in bad weather':''):''].filter(x=>x).join('<br>')+' <small>(2024–26)</small></div>':'')+((g.awayCoach||g.homeCoach)?'<div class="sub" style="white-space:normal;margin-top:6px">'+[g.awayCoach?esc(g.away)+': '+coachLine(g.awayCoach):'',g.homeCoach?esc(g.home)+': '+coachLine(g.homeCoach):''].filter(x=>x).join('<br>')+'</div>':'')
@@ -773,7 +779,7 @@ function renderMatchups(d){
   if(wk!==cur){
     const pw=n=>(d.power||[]).find(x=>x.name===n)||{};
     h+='<section><h2>Week '+wk+'</h2>'+pairs.map(x=>{const A=pw(x.a),B=pw(x.b);const ra=num(A.ros),rb=num(B.ros);
-      return '<div class="row" style="padding:8px 0"><div class="main" style="white-space:normal"><div class="name" style="white-space:normal;overflow:visible'+((isMine(x.a)||isMine(x.b))?';color:var(--good)':'')+'">'+esc(x.a)+' <span class="sub">vs</span> '+esc(x.b)+'</div><div class="sub">'+esc(A.manager||'')+' vs '+esc(B.manager||'')+(ra!==null&&rb!==null?' · rest-of-season strength '+f1(ra)+' vs '+f1(rb):'')+'</div></div></div>';}).join('')
+      return '<div class="row" style="padding:8px 0"><div class="main" style="white-space:normal"><div class="name" style="white-space:normal;overflow:visible'+((isMine(x.a)||isMine(x.b))?';color:var(--good)':'')+'">'+tn(x.a)+' <span class="sub">vs</span> '+tn(x.b)+'</div><div class="sub">'+mg(A.manager||'')+' vs '+mg(B.manager||'')+(ra!==null&&rb!==null?' · rest-of-season strength '+f1(ra)+' vs '+f1(rb):'')+'</div></div></div>';}).join('')
       +'<div class="sub" style="white-space:normal;margin-top:6px">'+(wk<cur?'A finished week. Lineups from then are not kept, so there is no replay — only this week gets the full page.':'Lineups are not set yet, so this is the pairing and each side\'s rest-of-season strength today.')+'</div></section>';
     return h;
   }
@@ -796,9 +802,9 @@ function renderMatchup(d,wk,idx){
   const wa=M.win,wb=100-wa;
   let h='<section><a class="back" href="#matchups">← Matchups</a>';
   h+='<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:end;margin-top:10px">'
-    +'<div style="min-width:0"><div class="name" style="white-space:normal'+(isMine(A.team)?';color:var(--good)':'')+'">'+esc(A.team)+'</div><div class="sub">'+esc(A.mgr)+'</div><div class="num" style="font-size:28px;font-weight:800">'+f1(M.live?M.na:M.ea)+'</div></div>'
+    +'<div style="min-width:0"><div class="name" style="white-space:normal'+(isMine(A.team)?';color:var(--good)':'')+'">'+tn(A.team)+'</div><div class="sub">'+mg(A.mgr)+'</div><div class="num" style="font-size:28px;font-weight:800">'+f1(M.live?M.na:M.ea)+'</div></div>'
     +'<div class="sub" style="padding-bottom:8px">vs</div>'
-    +'<div style="min-width:0;text-align:right"><div class="name" style="white-space:normal'+(isMine(B.team)?';color:var(--good)':'')+'">'+esc(B.team)+'</div><div class="sub">'+esc(B.mgr)+'</div><div class="num" style="font-size:28px;font-weight:800">'+f1(M.live?M.nb:M.eb)+'</div></div></div>';
+    +'<div style="min-width:0;text-align:right"><div class="name" style="white-space:normal'+(isMine(B.team)?';color:var(--good)':'')+'">'+tn(B.team)+'</div><div class="sub">'+mg(B.mgr)+'</div><div class="num" style="font-size:28px;font-weight:800">'+f1(M.live?M.nb:M.eb)+'</div></div></div>';
   h+='<div style="margin-top:8px">'+mRow(A.mgr||A.team,wa,wa>=wb)+mRow(B.mgr||B.team,wb,wb>wa)+'</div>';
   h+='<div class="sub" style="white-space:normal">'+gl('winpct','Win chance')+(M.live?' · expected final '+f1(M.ea)+' – '+f1(M.eb)+' · '+Math.round(M.minsA)+' vs '+Math.round(M.minsB)+' player-minutes left':' · projected '+f1(M.ea)+' – '+f1(M.eb)+', each side can swing about ±'+f1(M.sd/Math.SQRT2))+'.</div></section>';
   // slot by slot
@@ -817,7 +823,7 @@ function renderMatchup(d,wk,idx){
     +'<div class="sub" style="white-space:normal">'+sw.map(r=>esc((r.slot==='W/R/T'?'FLEX':r.slot))+' '+(r.gap>=0?esc(A.mgr||A.team):esc(B.mgr||B.team))+' +'+f1(Math.abs(r.gap))).join(' · ')+'.</div></section>';
   // benches
   const bl=(S)=>S.bench.length?S.bench.map(r=>'<div class="sub" style="display:flex;justify-content:space-between;gap:8px;padding:2px 0"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+pl(r.name)+' <small>'+esc(r.pos)+' '+esc(r.nfl||'')+'</small></span><span>'+(r.live!==null?'<b>'+f1(r.live)+'</b>':(r.bye?'bye':f1(r.proj)))+'</span></div>').join(''):'<div class="sub">nobody</div>';
-  h+='<section><h2>Benches</h2><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div style="min-width:0"><div class="sub" style="font-weight:600">'+esc(A.mgr||A.team)+(M.live&&M.benchA?' · '+f1(M.benchA)+' on the bench':'')+'</div>'+bl(A)+'</div><div style="min-width:0"><div class="sub" style="font-weight:600">'+esc(B.mgr||B.team)+(M.live&&M.benchB?' · '+f1(M.benchB)+' on the bench':'')+'</div>'+bl(B)+'</div></div></section>';
+  h+='<section><h2>Benches</h2><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div style="min-width:0"><div class="sub" style="font-weight:600">'+tn(A.team)+(M.live&&M.benchA?' · '+f1(M.benchA)+' on the bench':'')+'</div>'+bl(A)+'</div><div style="min-width:0"><div class="sub" style="font-weight:600">'+tn(B.team)+(M.live&&M.benchB?' · '+f1(M.benchB)+' on the bench':'')+'</div>'+bl(B)+'</div></div></section>';
   return h;
 }
 
@@ -925,7 +931,7 @@ function finalBlock(g){
     h+='<div class="sub" style="font-weight:600;margin-top:12px">Fantasy points in this game</div>'
       +top.map(r=>'<div class="frow'+(r.mine?' mine':'')+'"><div class="ft"><span class="fn pl" data-psid="'+esc(r.sid||'')+'">'+esc(r.name)+'</span><span class="fp">'+f1(r.pts)+'</span></div>'
         +'<div class="tr"><i class="'+(r.pts<0?'neg':'')+'" style="width:'+Math.round(100*Math.abs(r.pts)/mxp)+'%"></i></div>'
-        +'<div class="sub bline">'+esc(r.pos)+' '+esc(r.team)+(r.line?' · '+esc(r.line):'')+' · '+(r.mine?'<b style="color:var(--good)">yours</b>':(r.owner?esc(r.owner):'free agent'))+'</div></div>').join('')
+        +'<div class="sub bline">'+esc(r.pos)+' '+esc(r.team)+(r.line?' · '+esc(r.line):'')+' · '+(r.mine?'<b style="color:var(--good)">yours</b>':(r.owner?tn(r.owner):'free agent'))+'</div></div>').join('')
       +'<div class="sub" style="white-space:normal">Everyone the app tracks who played in this game, best first. Green is yours.</div>';
     const sw=rows.filter(r=>r.proj!==null&&r.proj>3).map(r=>Object.assign({},r,{diff:r.pts-r.proj})).sort((a,b)=>Math.abs(b.diff)-Math.abs(a.diff)).slice(0,6);
     if(sw.length>2){
@@ -1073,7 +1079,7 @@ function nflSection(d){
     h+='<div style="display:flex;gap:10px;align-items:center;margin-top:8px">'+logo(t.team)+'<div><b>'+esc(t.name)+'</b><div class="sub" style="white-space:normal">this week '+esc(t.thisWeek)+(t.bye?' · bye wk '+t.bye:'')+(num(t.altitude)?' · ⛰️ '+Math.round(t.altitude).toLocaleString()+' ft':'')+'</div></div></div>';
     h+=kv([['Head coach','<b>'+co(t.hc)+'</b> <small>since '+esc(t.hcSince)+(t.hcRecord&&t.hcRecord!=='0-0'?' · '+esc(t.hcRecord)+(t.hcPlayoffs&&t.hcPlayoffs!=='0-0'?' · playoffs '+esc(t.hcPlayoffs):''):' · first year')+'</small>'],['Offensive coordinator',co(t.oc)+' <small>since '+esc(t.ocSince)+'</small>'],['Defensive coordinator',co(t.dc)+' <small>since '+esc(t.dcSince)+'</small>'],['Scoring 2024–26',num(sp.all)?f1(sp.all)+' ppg · home '+f1(sp.home)+' / away '+f1(sp.away)+(num(sp.badN)>=3?' · bad weather '+f1(sp.badWx):'')+(num(sp.domeN)>=3?' · dome '+f1(sp.dome):''):'']]);
     if(num(sp.all)){const rows=[['Home',sp.home],['Away',sp.away],['Good wx',sp.all],['Bad wx',sp.badWx]].filter(r=>num(r[1]));h+=svgBars({labels:rows.map(r=>r[0]),series:[{vals:rows.map(r=>r[1]),cls:'me'}],h:110});}
-    if(inL.length)h+='<div class="sub" style="margin-top:6px;white-space:normal"><b>In our league:</b> '+inL.map(p=>pl(p.name)+' <small>'+esc(p.pos)+' · '+esc(isMine(p.ownerName)?'YOU':p.ownerName)+'</small>').join(' · ')+'</div>';
+    if(inL.length)h+='<div class="sub" style="margin-top:6px;white-space:normal"><b>In our league:</b> '+inL.map(p=>pl(p.name)+' <small>'+esc(p.pos)+' · '+(isMine(p.ownerName)?'YOU':tn(p.ownerName))+'</small>').join(' · ')+'</div>';
   }
   return h;
 }
@@ -1217,7 +1223,7 @@ function tradeCheck(d,p){
     +['QB','RB','WR','TE'].map(k=>'<button class="wchip'+((W.pos||[]).indexOf(k)>=0?' on':'')+'" data-want="'+esc(mgr)+'|pos|'+k+'">'+k+'</button>').join('')
     +'<button class="wchip'+(offered?' on':'')+'" data-want="'+esc(mgr)+'|off|'+esc(p.name)+'">offered '+esc(String(p.name).split(' ').slice(-1)[0])+'</button></div>'
     +'<div class="sub" style="white-space:normal">'+((W.pos||[]).length||offered?'Counted: '+[(W.pos||[]).length?'wants '+(W.pos||[]).join('/'):'',offered?'has shopped '+esc(p.name):''].filter(x=>x).join(' · ')+'. Packages matching that get more rope before they say no.':'Tap what they said in the league chat. It loosens how much they have to gain for a deal to be realistic.')+'</div></div>';
-  h+=kv([['Owner',mg(theirTeam.manager,own)+' <small>('+esc(p.ownerName||'')+')</small>'],
+  h+=kv([['Owner',mg(theirTeam.manager,own)+' <small>('+tn(p.ownerName||'')+')</small>'],
     ['His value',f1(p.value)+'/wk <small>ROS '+f1(p.ros&&p.ros.cons)+'</small>'],
     ['They are thin at',theirThin.length?theirThin.join(', '):'<span class="sub">nothing obvious</span>'],
     ['Trade engine',already?'already lists him — give '+pl(already.give)+', score '+f1(already.score):'<span class="sub">not in this week\'s top trades</span>']]);
@@ -1431,7 +1437,7 @@ function renderNews(d){
   else h+='<div class="sub" style="white-space:normal">Nothing in the last 3 days carried a strong signal'+(f==='ALL'?'':' under this filter')+'.</div>';
   h+='<div class="sub" style="margin-top:6px">'+list.length+(f==='ALL'?'':' of '+all.length)+' report'+(list.length===1?'':'s')+' in the last 7 days.</div>'+'<div class="filters" style="margin-top:8px"><select id="nfilt">'+[['ALL','Everything'],['MINE','My players'],['LEAGUE','Rostered in league'],['NEG','Bad news'],['POS','Good news']].concat(srcs.map(s=>[s,s])).map(o=>'<option value="'+o[0]+'"'+(f===o[0]?' selected':'')+'>'+esc(o[1])+'</option>').join('')+'</select><input id="nq" type="search" placeholder="Search news" value="'+esc(state.nq||'')+'"></div></section>';
   h+='<section>'+list.slice(0,80).map(x=>{const ago=num(x.age)===null?'':(x.age<1?'now':(x.age<24?Math.round(x.age)+'h':Math.round(x.age/24)+'d'));const sg=num(x.sig)||0;
-    return '<div style="padding:8px 0;border-top:1px solid var(--line);white-space:normal;line-height:1.35"><div><b>'+pl(x.player)+'</b>'+(x.team?' <span class="sub">'+esc(x.pos)+' · '+esc(x.team)+'</span>':'')+(num(x.owner)?' <span class="pill'+(num(x.owner)===5?' warn':'')+'">'+esc(num(x.owner)===5?'YOU':x.ownerName)+'</span>':'')+'</div><div>'+esc(x.head)+'</div>'+(blank(x.body)?'':'<div class="sub" style="white-space:normal">'+esc(x.body)+'</div>')+'<div class="sub">'+esc(x.src)+' · '+ago+(blank(x.kw)?'':' · <span class="'+(sg<0?'form dn':(sg>0?'form up':''))+'">'+esc(x.kw)+'</span>')+'</div></div>'}).join('')+'</section>';
+    return '<div style="padding:8px 0;border-top:1px solid var(--line);white-space:normal;line-height:1.35"><div><b>'+pl(x.player)+'</b>'+(x.team?' <span class="sub">'+esc(x.pos)+' · '+esc(x.team)+'</span>':'')+(num(x.owner)?' <span class="pill'+(num(x.owner)===5?' warn':'')+'">'+(num(x.owner)===5?'YOU':tn(x.ownerName))+'</span>':'')+'</div><div>'+esc(x.head)+'</div>'+(blank(x.body)?'':'<div class="sub" style="white-space:normal">'+esc(x.body)+'</div>')+'<div class="sub">'+esc(x.src)+' · '+ago+(blank(x.kw)?'':' · <span class="'+(sg<0?'form dn':(sg>0?'form up':''))+'">'+esc(x.kw)+'</span>')+'</div></div>'}).join('')+'</section>';
   return h;
 }
 // ---------------- SEARCH ----------------
