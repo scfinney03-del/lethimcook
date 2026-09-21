@@ -1585,6 +1585,7 @@ const GLOSS={
  buzz:['Buzz','Net tone of the last 72 hours of news about him, from our keyword list. Negative is bad news piling up, positive is good news. It is a nudge, not a projection.'],
  linemove:['Line move','How far the betting line has shifted since the week opened, in points. Money moves for a reason — a line sliding toward a team usually means the market learned something (a starter is out, weather turned) before the injury reports and projections catch up. A move of 2 points or more is worth a look.'],
  lifts:['What moved his value','Value starts as a blend of rest-of-season projections, recent form and his own history, then this week\'s consensus with the environment on it. These are the multipliers applied after that: durability from his injury record, the 72-hour news signal, the crowd (trending adds), the expert tilt (where 100+ ranked experts put him against our own rank, weighted by how much they agree), and draft capital for rookies with no sample. Each is capped so it nudges rather than decides.'],
+ counter:['Counter offer','Built only when the offer on the table is not already a clear yes. What they need is read first from their own offer (the positions they asked for), then from their roster (empty or thin spots) and their rest-of-season lineup. A counter must fill at least one of those, be better for you than for them all-in, leave you no empty slot, and sit inside what they would accept given who asked, their desperation and the fit. Top three shown, one per player you would get.'],
  teamstats:['Team stats','This team against the league: projected points this week, rest-of-season power (best lineup by value, every remaining week), bench value, points for and against, each with the league average and the team\'s rank among the 12. Green bars are top four, red bottom four.'],
  tradecalc:['Trade calculator','Pick who you are trading with, who asked, and tick the players on each side. Roster value is the best starting nine by value plus 30% of the bench, for both teams before and after. The grade leans on your roster-value change, adds rest of season and this week, takes off for injury risk, for any position the trade leaves empty, and for what the other side gains weighted by how big a threat they are (roster strength, standing, and how many more times you play them). A trade that helps them more than you is never recommended, whatever else it does. "Would they accept" compares their loss against how much rope they have: the side that asked wants it more, and desperation adds rope - a losing record, a skid, hurt starters, thin positions (especially ones you are offering), frantic waiver activity, and anything they have said in the chat. High desperation with an easy yes means ask for more.'],
  tenure:['Coach tenure','Seasons with the team, his rank among the 32 (head coaches by win% with the team; coordinators by what their unit scored or allowed last full season), and a survival model: head coaches leave at about one in five a year, less with a winning record, playoff games and a long run, more with a losing record or a bad current season. Coordinators leave both ways - fired when the unit is bad, hired away when it is great. Expected seasons left is one over that yearly chance, capped at seven.'],
@@ -2196,6 +2197,54 @@ function tcEval(d,mine,theirs,give,get,asked){
   R.score=score;R.verdict=v;R.cls=cls;
   return R;
 }
+
+// ---------------- COUNTER OFFERS ----------------
+// What they need is read first off their own offer (the positions they asked for), then off their
+// roster (thin spots, empty slots) and rest-of-season lineup. A counter has to fill at least one of
+// those, be better for you than for them, and be something they would take.
+function tcNeeds(d,mine,theirs,give,get){
+  const need={},why={};
+  const add=(k,w,txt)=>{need[k]=(need[k]||0)+w;(why[k]=why[k]||[]).push(txt)};
+  mine.filter(r=>give.indexOf(r.player)>=0).forEach(r=>add(r.pos,3,'they asked for '+r.pos));
+  const cnt=(rows,k)=>rows.filter(r=>r.pos===k&&(num(r.value)||0)>=6).length;const needN={QB:1,RB:2,WR:2,TE:1};
+  Object.keys(needN).forEach(k=>{if(cnt(theirs,k)<needN[k])add(k,2,'no startable '+k)});
+  const pt=theirs[0]?theirs[0].teamName:'';const pw=(d.power||[]).find(x=>x.name===pt)||{};const pv=pw.posValue||{};
+  Object.keys(needN).forEach(k=>{const v=(d.power||[]).map(x=>x.posValue&&num(x.posValue[k])).filter(x=>x!==null);const avg=v.length?v.reduce((a,b)=>a+b,0)/v.length:null;if(avg&&num(pv[k])<avg*0.85)add(k,1.5,'thin at '+k)});
+  // rest of season: the position where their best lineup drops off fastest
+  const nine=bestNine(theirs,'ros').used;const weakest=Object.keys(needN).map(k=>{const st=theirs.filter(r=>nine[r.player]&&r.pos===k).map(r=>num(r.ros)||0);return {k:k,v:st.length?Math.min.apply(null,st):0}}).sort((a,b)=>a.v-b.v)[0];
+  if(weakest&&weakest.v<8)add(weakest.k,1,'weakest ROS starter is a '+weakest.k);
+  return {need:need,why:why};
+}
+let TCC={};
+function tcCounters(d,mine,theirs,give,get,asked){
+  const ck=[D&&D.updated,theirs[0]&&theirs[0].teamName,give.slice().sort().join(','),get.slice().sort().join(','),asked].join('#');
+  if(TCC.key===ck)return TCC.val;
+  const val=tcCounters0(d,mine,theirs,give,get,asked);TCC={key:ck,val:val};return val;
+}
+function tcCounters0(d,mine,theirs,give,get,asked){
+  const N=tcNeeds(d,mine,theirs,give,get);const needPos=Object.keys(N.need);if(!needPos.length)return {list:[],needs:N};
+  const pool=r=>r.pos!=='K'&&r.pos!=='DST'&&!/^IR/.test(r.slot||'');
+  const myC=mine.filter(r=>pool(r)&&(num(r.value)||0)>=3&&(needPos.indexOf(r.pos)>=0||give.indexOf(r.player)>=0)).sort((a,b)=>(num(b.value)||0)-(num(a.value)||0)).slice(0,9);
+  const thC=theirs.filter(r=>pool(r)&&(get.indexOf(r.player)>=0||(num(r.value)||0)>=5)).sort((a,b)=>(num(b.value)||0)-(num(a.value)||0)).slice(0,12);
+  const subs=arr=>{const o=[];arr.forEach((a,i)=>{o.push([a]);arr.slice(i+1).forEach(b=>o.push([a,b]))});return o};
+  const out=[];const seen={};
+  subs(myC).forEach(G=>{if(!G.some(r=>needPos.indexOf(r.pos)>=0))return;
+    subs(thC).forEach(X=>{
+      const gk=G.map(r=>r.player).sort().join('+'),xk=X.map(r=>r.player).sort().join('+');
+      if(gk===give.slice().sort().join('+')&&xk===get.slice().sort().join('+'))return;   // that is the offer on the table
+      const key=gk+'|'+xk;if(seen[key])return;seen[key]=1;
+      const R=tcEval(d,mine,theirs,G.map(r=>r.player),X.map(r=>r.player),asked);
+      if(R.helpsThem||!R.accept||R.meTot<=0.3)return;
+      if(R.holes.some(h=>/nobody/.test(h)))return;
+      const fills=Array.from(new Set(G.filter(r=>needPos.indexOf(r.pos)>=0).map(r=>r.pos)));
+      out.push({give:G.map(r=>r.player),get:X.map(r=>r.player),R:R,fills:fills,edge:R.meTot-R.thTot,score:R.score+0.3*Math.min(2,R.gainThem-R.tol)});
+    });
+  });
+  out.sort((a,b)=>b.score-a.score);
+  // variety: no two counters with the same "get"
+  const fin=[],gs={};out.forEach(o=>{const k=o.get.slice().sort().join('+');if(gs[k])return;gs[k]=1;fin.push(o)});
+  return {list:fin.slice(0,3),needs:N};
+}
 function renderTradeCalc(d){
   if(SHOW)return '<section><div class="empty">Hidden in show mode.</div></section>';
   const tid=myTeamId(d);const teams=(d.teams||[]).filter(t=>String(t.team)!==String(tid));
@@ -2242,6 +2291,16 @@ function renderTradeCalc(d){
     h+='<div class="sub" style="white-space:normal;margin-top:6px">Roster value = best starting nine by '+gl('value','value')+' plus 30% of the bench. The grade leans on roster value, adds rest-of-season and this week, and takes off for injury risk and any hole it opens.</div>';
   }
   h+='<div class="opt" style="margin-top:8px"><button data-tcclear="1">Clear</button></div></section>';
+  if((R.gi.length||R.ge.length)&&R.verdict!=='Do it'){
+    const C=tcCounters(d,mine,theirs,TC.give,TC.get,TC.asked);const needTxt=Object.keys(C.needs.need).sort((a,b)=>C.needs.need[b]-C.needs.need[a]).map(k=>k+' <small class="sub">('+C.needs.why[k].join(', ')+')</small>').join(' · ');
+    h+='<section><h2>'+gl('counter','Counter offer')+'</h2><div class="sub" style="white-space:normal">What '+esc(pt.manager||'they')+' needs: '+(needTxt||'<i>nothing obvious</i>')+'.</div>';
+    if(!C.list.length)h+='<div class="sub" style="white-space:normal;margin-top:6px">No counter worth sending: nothing from your side fills one of those and still comes out ahead for you at a price they would take.</div>';
+    else h+=C.list.map((o,i)=>{const r=o.R;return '<div class="row" style="padding:8px 0;align-items:flex-start"><div class="main" style="white-space:normal"><div class="name">'+(i+1)+'. Give '+o.give.map(pl).join(' + ')+' · get '+o.get.map(pl).join(' + ')+'</div>'
+      +'<div class="sub" style="white-space:normal">fills their '+o.fills.join('/')+' · you <b style="color:var(--good)">'+(r.meTot>=0?'+':'')+f1(r.meTot)+'</b> vs them '+(r.thTot>=0?'+':'')+f1(r.thTot)+' all-in · this week '+(r.wkMe>=0?'+':'')+f1(r.wkMe)+' · they '+(r.gainThem>=0?'gain':'lose')+' '+f1(Math.abs(r.gainThem))+'/wk against '+f1(Math.abs(r.tol))+' of rope · <b style="color:var(--good)">'+esc(r.verdict)+'</b></div></div>'
+      +'<button class="aa" data-tcuse="'+esc(o.give.join('|'))+'||'+esc(o.get.join('|'))+'" style="margin:0;flex:0 0 auto">Use</button></div>'}).join('')
+      +'<div class="sub" style="white-space:normal;margin-top:6px">Every counter fills at least one of their needs, is better for you than for them, and sits inside what they would accept. Tap Use to load it above.</div>';
+    h+='</section>';
+  }
   return h;
 }
 
@@ -2334,6 +2393,7 @@ function render(){
   document.querySelectorAll('[data-tc]').forEach(el=>el.addEventListener('change',()=>{const [side,name]=el.dataset.tc.split('|');const arr=side==='give'?TC.give:TC.get;const i=arr.indexOf(name);if(el.checked&&i<0)arr.push(name);if(!el.checked&&i>=0)arr.splice(i,1);saveTC();render()}));
   document.querySelectorAll('[data-tcp]').forEach(b=>b.addEventListener('click',()=>{if(String(TC.partner)!==b.dataset.tcp){TC.partner=b.dataset.tcp;TC.get=[];}saveTC();render()}));
   document.querySelectorAll('[data-tca]').forEach(b=>b.addEventListener('click',()=>{TC.asked=b.dataset.tca;saveTC();render()}));
+  document.querySelectorAll('[data-tcuse]').forEach(b=>b.addEventListener('click',()=>{const [g,x]=b.dataset.tcuse.split('||');TC.give=g?g.split('|'):[];TC.get=x?x.split('|'):[];saveTC();render();window.scrollTo(0,0)}));
   document.querySelectorAll('[data-tcclear]').forEach(b=>b.addEventListener('click',()=>{TC.give=[];TC.get=[];saveTC();render()}));
   document.querySelectorAll("[data-college]").forEach(el=>el.addEventListener("click",e=>{if(e.target.closest('a'))return;location.hash="#college/"+encodeURIComponent(el.dataset.college)}));
   document.querySelectorAll("[data-csort]").forEach(b=>b.addEventListener("click",()=>{state.csort=b.dataset.csort;render()}));
