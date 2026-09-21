@@ -1268,7 +1268,7 @@ function histSections(d,p){
     h+='<section><h2>'+gl('qbeff','With a backup quarterback')+'</h2>'
       +(qe.active?'<div class="flag bad" style="display:inline-block;margin-bottom:6px">'+esc(qe.usual)+' is out this week — this is in his projection now</div>':'')
       +svgBars({labels:['With '+String(qe.usual).split(' ').pop(),'Backup'],series:[{vals:[qe.withUsual,qe.withBackup],cls:'me',clsAt:['',r<0.9?'bad':(r>1.05?'good':'')]}],h:100})
-      +'<div class="sub" style="white-space:normal">'+f1(qe.withUsual)+' a game with '+esc(qe.usual)+', '+f1(qe.withBackup)+' with a backup ('+qe.games+' games, same team and season). '
+      +'<div class="sub" style="white-space:normal">'+f1(qe.withUsual)+' a game with '+esc(qe.usual)+(qe.current===false?' <i>(his quarterback at the time — not now)</i>':'')+', '+f1(qe.withBackup)+' with a backup ('+qe.games+' games, same team and season). '
       +(r<0.85?'<b style="color:var(--bad)">He needs his quarterback</b> — ×'+r.toFixed(2)+' after shrinking for the small sample.':(r>1.05?'<b style="color:var(--good)">Gets more work with a backup</b> — ×'+r.toFixed(2)+'.':'<b>Barely notices who is throwing</b> — ×'+r.toFixed(2)+'. The volume comes regardless.'))+'</div></section>';
   }
   // ---- his handcuff chain (he is the starter) ----
