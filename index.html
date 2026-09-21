@@ -1562,7 +1562,9 @@ document.getElementById('app').addEventListener('click',e=>{const gx=e.target.cl
     else if(state.view==='team'){const pw=(D.power||[]).slice().sort((a,b)=>(num(a.standing)||99)-(num(b.standing)||99));const i=pw.findIndex(x=>String(x.team)===String(state.team));const n=i+dir;if(i>=0&&n>=0&&n<pw.length)location.hash='#team/'+pw[n].team;}
     else if(state.view==='coach'){const ts=(D.nflTeams||[]);let role=null,i=-1;ts.forEach((t,k)=>{['hc','oc','dc'].forEach(r=>{if(String(t[r]).toLowerCase()===String(state.coach).toLowerCase()){role=r;i=k}})});const n=i+dir;if(role&&n>=0&&n<ts.length)location.hash='#coach/'+encodeURIComponent(ts[n][role]);}
     else if(state.view==='nfl'){const ts=(D.nflTeams||[]);const i=ts.findIndex(x=>x.team===String(state.nfl2).toUpperCase());const n=i+dir;if(i>=0&&n>=0&&n<ts.length)location.hash='#nfl/'+ts[n].team;}
-    else{const tabs=['home','league','players','games','injuries','news'];const i=tabs.indexOf(state.view);const n=i+dir;if(i>=0&&n>=0&&n<tabs.length)location.hash='#'+tabs[n];}
+    else if(state.view==='matchup'){const ps=weekPairs(D,state.mwk);const i=num(state.midx);const n=i+dir;if(i!==null&&n>=0&&n<ps.length)location.hash='#matchup/'+state.mwk+'/'+n;}
+    // same order as the nav row, or swiping skips a tab
+    else{const tabs=['home','matchups','league','players','games','injuries','news'];const i=tabs.indexOf(state.view);const n=i+dir;if(i>=0&&n>=0&&n<tabs.length)location.hash='#'+tabs[n];}
   },{passive:true});})();
 window.addEventListener("hashchange",route);
 route(); load();
