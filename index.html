@@ -409,7 +409,10 @@ function clockText(d){
   const n=new Date(d.nextIso),now=new Date(),ms=n-now;
   const t=n.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
   if(ms>60000)return 'next update ~'+t+' (in '+Math.round(ms/60000)+' min)';
-  if(ms>-180000)return 'updating now… (~'+t+')';
+  // a cycle with the hourly sources pull and the trade engine in it can run long; the page is also
+  // served through a cache that can lag a couple of minutes. Say "asleep" only once it is well past.
+  if(ms>-420000)return 'updating now… (~'+t+')';
+  if(ms>-900000)return 'update is late (due '+t+') — a long run or a slow refresh, not asleep yet';
   return 'next update was due '+t+' — laptop may be asleep';
 }
 function stamp(d){
