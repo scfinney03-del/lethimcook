@@ -182,6 +182,11 @@ body.big polygon.rad{stroke-width:3.5}
 .vs .face{width:22px;height:22px;flex-basis:22px;vertical-align:middle;margin:0 3px}body.big .search input{font-size:19px;padding:12px}
 .ch rect.b.them{fill:var(--them)}.ch rect.b.proj{fill:var(--proj)}.ch rect.b.good{fill:var(--good)}.ch rect.b.bad{fill:var(--bad)}.ch rect.b.warn{fill:var(--warn)}
 .portal{cursor:pointer}
+#modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;overflow:auto;padding:14px 10px calc(30px + env(safe-area-inset-bottom))}
+.modal-c{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;max-width:640px;margin:0 auto;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+.modal-c section{border:0;padding:8px 0 0;margin:0;background:transparent}
+.modal-h{display:flex;justify-content:space-between;align-items:center;font-size:16px;margin-bottom:4px}
+.ch rect.b.warn{fill:var(--warn)}.lg.warn{background:var(--warn)}
 .tcp{display:flex;align-items:center;gap:5px;padding:5px 2px;border-top:1px solid color-mix(in srgb,var(--card) 60%,transparent);font-size:13px;cursor:pointer}.tcp .tcm{flex:1;min-width:0;line-height:1.2}.tcp .fn{display:block;font-weight:600;white-space:normal;overflow-wrap:anywhere}.tcp .tcm small{display:block;white-space:normal;font-size:11px}.tcp b{flex:0 0 auto}.tcp.on{background:color-mix(in srgb,var(--acc) 18%,transparent);border-radius:6px}.tcp input{width:18px;height:18px;margin:0}
 body.big .tcp{font-size:17px;padding:9px 2px}body.big .tcp input{width:24px;height:24px}
 
@@ -2174,7 +2179,15 @@ function tcEval(d,mine,theirs,give,get,asked){
   // fit moves the rope too: a piece that starts for them, or fills a hole, is worth more to them than
   // the value line says; a bench-only piece is worth less
   R.tol=(asked==='them'?-2.0:(asked==='me'?-0.5:-1.0))-2.5*(R.desperation/100)-0.5*R.fitThem-R.ropeAdj;
-  R.accept=R.gainThem>=R.tol;
+  // what the value line misses about how people actually answer: giving up their crown jewels (top
+  // two by value) and sending out more starters than they get back both feel worse than the maths
+  const theirsSorted=theirs.slice().sort((a,b)=>(num(b.value)||0)-(num(a.value)||0));const jewels=theirsSorted.slice(0,2).map(r=>r.player);
+  R.jewels=ge.filter(r=>jewels.indexOf(r.player)>=0).map(r=>r.player);
+  const nineT0b=bestNine(theirs,'value').used;R.startersOut=ge.filter(r=>nineT0b[r.player]).length;R.startersIn=(R.startsForThem||[]).length;
+  R.feel=-0.6*R.jewels.length-0.4*Math.max(0,R.startersOut-R.startersIn);
+  R.margin=R.gainThem-R.tol+R.feel;
+  R.acceptP=1/(1+Math.exp(-R.margin/0.7));
+  R.accept=R.acceptP>=0.5;
   // starters who leave and enter your best nine
   R.out=Object.keys(R.nineOld).filter(n=>!R.nineNew[n]),R.in=Object.keys(R.nineNew).filter(n=>!R.nineOld[n]);
   // holes: any position where the new roster has fewer bodies than slots plus one
@@ -2240,16 +2253,74 @@ function tcCounters0(d,mine,theirs,give,get,asked){
       if(gk===give.slice().sort().join('+')&&xk===get.slice().sort().join('+'))return;   // that is the offer on the table
       const key=gk+'|'+xk;if(seen[key])return;seen[key]=1;
       const R=tcEval(d,mine,theirs,G.map(r=>r.player),X.map(r=>r.player),asked);
-      if(R.helpsThem||!R.accept||R.meTot<=0.3)return;
+      if(R.helpsThem||R.acceptP<0.55||R.meTot<=0.3)return;
       if(R.holes.some(h=>/nobody/.test(h)))return;
       const fills=Array.from(new Set(G.filter(r=>needPos.indexOf(r.pos)>=0).map(r=>r.pos)));
-      out.push({give:G.map(r=>r.player),get:X.map(r=>r.player),R:R,fills:fills,edge:R.meTot-R.thTot,score:R.score+0.3*Math.min(2,R.gainThem-R.tol)});
+      const askedPos=Array.from(new Set(Object.keys(N.need).filter(k=>(N.why[k]||[]).some(w=>/asked for/.test(w)))));
+      const missing=askedPos.filter(k=>fills.indexOf(k)<0);
+      const cover=askedPos.length?(askedPos.length-missing.length)/askedPos.length:1;
+      out.push({give:G.map(r=>r.player),get:X.map(r=>r.player),R:R,fills:fills,missing:missing,cover:cover,edge:R.meTot-R.thTot,score:(R.score+1)*(0.5+0.5*R.acceptP)*(0.6+0.4*cover)});
     });
   });
   out.sort((a,b)=>b.score-a.score);
   // variety: no two counters with the same "get"
   const fin=[],gs={};out.forEach(o=>{const k=o.get.slice().sort().join('+');if(gs[k])return;gs[k]=1;fin.push(o)});
   return {list:fin.slice(0,3),needs:N};
+}
+function tcVerdictHtml(d,R,pt,mine,give,asked){
+  let h='';
+  h+='<section><h2>Verdict</h2><div style="display:flex;align-items:center;gap:10px"><span class="pill '+(R.cls==='good'?'ok':(R.cls==='bad'?'bad':'warn'))+'" style="font-size:16px;padding:4px 12px">'+esc(R.verdict)+'</span><span class="sub" style="white-space:normal">'+(R.gi.length||R.ge.length?'Give '+R.gi.map(r=>pl(r.player)).join(' + ')+' · get '+R.ge.map(r=>pl(r.player)).join(' + '):'tick players on both sides')+'</span></div>';
+  if(R.gi.length||R.ge.length){
+    const sg=v=>(v>=0?'+':'')+f1(v),col=v=>'color:'+(v>=0?'var(--good)':'var(--bad)');
+    h+=kv([['Your roster value',f1(R.meV)+' → '+f1(R.meV2)+' <b style="'+col(R.gainMe)+'">'+sg(R.gainMe)+'/wk</b>'],
+      ['Their roster value',f1(R.thV)+' → '+f1(R.thV2)+' <b style="'+col(R.gainThem)+'">'+sg(R.gainThem)+'/wk</b>'],
+      ['This week, your lineup','<b style="'+col(R.wkMe)+'">'+sg(R.wkMe)+'</b> pts'],
+      ['Rest of season, your lineup','<b style="'+col(R.rosMe)+'">'+sg(R.rosMe)+'</b> per week'],
+      ['Injury risk taken on',R.meInj>0.05?'<b style="color:var(--bad)">'+f1(R.meInj)+'/wk</b> of value sits on hurt players':'<span class="sub">none</span>'],
+      ['Desperation','<b style="color:'+(R.desperation>=50?'var(--good)':(R.desperation>=25?'var(--warn)':'var(--mute)'))+'">'+R.desperation+'%</b> <small class="sub">'+(R.despWhy.length?esc(R.despWhy.join(' · ')):'no sign they need a deal')+'</small>'],
+      ['Would they accept?','<b style="color:'+(R.acceptP>=0.65?'var(--good)':(R.acceptP>=0.4?'var(--warn)':'var(--bad)'))+'">'+Math.round(R.acceptP*100)+'%</b> <small class="sub">they '+(R.gainThem>=0?'gain':'lose')+' '+f1(Math.abs(R.gainThem))+'/wk against '+f1(Math.abs(R.tol))+' of rope ('+(asked==='them'?'they asked':(asked==='me'?'you asked':'nobody asked yet'))+(R.desperation>=25?', desperation':'')+(R.fitThem>0?', fit':'')+')'+(R.jewels.length?' · <b style="color:var(--bad)">takes their '+(R.jewels.length>1?'two best players':'best player')+'</b> ('+R.jewels.map(shortName).join(', ')+')':'')+(R.startersOut>R.startersIn?' · they send out '+R.startersOut+' starter'+(R.startersOut>1?'s':'')+' for '+R.startersIn:'')+'</small>'],
+      ['Fit for them',(R.gi.length?(R.startsForThem.length?'<b style="color:var(--good)">starts for them</b> ('+R.startsForThem.map(shortName).join(', ')+')':'<b style="color:var(--warn)">bench for them</b>')+(R.fillsThem.length?' · fills an empty '+R.fillsThem.join('/')+' slot':'')+(R.thinTheyHit.length?' · they are thin at '+R.thinTheyHit.join('/'):''):'<span class="sub">-</span>')],
+      ['Fit for you',(R.ge.length?(R.startsForMe.length?'<b style="color:var(--good)">starts for you</b> ('+R.startsForMe.map(shortName).join(', ')+')':'<b style="color:var(--warn)">bench for you</b>')+(R.fillsMe.length?' · fills your empty '+R.fillsMe.join('/')+' slot':'')+(R.surplusMe.length?' · <span style="color:var(--bad)">you already have a surplus at '+R.surplusMe.join('/')+'</span>':''):'<span class="sub">-</span>')],
+      ['Their track record',(function(){const p=R.proclivity||{};const n=(num(p.offersReceived)||0)+(num(p.offersSent)||0);if(!n&&!num(p.tradesDone))return '<span class="sub">nothing recorded yet - use the buttons below when offers come and go</span>';
+        return (num(p.tradesDone)?'<b>'+p.tradesDone+'</b> trade'+(p.tradesDone>1?'s':'')+' made · ':'')+(num(p.offersReceived)||0)+' received / '+(num(p.offersSent)||0)+' sent · '+(num(p.accepted)||0)+' accepted / '+(num(p.declined)||0)+' declined'
+          +(num(p.worstTaken)!==null?' · worst deal taken '+f1(p.worstTaken)+'/wk':'')+(num(p.bestRefused)!==null?' · best refused '+f1(p.bestRefused)+'/wk':'')+(Math.abs(R.ropeAdj)>=0.05?' · <b style="color:'+(R.ropeAdj>0?'var(--good)':'var(--bad)')+'">rope '+(R.ropeAdj>0?'+':'')+f1(R.ropeAdj)+'</b>':'')})()],
+      ['Leverage',R.desperation>=50&&R.gainThem>R.tol+0.8?'<b style="color:var(--good)">Ask for more</b> <small class="sub">they need this more than you do and would still take a deal about '+f1(R.gainThem-R.tol)+'/wk worse for them</small>':(R.desperation>=50?'<span class="sub">they need it, but this offer is already near their limit</span>':'<span class="sub">none to speak of</span>')],
+      ['Roster spots',R.dropMe?'you must drop '+R.dropMe+' player'+(R.dropMe>1?'s':''):(R.dropThem?'they must drop '+R.dropThem:'even swap')],
+      ['Threat level','<b style="color:'+(R.threat>=0.66?'var(--bad)':(R.threat>=0.4?'var(--warn)':'var(--good)'))+'">'+Math.round(R.threat*100)+'%</b> <small class="sub">'+(R.threatRank?'#'+R.threatRank+' roster':'')+(R.threatStand?' · #'+R.threatStand+' in standings':'')+(R.h2hN?' · you play them '+R.h2hN+' more time'+(R.h2hN>1?'s':''):' · not on your schedule')+'</small>'],
+      ['Cost of helping them',R.threatAdj<-0.05?'<b style="color:var(--bad)">'+f1(R.threatAdj)+'</b> <small class="sub">their gain, weighted by threat and head-to-head weeks</small>':'<span class="sub">none - they do not gain</span>'],
+      ['Better for you than them?','<b style="color:'+(R.helpsThem?'var(--bad)':'var(--good)')+'">'+(R.helpsThem?'No':'Yes')+'</b> <small class="sub">all-in (value, rest of season, this week): you '+(R.meTot>=0?'+':'')+f1(R.meTot)+' vs them '+(R.thTot>=0?'+':'')+f1(R.thTot)+' - a trade is never recommended unless you come out ahead of them</small>']]);
+    h+=svgBars({labels:['Roster value','This week','Rest of season'],series:[{vals:[R.gainMe,R.wkMe,R.rosMe],cls:'me'},{vals:[R.gainThem,R.wkThem,R.rosThem],cls:'them'}],h:130,legend:[['me','you'],['them',pt.manager||'them']]});
+    if(R.in.length||R.out.length)h+='<div class="sub" style="white-space:normal;margin-top:6px"><b>Your best nine:</b> '+(R.in.length?'in: '+R.in.map(pl).join(', '):'')+(R.in.length&&R.out.length?' · ':'')+(R.out.length?'out: '+R.out.map(pl).join(', '):'')+'</div>';
+    if(R.holes.length)h+='<div class="sub" style="white-space:normal;margin-top:4px"><b style="color:var(--bad)">Depth after the trade:</b> '+R.holes.join(', ')+'</div>';
+    if(R.flags.length)h+='<div class="sub" style="white-space:normal;margin-top:4px"><b style="color:var(--warn)">Flags:</b> '+R.flags.map(esc).join(' · ')+'</div>';
+    if(R.timing.length)h+='<div class="sub" style="white-space:normal;margin-top:4px"><b>Timing:</b> '+R.timing.map(esc).join(' · ')+'</div>';
+    // position by position after the trade
+    const pk=['QB','RB','WR','TE'];const pv=rows=>{const o={};pk.forEach(k=>{o[k]=rows.filter(r=>r.pos===k).reduce((a,r)=>a+(num(r.value)||0),0)});return o};
+    const before=pv(mine),after=pv(mine.filter(r=>give.indexOf(r.player)<0).concat(R.ge));
+    h+='<div class="sub" style="font-weight:600;margin-top:8px">Your value by position, before and after</div>'+svgBars({labels:pk,series:[{vals:pk.map(k=>before[k]),cls:'proj'},{vals:pk.map(k=>after[k]),cls:'me'}],h:120,legend:[['proj','before'],['me','after']]});
+    h+='<div class="sub" style="white-space:normal;margin-top:6px">Roster value = best starting nine by '+gl('value','value')+' plus 30% of the bench. The grade leans on roster value, adds rest-of-season and this week, and takes off for injury risk and any hole it opens.</div>';
+  }
+  return h;
+}
+// a counter in its own window: the full verdict block plus the players involved, side by side
+function tcPopup(d,o){
+  const tid=myTeamId(d);const mine=rosterOf(d,tid),theirs=rosterOf(d,TC.partner);const pt=(d.teams||[]).find(t=>String(t.team)===String(TC.partner))||{};
+  const R=o.R;const pp=n=>findPlayer(n)||{};
+  const card=(names,side)=>names.map(n=>{const p=pp(n);const f=p.form||{},hs=p.hist||{};return '<div class="frow"><div class="ft"><span class="fn">'+pl(n)+' <small class="sub">'+esc(p.pos||'')+' · '+esc(p.team||'')+(p.inj&&p.inj.status&&!/^active$/i.test(p.inj.status)?' · <span class="flag bad">'+esc(p.inj.status)+'</span>':'')+'</small></span><span class="fp">'+f1(p.value)+'</span></div>'
+    +'<div class="bline">wk '+f1(p.proj)+' · ROS '+f1(p.ros&&p.ros.cons)+' · 3wk '+f1(f.avg3)+' · career '+f1(hs.career)+(p.ecr&&p.ecr.posRank?' · '+esc(p.ecr.posRank):'')+(p.injHist&&num(p.injHist.durability)!==null?' · durability '+Math.round(p.injHist.durability*100)+'%':'')+'</div></div>'}).join('');
+  const names=o.give.concat(o.get);const mx=Math.max.apply(null,names.map(n=>num(pp(n).value)||0).concat([1]));
+  let h='<div class="modal-h"><b>Counter offer</b><button class="aa" data-mclose="1">Close</button></div>';
+  h+='<div style="margin:6px 0"><div class="sideA" style="margin-bottom:6px"><div class="sub" style="font-weight:700;color:var(--me)">You give</div>'+card(o.give,'me')+'</div><div class="sideB"><div class="sub" style="font-weight:700;color:var(--them)">You get</div>'+card(o.get,'them')+'</div></div>';
+  h+=svgBars({labels:names.map(shortName),series:[{vals:names.map(n=>num(pp(n).value)),cls:'me',clsAt:names.map(n=>o.give.indexOf(n)>=0?'':'them')},{vals:names.map(n=>num(pp(n).proj)),cls:'proj'},{vals:names.map(n=>num(pp(n).ros&&pp(n).ros.cons)),cls:'warn'}],h:130,legend:[['me','value (yours)'],['them','value (theirs)'],['proj','this week'],['warn','rest of season']]});
+  h+=tcVerdictHtml(d,R,pt,mine,o.give,TC.asked);
+  h+='<div class="opt" style="margin-top:8px"><button data-tcuse="'+esc(o.give.join('|'))+'||'+esc(o.get.join('|'))+'" class="on">Use this counter</button><button data-mclose="1">Close</button></div>';
+  let m=document.getElementById('modal');if(!m){m=document.createElement('div');m.id='modal';document.body.appendChild(m)}
+  m.innerHTML='<div class="modal-c">'+h+'</div>';m.style.display='block';document.body.style.overflow='hidden';
+  const close=()=>{m.style.display='none';document.body.style.overflow=''};
+  m.querySelectorAll('[data-mclose]').forEach(b=>b.addEventListener('click',close));m.addEventListener('click',e=>{if(e.target===m)close()});
+  m.querySelectorAll('[data-tcuse]').forEach(b=>b.addEventListener('click',()=>{const [g,x]=b.dataset.tcuse.split('||');TC.give=g?g.split('|'):[];TC.get=x?x.split('|'):[];saveTC();close();render();window.scrollTo(0,0)}));
+  m.querySelectorAll('[data-gl]').forEach(g=>g.addEventListener('click',e=>{e.preventDefault();glShow(g.dataset.gl)}));
+  m.querySelectorAll('a.pl').forEach(a=>a.addEventListener('click',close));
 }
 function renderTradeCalc(d){
   if(SHOW)return '<section><div class="empty">Hidden in show mode.</div></section>';
@@ -2268,37 +2339,7 @@ function renderTradeCalc(d){
   h+='<section class="split" style="padding:10px 6px"><div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px"><div class="sideA" style="min-width:0"><div class="sub" style="font-weight:700;color:var(--me)">You give</div>'+sortR(mine).map(r=>prow(r,'give')).join('')+'</div>'
     +'<div class="sideB" style="min-width:0"><div class="sub" style="font-weight:700;color:var(--them);text-align:right">You get from '+esc(pt.manager||pt.name||'them')+'</div>'+sortR(theirs).map(r=>prow(r,'get')).join('')+'</div></div></section>';
   // verdict
-  h+='<section><h2>Verdict</h2><div style="display:flex;align-items:center;gap:10px"><span class="pill '+(R.cls==='good'?'ok':(R.cls==='bad'?'bad':'warn'))+'" style="font-size:16px;padding:4px 12px">'+esc(R.verdict)+'</span><span class="sub" style="white-space:normal">'+(R.gi.length||R.ge.length?'Give '+R.gi.map(r=>pl(r.player)).join(' + ')+' · get '+R.ge.map(r=>pl(r.player)).join(' + '):'tick players on both sides')+'</span></div>';
-  if(R.gi.length||R.ge.length){
-    const sg=v=>(v>=0?'+':'')+f1(v),col=v=>'color:'+(v>=0?'var(--good)':'var(--bad)');
-    h+=kv([['Your roster value',f1(R.meV)+' → '+f1(R.meV2)+' <b style="'+col(R.gainMe)+'">'+sg(R.gainMe)+'/wk</b>'],
-      ['Their roster value',f1(R.thV)+' → '+f1(R.thV2)+' <b style="'+col(R.gainThem)+'">'+sg(R.gainThem)+'/wk</b>'],
-      ['This week, your lineup','<b style="'+col(R.wkMe)+'">'+sg(R.wkMe)+'</b> pts'],
-      ['Rest of season, your lineup','<b style="'+col(R.rosMe)+'">'+sg(R.rosMe)+'</b> per week'],
-      ['Injury risk taken on',R.meInj>0.05?'<b style="color:var(--bad)">'+f1(R.meInj)+'/wk</b> of value sits on hurt players':'<span class="sub">none</span>'],
-      ['Desperation','<b style="color:'+(R.desperation>=50?'var(--good)':(R.desperation>=25?'var(--warn)':'var(--mute)'))+'">'+R.desperation+'%</b> <small class="sub">'+(R.despWhy.length?esc(R.despWhy.join(' · ')):'no sign they need a deal')+'</small>'],
-      ['Would they accept?','<b style="color:'+(R.accept?'var(--good)':'var(--bad)')+'">'+(R.accept?'Likely':'Unlikely')+'</b> <small class="sub">they '+(R.gainThem>=0?'gain':'lose')+' '+f1(Math.abs(R.gainThem))+'/wk; they will wear a loss of about '+f1(Math.abs(R.tol))+' ('+(TC.asked==='them'?'they asked':(TC.asked==='me'?'you asked':'nobody asked yet'))+(R.desperation>=25?', plus desperation':'')+')</small>'],
-      ['Fit for them',(R.gi.length?(R.startsForThem.length?'<b style="color:var(--good)">starts for them</b> ('+R.startsForThem.map(shortName).join(', ')+')':'<b style="color:var(--warn)">bench for them</b>')+(R.fillsThem.length?' · fills an empty '+R.fillsThem.join('/')+' slot':'')+(R.thinTheyHit.length?' · they are thin at '+R.thinTheyHit.join('/'):''):'<span class="sub">-</span>')],
-      ['Fit for you',(R.ge.length?(R.startsForMe.length?'<b style="color:var(--good)">starts for you</b> ('+R.startsForMe.map(shortName).join(', ')+')':'<b style="color:var(--warn)">bench for you</b>')+(R.fillsMe.length?' · fills your empty '+R.fillsMe.join('/')+' slot':'')+(R.surplusMe.length?' · <span style="color:var(--bad)">you already have a surplus at '+R.surplusMe.join('/')+'</span>':''):'<span class="sub">-</span>')],
-      ['Their track record',(function(){const p=R.proclivity||{};const n=(num(p.offersReceived)||0)+(num(p.offersSent)||0);if(!n&&!num(p.tradesDone))return '<span class="sub">nothing recorded yet - use the buttons below when offers come and go</span>';
-        return (num(p.tradesDone)?'<b>'+p.tradesDone+'</b> trade'+(p.tradesDone>1?'s':'')+' made · ':'')+(num(p.offersReceived)||0)+' received / '+(num(p.offersSent)||0)+' sent · '+(num(p.accepted)||0)+' accepted / '+(num(p.declined)||0)+' declined'
-          +(num(p.worstTaken)!==null?' · worst deal taken '+f1(p.worstTaken)+'/wk':'')+(num(p.bestRefused)!==null?' · best refused '+f1(p.bestRefused)+'/wk':'')+(Math.abs(R.ropeAdj)>=0.05?' · <b style="color:'+(R.ropeAdj>0?'var(--good)':'var(--bad)')+'">rope '+(R.ropeAdj>0?'+':'')+f1(R.ropeAdj)+'</b>':'')})()],
-      ['Leverage',R.desperation>=50&&R.gainThem>R.tol+0.8?'<b style="color:var(--good)">Ask for more</b> <small class="sub">they need this more than you do and would still take a deal about '+f1(R.gainThem-R.tol)+'/wk worse for them</small>':(R.desperation>=50?'<span class="sub">they need it, but this offer is already near their limit</span>':'<span class="sub">none to speak of</span>')],
-      ['Roster spots',R.dropMe?'you must drop '+R.dropMe+' player'+(R.dropMe>1?'s':''):(R.dropThem?'they must drop '+R.dropThem:'even swap')],
-      ['Threat level','<b style="color:'+(R.threat>=0.66?'var(--bad)':(R.threat>=0.4?'var(--warn)':'var(--good)'))+'">'+Math.round(R.threat*100)+'%</b> <small class="sub">'+(R.threatRank?'#'+R.threatRank+' roster':'')+(R.threatStand?' · #'+R.threatStand+' in standings':'')+(R.h2hN?' · you play them '+R.h2hN+' more time'+(R.h2hN>1?'s':''):' · not on your schedule')+'</small>'],
-      ['Cost of helping them',R.threatAdj<-0.05?'<b style="color:var(--bad)">'+f1(R.threatAdj)+'</b> <small class="sub">their gain, weighted by threat and head-to-head weeks</small>':'<span class="sub">none - they do not gain</span>'],
-      ['Better for you than them?','<b style="color:'+(R.helpsThem?'var(--bad)':'var(--good)')+'">'+(R.helpsThem?'No':'Yes')+'</b> <small class="sub">all-in (value, rest of season, this week): you '+(R.meTot>=0?'+':'')+f1(R.meTot)+' vs them '+(R.thTot>=0?'+':'')+f1(R.thTot)+' - a trade is never recommended unless you come out ahead of them</small>']]);
-    h+=svgBars({labels:['Roster value','This week','Rest of season'],series:[{vals:[R.gainMe,R.wkMe,R.rosMe],cls:'me'},{vals:[R.gainThem,R.wkThem,R.rosThem],cls:'them'}],h:130,legend:[['me','you'],['them',pt.manager||'them']]});
-    if(R.in.length||R.out.length)h+='<div class="sub" style="white-space:normal;margin-top:6px"><b>Your best nine:</b> '+(R.in.length?'in: '+R.in.map(pl).join(', '):'')+(R.in.length&&R.out.length?' · ':'')+(R.out.length?'out: '+R.out.map(pl).join(', '):'')+'</div>';
-    if(R.holes.length)h+='<div class="sub" style="white-space:normal;margin-top:4px"><b style="color:var(--bad)">Depth after the trade:</b> '+R.holes.join(', ')+'</div>';
-    if(R.flags.length)h+='<div class="sub" style="white-space:normal;margin-top:4px"><b style="color:var(--warn)">Flags:</b> '+R.flags.map(esc).join(' · ')+'</div>';
-    if(R.timing.length)h+='<div class="sub" style="white-space:normal;margin-top:4px"><b>Timing:</b> '+R.timing.map(esc).join(' · ')+'</div>';
-    // position by position after the trade
-    const pk=['QB','RB','WR','TE'];const pv=rows=>{const o={};pk.forEach(k=>{o[k]=rows.filter(r=>r.pos===k).reduce((a,r)=>a+(num(r.value)||0),0)});return o};
-    const before=pv(mine),after=pv(mine.filter(r=>TC.give.indexOf(r.player)<0).concat(R.ge));
-    h+='<div class="sub" style="font-weight:600;margin-top:8px">Your value by position, before and after</div>'+svgBars({labels:pk,series:[{vals:pk.map(k=>before[k]),cls:'proj'},{vals:pk.map(k=>after[k]),cls:'me'}],h:120,legend:[['proj','before'],['me','after']]});
-    h+='<div class="sub" style="white-space:normal;margin-top:6px">Roster value = best starting nine by '+gl('value','value')+' plus 30% of the bench. The grade leans on roster value, adds rest-of-season and this week, and takes off for injury risk and any hole it opens.</div>';
-  }
+  h+=tcVerdictHtml(d,R,pt,mine,TC.give,TC.asked);
   if(R.gi.length||R.ge.length){
     h+='<div class="sub" style="font-weight:600;margin-top:10px">Record this offer</div><div class="sub" style="white-space:normal">Every one you record teaches the model how '+esc(pt.manager||'they')+' actually trades. It goes to the laptop on its own (needs the buttons key, set on Home under the laptop panel).</div>'
       +'<div class="opt">'+[['received',(pt.manager||'They')+' offered this'],['sent','I sent this'],['accepted','They accepted'],['declined','They declined'],['idecl','I declined']].map(x=>'<button data-tcrec="'+x[0]+'">'+esc(x[1])+'</button>').join('')+'</div>'
@@ -2307,12 +2348,12 @@ function renderTradeCalc(d){
   }
   h+='<div class="opt" style="margin-top:8px"><button data-tcclear="1">Clear</button></div></section>';
   if((R.gi.length||R.ge.length)&&R.verdict!=='Do it'){
-    const C=tcCounters(d,mine,theirs,TC.give,TC.get,TC.asked);const needTxt=Object.keys(C.needs.need).sort((a,b)=>C.needs.need[b]-C.needs.need[a]).map(k=>k+' <small class="sub">('+C.needs.why[k].join(', ')+')</small>').join(' · ');
+    const C=tcCounters(d,mine,theirs,TC.give,TC.get,TC.asked);TCC.shown=C.list;const needTxt=Object.keys(C.needs.need).sort((a,b)=>C.needs.need[b]-C.needs.need[a]).map(k=>k+' <small class="sub">('+C.needs.why[k].join(', ')+')</small>').join(' · ');
     h+='<section><h2>'+gl('counter','Counter offer')+'</h2><div class="sub" style="white-space:normal">What '+esc(pt.manager||'they')+' needs: '+(needTxt||'<i>nothing obvious</i>')+'.</div>';
     if(!C.list.length)h+='<div class="sub" style="white-space:normal;margin-top:6px">No counter worth sending: nothing from your side fills one of those and still comes out ahead for you at a price they would take.</div>';
     else h+=C.list.map((o,i)=>{const r=o.R;return '<div class="row" style="padding:8px 0;align-items:flex-start"><div class="main" style="white-space:normal"><div class="name" style="white-space:normal;overflow:visible;text-overflow:clip;line-height:1.3">'+(i+1)+'. Give '+o.give.map(pl).join(' + ')+'<br><span class="sub" style="white-space:normal">get</span> '+o.get.map(pl).join(' + ')+'</div>'
-      +'<div class="sub" style="white-space:normal">fills their '+o.fills.join('/')+' · you <b style="color:var(--good)">'+(r.meTot>=0?'+':'')+f1(r.meTot)+'</b> vs them '+(r.thTot>=0?'+':'')+f1(r.thTot)+' all-in · this week '+(r.wkMe>=0?'+':'')+f1(r.wkMe)+' · they '+(r.gainThem>=0?'gain':'lose')+' '+f1(Math.abs(r.gainThem))+'/wk against '+f1(Math.abs(r.tol))+' of rope · <b style="color:var(--good)">'+esc(r.verdict)+'</b></div></div>'
-      +'<button class="aa" data-tcuse="'+esc(o.give.join('|'))+'||'+esc(o.get.join('|'))+'" style="margin:0;flex:0 0 auto">Use</button></div>'}).join('')
+      +'<div class="sub" style="white-space:normal">fills their '+o.fills.join('/')+(o.missing.length?' <span style="color:var(--warn)">(not their '+o.missing.join('/')+')</span>':'')+' · you <b style="color:var(--good)">'+(r.meTot>=0?'+':'')+f1(r.meTot)+'</b> vs them '+(r.thTot>=0?'+':'')+f1(r.thTot)+' all-in · this week '+(r.wkMe>=0?'+':'')+f1(r.wkMe)+' · <b style="color:'+(r.acceptP>=0.65?'var(--good)':'var(--warn)')+'">'+Math.round(r.acceptP*100)+'% they say yes</b> · '+esc(r.verdict)+'</div></div>'
+      +'<div style="display:flex;flex-direction:column;gap:4px;flex:0 0 auto"><button class="aa" data-tcopen="'+i+'" style="margin:0">Open</button><button class="aa" data-tcuse="'+esc(o.give.join('|'))+'||'+esc(o.get.join('|'))+'" style="margin:0">Use</button></div></div>'}).join('')
       +'<div class="sub" style="white-space:normal;margin-top:6px">Every counter fills at least one of their needs, is better for you than for them, and sits inside what they would accept. Tap Use to load it above.</div>';
     h+='</section>';
   }
@@ -2414,6 +2455,7 @@ function render(){
   document.querySelectorAll('[data-tc]').forEach(el=>el.addEventListener('change',()=>{const [side,name]=el.dataset.tc.split('|');const arr=side==='give'?TC.give:TC.get;const i=arr.indexOf(name);if(el.checked&&i<0)arr.push(name);if(!el.checked&&i>=0)arr.splice(i,1);saveTC();render()}));
   document.querySelectorAll('[data-tcp]').forEach(b=>b.addEventListener('click',()=>{if(String(TC.partner)!==b.dataset.tcp){TC.partner=b.dataset.tcp;TC.get=[];}saveTC();render()}));
   document.querySelectorAll('[data-tca]').forEach(b=>b.addEventListener('click',()=>{TC.asked=b.dataset.tca;saveTC();render()}));
+  document.querySelectorAll('[data-tcopen]').forEach(b=>b.addEventListener('click',()=>{const o=(TCC.shown||[])[+b.dataset.tcopen];if(o)tcPopup(D,o)}));
   document.querySelectorAll('[data-tcuse]').forEach(b=>b.addEventListener('click',()=>{const [g,x]=b.dataset.tcuse.split('||');TC.give=g?g.split('|'):[];TC.get=x?x.split('|'):[];saveTC();render();window.scrollTo(0,0)}));
   document.querySelectorAll('[data-tcrec]').forEach(b=>b.addEventListener('click',()=>{const d2=D;const tid=myTeamId(d2);const mine=rosterOf(d2,tid),theirs=rosterOf(d2,TC.partner);const pt=(d2.teams||[]).find(t=>String(t.team)===String(TC.partner))||{};
     const R=tcEval(d2,mine,theirs,TC.give,TC.get,TC.asked);const k=b.dataset.tcrec;
