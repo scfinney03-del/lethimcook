@@ -182,6 +182,8 @@ body.big polygon.rad{stroke-width:3.5}
 .vs .face{width:22px;height:22px;flex-basis:22px;vertical-align:middle;margin:0 3px}body.big .search input{font-size:19px;padding:12px}
 .ch rect.b.them{fill:var(--them)}.ch rect.b.proj{fill:var(--proj)}.ch rect.b.good{fill:var(--good)}.ch rect.b.bad{fill:var(--bad)}.ch rect.b.warn{fill:var(--warn)}
 .portal{cursor:pointer}
+.tcp{display:flex;align-items:center;gap:5px;padding:5px 2px;border-top:1px solid color-mix(in srgb,var(--card) 60%,transparent);font-size:13px;cursor:pointer}.tcp .tcm{flex:1;min-width:0;line-height:1.2}.tcp .fn{display:block;font-weight:600;white-space:normal;overflow-wrap:anywhere}.tcp .tcm small{display:block;white-space:normal;font-size:11px}.tcp b{flex:0 0 auto}.tcp.on{background:color-mix(in srgb,var(--acc) 18%,transparent);border-radius:6px}.tcp input{width:18px;height:18px;margin:0}
+body.big .tcp{font-size:17px;padding:9px 2px}body.big .tcp input{width:24px;height:24px}
 
 /* colour scheme forced from Settings (System is the default: the media queries above) */
 :root[data-scheme=dark]{--bg:#0f1216;--card:#181c22;--ink:#e8ebef;--mute:#9aa4b1;--line:#262c35;--acc:#5b9cff;--good:#3ccf6f;--bad:#ff6b6b;--warn:#f0b849;--live:#ff5c5c;--chip:#232932;--bar:#2c3440;--barme:#5b9cff}
@@ -554,7 +556,7 @@ function renderHome(d){
 
   const tr=SHOW?[]:(d.trades||[]).filter(x=>!blank(x.get));
   if(tr.length){
-    h+='<section><h2>Trades</h2>'+tr.slice(0,6).map((x,i)=>{const ok=num(x.theirGain)>=-0.3;
+    h+='<section><h2>Trades</h2><div class="sub" style="margin-bottom:6px"><a class="pl" href="#tradecalc" style="font-weight:700">Trade calculator</a> - build and grade any offer</div>'+tr.slice(0,6).map((x,i)=>{const ok=num(x.theirGain)>=-0.3;
       return '<div class="row" style="padding:8px 0"><div class="main" style="white-space:normal"><div class="name">'+(i+1)+'. '+mg(x.partner)+' <small style="color:var(--mute)">'+teamLink(x.teamName)+'</small></div>'
         +'<div style="margin:2px 0">Give <b>'+String(x.give).split(" + ").map(pl).join(" + ")+'</b> · get <b>'+String(x.get).split(" + ").map(pl).join(" + ")+'</b></div>'
         +'<div class="sub" style="white-space:normal">You <b style="color:var(--good)">+'+f1(x.myGain)+'/wk</b> (lineup +'+f1(x.lineupGain)+') · them <b style="color:'+(num(x.theirGain)>=0?'var(--good)':'var(--bad)')+'">'+(num(x.theirGain)>=0?'+':'')+f1(x.theirGain)+'</b>'+(num(x.myWeek)!==null&&Math.abs(x.myWeek)>=1?' · this week '+(x.myWeek>0?'+':'')+f1(x.myWeek):'')+(blank(x.h2h)?'':' · you play them wk '+esc(x.h2h))+'</div>'
@@ -732,7 +734,7 @@ function managerSection(d,pw){
 const SORTS={value:["Value /wk",p=>p.value],proj:["This week",p=>p.proj],ros:["ROS /wk",p=>p.ros&&p.ros.cons],cons:["Consensus",p=>p.cons],avg3:["Last 3 wks",p=>p.form&&p.form.avg3],last:["Last week",p=>p.form&&p.form.last],adds:["Adds 24h",p=>p.adds],ecr:["Expert rank",p=>p.ecr?-p.ecr.rank:null],snap:["Snap %",p=>p.form&&p.form.snap],buzz:["Buzz",p=>p.buzz]};
 function renderPlayers(d){
   const f=state.filters; const teams=d.teams||[];
-  let h='<section style="padding:9px 14px"><a class="pl" href="#colleges" style="font-weight:700">Colleges · alumni tracker</a> <span class="sub">which schools are producing the players in this pool</span></section>';
+  let h='<section style="padding:9px 14px"><a class="pl" href="#tradecalc" style="font-weight:700">Trade calculator</a> <span class="sub">build and grade any offer</span><br><a class="pl" href="#colleges" style="font-weight:700">Colleges · alumni tracker</a> <span class="sub">which schools are producing the players in this pool</span></section>';
   h+='<section><div class="filters">';
   h+='<select id="f-pos">'+["ALL","QB","RB","WR","TE","K","DST"].map(p=>'<option value="'+p+'"'+(f.pos===p?' selected':'')+'>'+(p==="ALL"?"All positions":p)+'</option>').join("")+'</select>';
   h+='<select id="f-owner"><option value="ALL"'+(f.owner==="ALL"?' selected':'')+'>Everyone</option><option value="FA"'+(f.owner==="FA"?' selected':'')+'>Free agents</option>'+teams.map(t=>'<option value="'+esc(t.team)+'"'+(String(f.owner)===String(t.team)?' selected':'')+'>'+esc(t.name)+'</option>').join("")+'</select>';
@@ -1570,6 +1572,7 @@ const GLOSS={
  next3:['Next 3','How friendly his next three defenses are to his position, as a multiplier. 1.0 is average, 1.2 means those defenses give up 20% more than normal to his position, 0.8 means they are tough.'],
  buzz:['Buzz','Net tone of the last 72 hours of news about him, from our keyword list. Negative is bad news piling up, positive is good news. It is a nudge, not a projection.'],
  linemove:['Line move','How far the betting line has shifted since the week opened, in points. Money moves for a reason — a line sliding toward a team usually means the market learned something (a starter is out, weather turned) before the injury reports and projections catch up. A move of 2 points or more is worth a look.'],
+ tradecalc:['Trade calculator','Pick who you are trading with, who asked, and tick the players on each side. Roster value is the best starting nine by value plus 30% of the bench, for both teams before and after. The grade leans on your roster-value change, adds rest of season and this week, takes off for injury risk and for any position the trade leaves empty. "Would they accept" compares their loss against how much rope they have: the side that asked wants it more.'],
  tenure:['Coach tenure','Seasons with the team, his rank among the 32 (head coaches by win% with the team; coordinators by what their unit scored or allowed last full season), and a survival model: head coaches leave at about one in five a year, less with a winning record, playoff games and a long run, more with a losing record or a bad current season. Coordinators leave both ways - fired when the unit is bad, hired away when it is great. Expected seasons left is one over that yearly chance, capped at seven.'],
  wxtol:['Weather tolerance','His scoring in windy (15+ mph), wet and cold (35F or under) games against his calm-day average, using the real weather at every kickoff since 2024. When this week\'s forecast matches one of those, the weather adjustment uses his own rate, trusted in proportion to how many games back it up, instead of a one-size-fits-all cut for his position.'],
  alumni:['Alumni tracker','Every player in the pool grouped by the college he came from. A school\'s total is the sum of its players\' value per week, so it rewards schools that keep sending starters, not just bodies. Draft capital is the average of where its men were picked (100% = first overall).'],
@@ -1969,6 +1972,7 @@ function crumbFill(d,v){
   else if(v==='dev')trail=A('Settings','#settings')+sep+P('Engine room');
   else if(v==='settings')trail=P('Settings');
   else if(v==='colleges')trail=A('Players','#players')+sep+P('Colleges');
+  else if(v==='tradecalc')trail=A('Home','#home')+sep+P('Trade calculator');
   else if(v==='college'){deep=true;trail=A('Colleges',up('#colleges'))+sep+P(state.college);}
   else if(v==='team'){deep=true;const t=(d.power||[]).find(x=>String(x.team)===String(state.team))||{};
     trail=A('League',up('#league'))+sep+P((t.manager||'Team')+(t.name?' · '+t.name:''));}
@@ -2095,6 +2099,88 @@ function renderCollege(d,name){
     return '<div class="row tapp" data-player="'+esc(p.name)+'">'+face(p.sid,p.team,p.pos)+'<div class="main"><div class="name'+(num(p.owner)===5?' mine':'')+'">'+esc(p.name)+'</div><div class="sub">'+esc(p.pos)+' · '+tl(p.team)+(dr?' · '+esc(dr):'')+(p.ownerName?' · '+tn(p.ownerName):' · FA')+'</div></div><div class="pts"><b>'+f1(p.value)+'</b><small>value</small></div></div>'}).join('')+'</section>';
   return h;
 }
+
+// ---------------- TRADE CALCULATOR: build any offer, both sides, and grade it ----------------
+// Same maths as the engine's trade board (best starting nine by value plus 30% of the bench), plus
+// this week's lineup, rest of season, injuries, byes, and who asked - the asker has to give up more.
+let TC={partner:null,give:[],get:[],asked:'me'};try{TC=Object.assign(TC,JSON.parse(localStorage.getItem('lhc_tc')||'{}'))}catch(e){}
+function saveTC(){try{localStorage.setItem('lhc_tc',JSON.stringify(TC))}catch(e){}}
+function tcEval(d,mine,theirs,give,get,asked){
+  const gi=mine.filter(r=>give.indexOf(r.player)>=0),ge=theirs.filter(r=>get.indexOf(r.player)>=0);
+  const newMine=mine.filter(r=>give.indexOf(r.player)<0).concat(ge),newTheirs=theirs.filter(r=>get.indexOf(r.player)<0).concat(gi);
+  const rv=rows=>teamValue(rows),wk=rows=>weekPts(rows),ros=rows=>bestNine(rows,'ros').pts;
+  const injV=rows=>{let t=0;rows.forEach(r=>{const p=findPlayer(r.player);const a=p?num(p.avail):null;if(a!==null&&a<1)t+=(num(r.value)||0)*(1-a)});return t};
+  const R={gi:gi,ge:ge,
+    meV:rv(mine),meV2:rv(newMine),thV:rv(theirs),thV2:rv(newTheirs),
+    meW:wk(mine),meW2:wk(newMine),thW:wk(theirs),thW2:wk(newTheirs),
+    meR:ros(mine),meR2:ros(newMine),thR:ros(theirs),thR2:ros(newTheirs),
+    meInj:injV(newMine)-injV(mine),
+    nineOld:bestNine(mine,'value').used,nineNew:bestNine(newMine,'value').used};
+  R.gainMe=R.meV2-R.meV;R.gainThem=R.thV2-R.thV;R.wkMe=R.meW2-R.meW;R.wkThem=R.thW2-R.thW;R.rosMe=R.meR2-R.meR;R.rosThem=R.thR2-R.thR;
+  // roster size must stay legal: an uneven swap means a drop for the side that gains a body
+  R.dropMe=Math.max(0,ge.length-gi.length);R.dropThem=Math.max(0,gi.length-ge.length);
+  // what the other side will put up with: the asker wants it more
+  R.tol=asked==='them'?-2.0:(asked==='me'?-0.5:-1.0);
+  R.accept=R.gainThem>=R.tol;
+  // starters who leave and enter your best nine
+  R.out=Object.keys(R.nineOld).filter(n=>!R.nineNew[n]),R.in=Object.keys(R.nineNew).filter(n=>!R.nineOld[n]);
+  // holes: any position where the new roster has fewer bodies than slots plus one
+  const need={QB:1,RB:2,WR:2,TE:1,K:1,DST:1};R.holes=[];Object.keys(need).forEach(k=>{const n=newMine.filter(r=>r.pos===k).length;if(n<need[k])R.holes.push(k+' (nobody to start)');else if(n===need[k]&&k!=='K'&&k!=='DST')R.holes.push(k+' (no backup)')});
+  // byes and injuries on what you get
+  R.flags=[];const cw=num(d.week);ge.forEach(r=>{const p=findPlayer(r.player)||{};const b=num(r.bye);if(b&&b>=cw&&b<=cw+1)R.flags.push(r.player+' is on bye week '+b);const st=(p.inj||{}).status;if(st&&!/^active$/i.test(st))R.flags.push(r.player+' is '+st+((p.inj||{}).outlook&&num(p.inj.outlook.weeks)>=1?', about '+f1(p.inj.outlook.weeks)+' weeks':''))});
+  gi.forEach(r=>{const p=findPlayer(r.player)||{};const st=(p.inj||{}).status;if(st&&!/^active$/i.test(st))R.flags.push('you are moving '+r.player+' while he is '+st+' - his manager reads the same report')});
+  // timing: do you play this partner soon, and is anyone you give about to hit his best stretch
+  R.timing=[];const sched=(d.schedule||[]);const pt=theirs[0]?theirs[0].teamName:'';const vs=sched.find(x=>x.opp===pt&&num(x.week)>=cw);if(vs)R.timing.push('you play '+(mgrOf(d,pt)||pt)+' in week '+vs.week+(num(vs.week)===cw?' - this week':''));
+  gi.forEach(r=>{const p=findPlayer(r.player);const n3=(p&&p.next3)||[];if(n3.length>=2){const soft=n3.filter(x=>num(x.allowed)!==null&&num(x.allowed)>=(num(p.histUsed)||num(p.proj)||0)*1.15).length;if(soft>=2)R.timing.push(r.player+' has '+soft+' of his next 3 against soft defenses - selling before his best stretch')}});
+  ge.forEach(r=>{const p=findPlayer(r.player);const n3=(p&&p.next3)||[];if(n3.length>=2){const hard=n3.filter(x=>num(x.allowed)!==null&&num(x.allowed)<=(num(p.histUsed)||num(p.proj)||0)*0.85).length;if(hard>=2)R.timing.push(r.player+' faces '+hard+' tough defenses in his next 3 - the price may drop if you wait')}});
+  // the verdict
+  let score=R.gainMe*1.0+R.rosMe*0.15+R.wkMe*0.1-R.meInj*0.5;
+  if(R.holes.some(h=>/nobody/.test(h)))score-=3;
+  let v,cls;if(!gi.length&&!ge.length){v='Pick players';cls='warn'}else if(score>=2){v='Do it';cls='good'}else if(score>=0.8){v='Lean yes';cls='good'}else if(score>=-0.5){v='About even';cls='warn'}else if(score>=-2){v='Lean no';cls='bad'}else{v='No';cls='bad'}
+  R.score=score;R.verdict=v;R.cls=cls;
+  return R;
+}
+function renderTradeCalc(d){
+  if(SHOW)return '<section><div class="empty">Hidden in show mode.</div></section>';
+  const tid=myTeamId(d);const teams=(d.teams||[]).filter(t=>String(t.team)!==String(tid));
+  if(!TC.partner||!teams.some(t=>String(t.team)===String(TC.partner)))TC.partner=teams[0]?teams[0].team:null;
+  const mine=rosterOf(d,tid),theirs=rosterOf(d,TC.partner);
+  const pt=(d.teams||[]).find(t=>String(t.team)===String(TC.partner))||{};
+  TC.give=TC.give.filter(n=>mine.some(r=>r.player===n));TC.get=TC.get.filter(n=>theirs.some(r=>r.player===n));
+  const R=tcEval(d,mine,theirs,TC.give,TC.get,TC.asked);
+  const sortR=rows=>rows.slice().sort((a,b)=>(num(b.value)||0)-(num(a.value)||0));
+  const prow=(r,side)=>{const on=(side==='give'?TC.give:TC.get).indexOf(r.player)>=0;const p=findPlayer(r.player)||{};const st=(p.inj||{}).status;
+    return '<label class="tcp'+(on?' on':'')+'"><input type="checkbox" data-tc="'+side+'|'+esc(r.player)+'"'+(on?' checked':'')+'><span class="tcm"><span class="fn">'+esc(r.player)+'</span><small class="sub">'+esc(r.pos)+(/^(BN|IR)/i.test(r.slot)?' · bench':' · starter')+(st&&!/^active$/i.test(st)?' · <span class="flag bad">'+esc(st)+'</span>':'')+'</small></span><b>'+f1(r.value)+'</b></label>'};
+  let h='<section><h2>'+gl('tradecalc','Trade calculator')+'</h2><div class="sub" style="white-space:normal">Build any offer and it grades itself: roster value for both sides, this week, rest of season, injuries, byes, timing, and whether they would say yes.</div>';
+  h+='<div class="sub" style="font-weight:600;margin-top:8px">Trading with</div><div class="opt">'+teams.map(t=>'<button data-tcp="'+esc(t.team)+'" class="'+(String(t.team)===String(TC.partner)?'on':'')+'">'+esc(t.manager||t.name)+'</button>').join('')+'</div>';
+  h+='<div class="sub" style="font-weight:600">Who asked?</div><div class="opt">'+[['them',(pt.manager||'They')+' asked me'],['me','I am asking'],['none','Just checking']].map(x=>'<button data-tca="'+x[0]+'" class="'+(TC.asked===x[0]?'on':'')+'">'+esc(x[1])+'</button>').join('')+'</div></section>';
+  h+='<section class="split" style="padding:10px 6px"><div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px"><div class="sideA" style="min-width:0"><div class="sub" style="font-weight:700;color:var(--me)">You give</div>'+sortR(mine).map(r=>prow(r,'give')).join('')+'</div>'
+    +'<div class="sideB" style="min-width:0"><div class="sub" style="font-weight:700;color:var(--them);text-align:right">You get from '+esc(pt.manager||pt.name||'them')+'</div>'+sortR(theirs).map(r=>prow(r,'get')).join('')+'</div></div></section>';
+  // verdict
+  h+='<section><h2>Verdict</h2><div style="display:flex;align-items:center;gap:10px"><span class="pill '+(R.cls==='good'?'ok':(R.cls==='bad'?'bad':'warn'))+'" style="font-size:16px;padding:4px 12px">'+esc(R.verdict)+'</span><span class="sub" style="white-space:normal">'+(R.gi.length||R.ge.length?'Give '+R.gi.map(r=>pl(r.player)).join(' + ')+' · get '+R.ge.map(r=>pl(r.player)).join(' + '):'tick players on both sides')+'</span></div>';
+  if(R.gi.length||R.ge.length){
+    const sg=v=>(v>=0?'+':'')+f1(v),col=v=>'color:'+(v>=0?'var(--good)':'var(--bad)');
+    h+=kv([['Your roster value',f1(R.meV)+' → '+f1(R.meV2)+' <b style="'+col(R.gainMe)+'">'+sg(R.gainMe)+'/wk</b>'],
+      ['Their roster value',f1(R.thV)+' → '+f1(R.thV2)+' <b style="'+col(R.gainThem)+'">'+sg(R.gainThem)+'/wk</b>'],
+      ['This week, your lineup','<b style="'+col(R.wkMe)+'">'+sg(R.wkMe)+'</b> pts'],
+      ['Rest of season, your lineup','<b style="'+col(R.rosMe)+'">'+sg(R.rosMe)+'</b> per week'],
+      ['Injury risk taken on',R.meInj>0.05?'<b style="color:var(--bad)">'+f1(R.meInj)+'/wk</b> of value sits on hurt players':'<span class="sub">none</span>'],
+      ['Would they accept?','<b style="color:'+(R.accept?'var(--good)':'var(--bad)')+'">'+(R.accept?'Likely':'Unlikely')+'</b> <small class="sub">they '+(R.gainThem>=0?'gain':'lose')+' '+f1(Math.abs(R.gainThem))+'/wk; '+(TC.asked==='them'?'they asked, so they will wear up to 2.0':(TC.asked==='me'?'you asked, so they want it close to even':'nobody asked yet, about 1.0 of rope'))+'</small>'],
+      ['Roster spots',R.dropMe?'you must drop '+R.dropMe+' player'+(R.dropMe>1?'s':''):(R.dropThem?'they must drop '+R.dropThem:'even swap')]]);
+    h+=svgBars({labels:['Roster value','This week','Rest of season'],series:[{vals:[R.gainMe,R.wkMe,R.rosMe],cls:'me'},{vals:[R.gainThem,R.wkThem,R.rosThem],cls:'them'}],h:130,legend:[['me','you'],['them',pt.manager||'them']]});
+    if(R.in.length||R.out.length)h+='<div class="sub" style="white-space:normal;margin-top:6px"><b>Your best nine:</b> '+(R.in.length?'in: '+R.in.map(pl).join(', '):'')+(R.in.length&&R.out.length?' · ':'')+(R.out.length?'out: '+R.out.map(pl).join(', '):'')+'</div>';
+    if(R.holes.length)h+='<div class="sub" style="white-space:normal;margin-top:4px"><b style="color:var(--bad)">Depth after the trade:</b> '+R.holes.join(', ')+'</div>';
+    if(R.flags.length)h+='<div class="sub" style="white-space:normal;margin-top:4px"><b style="color:var(--warn)">Flags:</b> '+R.flags.map(esc).join(' · ')+'</div>';
+    if(R.timing.length)h+='<div class="sub" style="white-space:normal;margin-top:4px"><b>Timing:</b> '+R.timing.map(esc).join(' · ')+'</div>';
+    // position by position after the trade
+    const pk=['QB','RB','WR','TE'];const pv=rows=>{const o={};pk.forEach(k=>{o[k]=rows.filter(r=>r.pos===k).reduce((a,r)=>a+(num(r.value)||0),0)});return o};
+    const before=pv(mine),after=pv(mine.filter(r=>TC.give.indexOf(r.player)<0).concat(R.ge));
+    h+='<div class="sub" style="font-weight:600;margin-top:8px">Your value by position, before and after</div>'+svgBars({labels:pk,series:[{vals:pk.map(k=>before[k]),cls:'proj'},{vals:pk.map(k=>after[k]),cls:'me'}],h:120,legend:[['proj','before'],['me','after']]});
+    h+='<div class="sub" style="white-space:normal;margin-top:6px">Roster value = best starting nine by '+gl('value','value')+' plus 30% of the bench. The grade leans on roster value, adds rest-of-season and this week, and takes off for injury risk and any hole it opens.</div>';
+  }
+  h+='<div class="opt" style="margin-top:8px"><button data-tcclear="1">Clear</button></div></section>';
+  return h;
+}
 function renderSettings(d){
   const t=THEMES.find(x=>x.id===LOOK.theme)||THEMES[0];
   let big=false;try{big=localStorage.getItem('lhc_big')==='1'}catch(e){}
@@ -2133,6 +2219,7 @@ function render(){
   else if(v==="dev")h=renderDev(d);
   else if(v==="settings")h=renderSettings(d);
   else if(v==="colleges")h=renderColleges(d);
+  else if(v==="tradecalc")h=renderTradeCalc(d);
   else if(v==="college")h=renderCollege(d,state.college);
   else if(v==="injuries")h=renderInjuries(d);
   else if(v==="news")h=renderNews(d);
@@ -2158,6 +2245,10 @@ function render(){
     else if(k==='big'){const a=document.getElementById('aa');if(a)a.click();render();return}
     else if(k==='show'){const a=document.getElementById('show');if(a)a.click();return}
     saveLook();applyLook();render()}));
+  document.querySelectorAll('[data-tc]').forEach(el=>el.addEventListener('change',()=>{const [side,name]=el.dataset.tc.split('|');const arr=side==='give'?TC.give:TC.get;const i=arr.indexOf(name);if(el.checked&&i<0)arr.push(name);if(!el.checked&&i>=0)arr.splice(i,1);saveTC();render()}));
+  document.querySelectorAll('[data-tcp]').forEach(b=>b.addEventListener('click',()=>{if(String(TC.partner)!==b.dataset.tcp){TC.partner=b.dataset.tcp;TC.get=[];}saveTC();render()}));
+  document.querySelectorAll('[data-tca]').forEach(b=>b.addEventListener('click',()=>{TC.asked=b.dataset.tca;saveTC();render()}));
+  document.querySelectorAll('[data-tcclear]').forEach(b=>b.addEventListener('click',()=>{TC.give=[];TC.get=[];saveTC();render()}));
   document.querySelectorAll("[data-college]").forEach(el=>el.addEventListener("click",e=>{if(e.target.closest('a'))return;location.hash="#college/"+encodeURIComponent(el.dataset.college)}));
   document.querySelectorAll("[data-csort]").forEach(b=>b.addEventListener("click",()=>{state.csort=b.dataset.csort;render()}));
   document.querySelectorAll("[data-cpos]").forEach(b=>b.addEventListener("click",()=>{state.cpos=b.dataset.cpos;render()}));
