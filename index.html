@@ -1347,10 +1347,112 @@ function glSheet(){const el=document.getElementById('glsheet');if(el)return el;c
 function glShow(key){const g=GLOSS[key];if(!g)return;const d=glSheet();d.querySelector('.gl-t').textContent=g[0];d.querySelector('.gl-b').textContent=g[1];d.classList.add('on');}
 // ---------------- DEV PAGE (pin-gated) ----------------
 let PIN='';try{PIN=localStorage.getItem('lhc_pin')||''}catch(e){}
-const DEVPIN='2611';
+const DEVPIN='91NK';
+
+// ---------------- ENGINE ROOM: everything the app is holding ----------------
+function agoTxt(t){if(!t)return '\u2014';const m=Math.round((Date.now()-t.getTime())/60000);return m<1?'just now':(m<90?m+' min ago':Math.round(m/60)+' h ago');}
+function devPayload(d){
+  const n=x=>Array.isArray(x)?x.length:(x&&typeof x==='object'?Object.keys(x).length:(x===null||x===undefined||x===''?0:1));
+  return [
+    ['players',d.players,'Every player with a projection or a roster spot — 40+ fields each','Players'],
+    ['defenders',d.defenders,'Every defensive player, week by week (new)','Defence'],
+    ['league',d.league,'Every rostered player in your league, with slot','Rosters'],
+    ['power',d.power,'The 12 teams: record, strength, activity, likely moves','Teams'],
+    ['leagueSchedule',d.leagueSchedule,'Who plays whom, all 13 weeks (new)','Sched'],
+    ['games',d.games,'This week\'s NFL games with weather, line and history','Games'],
+    ['gamesAll',d.gamesAll,'Every NFL game this season','AllGms'],
+    ['nflTeams',d.nflTeams,'32 teams: coaches, scoring splits, defence','NFL'],
+    ['newsAll',d.newsAll,'Every news item pulled, tagged and scored','News'],
+    ['transactions',d.transactions,'Adds and drops across the league','Moves'],
+    ['trades',d.trades,'Trade candidates the engine found','Trades'],
+    ['rivalMoves',d.rivalMoves,'Waiver moves rivals are likely to make','Rivals'],
+    ['waivers',d.waivers,'Your waiver targets','Waiver'],
+    ['streamers',d.streamers,'Streaming options at thin positions','Stream'],
+    ['board',d.board,'The do-this board','Board'],
+    ['roster',d.roster,'Your 17','Mine'],
+    ['matchup',(d.matchup||{}).rows,'Your nine slots against theirs','Slots'],
+    ['schedule',d.schedule,'Your season','MySch'],
+    ['season',d.season,'Week by week results','Result'],
+  ].map(r=>({key:r[0],n:n(r[1]),what:r[2],short:r[3]})).filter(r=>r.n>0).sort((a,b)=>b.n-a.n);
+}
+function devCoverage(d){
+  const P=(d.players||[]).filter(x=>(num(x.value)||0)>0||num(x.owner));
+  const T=P.length||1;
+  const c=(f)=>P.filter(f).length;
+  const skill=P.filter(x=>['QB','RB','WR','TE'].indexOf(x.pos)>=0).length||1;
+  return [
+    {k:'This week projection',n:c(x=>num(x.proj)!==null),of:T,use:'start/sit, matchup win %'},
+    {k:'Source consensus',n:c(x=>num(x.cons)!==null),of:T,use:'the base every projection starts from'},
+    {k:'All six sources',n:c(x=>x.sources&&Object.keys(x.sources).length>=5),of:T,use:'spread between sources = confidence'},
+    {k:'Expert ranks',n:c(x=>x.ecr),of:T,use:'radar, sanity check on value'},
+    {k:'Rest of season',n:c(x=>x.ros&&num(x.ros.cons)!==null),of:T,use:'trades, stashes, power ranks'},
+    {k:'Game log',n:c(x=>(x.log||[]).length),of:T,use:'form, history, the week-by-week chart'},
+    {k:'Recent form',n:c(x=>x.form&&num(x.form.avg3)!==null),of:T,use:'value blend'},
+    {k:'Snap share',n:c(x=>x.form&&num(x.form.snap)>0),of:skill,use:'is he actually on the field'},
+    {k:'Target share',n:c(x=>x.form&&num(x.form.tgt)>0),of:skill,use:'usage axis, waiver value'},
+    {k:'Career history',n:c(x=>num(x.histUsed)!==null),of:T,use:'value blend, boom/bust'},
+    {k:'Home / away splits',n:c(x=>x.splits),of:T,use:'the home/away adjustment'},
+    {k:'Team scoring splits',n:c(x=>x.teamSplits),of:T,use:'game environment'},
+    {k:'College and combine',n:c(x=>x.college&&num(x.college.capital)!==null),of:T,use:'draft capital, athleticism, debut players'},
+    {k:'Coaching staff',n:c(x=>x.coach),of:T,use:'coach and coordinator pages'},
+    {k:'Opposing defence',n:c(x=>x.oppDef),of:T,use:'who he faces, defenders out (new)'},
+    {k:'Injury status',n:c(x=>x.inj&&(x.inj.status||x.inj.practice)),of:T,use:'availability multiplier'},
+    {k:'News attached',n:c(x=>(x.news||[]).length),of:T,use:'buzz, keyword signal'},
+    {k:'This week\'s game',n:c(x=>x.game&&x.game.opp),of:T,use:'kickoff, line, weather, live points'},
+    {k:'Live points',n:c(x=>x.game&&num(x.game.live)!==null),of:T,use:'live scoring and win %'},
+    {k:'Next three matchups',n:c(x=>(x.next3||[]).length),of:T,use:'schedule strength ahead'},
+  ].map(r=>Object.assign(r,{pct:Math.round(100*r.n/r.of)}));
+}
+function devSection(d){
+  const v=d.dev||{};
+  let h='';
+  const pay=devPayload(d);
+  h+='<section><h2>What the app is holding</h2><div class="sub" style="white-space:normal">Every block of data in the published file, and how many rows are in it.</div>'
+    +svgBars({labels:pay.slice(0,8).map(x=>x.short),series:[{vals:pay.slice(0,8).map(x=>x.n),cls:'me'}],h:130})
+    +'<table style="margin-top:6px"><tr><th>Block</th><th class="n">Rows</th><th>What it is</th></tr>'
+    +pay.map(x=>'<tr><td><b>'+esc(x.key)+'</b></td><td class="n">'+x.n.toLocaleString()+'</td><td class="sub" style="white-space:normal">'+esc(x.what)+'</td></tr>').join('')
+    +'</table></section>';
+  const cov=devCoverage(d);
+  h+='<section><h2>Coverage, data point by data point</h2><div class="sub" style="white-space:normal">Of the players that matter (rostered anywhere, or worth something), how many actually carry each thing. A low number is not a bug — live points only exist once games start, and college data only exists for drafted players.</div>'
+    +cov.map(x=>'<div class="frow"><div class="ft"><span class="fn">'+esc(x.k)+'</span><span class="fp">'+x.pct+'%</span></div>'
+      +'<div class="tr"><i class="'+(x.pct>=80?'':(x.pct>=40?'':'neg'))+'" style="width:'+x.pct+'%"></i></div>'
+      +'<div class="sub bline">'+x.n.toLocaleString()+' of '+x.of.toLocaleString()+' · feeds '+esc(x.use)+'</div></div>').join('')
+    +'</section>';
+  const sc=(v.scoring||[]);
+  if(sc.length){
+    const grp=[['O','Offence'],['K','Kickers'],['DST','Defence / special teams']];
+    h+='<section><h2>Your league\'s scoring</h2><div class="sub" style="white-space:normal">Read straight off your Yahoo settings page, not assumed. Everything in the app is scored with these.</div>'
+      +grp.map(g=>{const rows=sc.filter(x=>x.side===g[0]);if(!rows.length)return '';
+        return '<div class="sub" style="font-weight:600;margin-top:8px">'+esc(g[1])+'</div><table>'+rows.map(x=>'<tr><td>'+esc(x.name)+'</td><td class="n"><b>'+esc(x.value)+'</b></td></tr>').join('')+'</table>';}).join('')
+      +'</section>';
+  }
+  const en=(v.env||{});const notes=(en.notes||[]);
+  if(notes.length){
+    h+='<section><h2>Every adjustment, and how far it can move a number</h2>'
+      +'<table><tr><th>Adjustment</th><th>What it reads</th><th>Limit</th></tr>'
+      +notes.map(x=>'<tr><td><b>'+esc(x.name)+'</b></td><td class="sub" style="white-space:normal">'+esc(x.how)+'</td><td class="sub" style="white-space:nowrap">'+esc(x.cap)+'</td></tr>').join('')
+      +'</table><div class="sub" style="white-space:normal;margin-top:6px">They multiply together, then the whole lot is damped to '+Math.round((num(en.envWeight)||0.6)*100)+'% of its raw effect before it touches a projection. That damping is why a stack of small adjustments never runs away with a number.</div></section>';
+    const wx=en.weather||{};const wxk=Object.keys(wx);
+    if(wxk.length){
+      const poss=['QB','RB','WR','TE','K','DST'];
+      h+='<section><h2>Weather, by position</h2><div class="sub" style="white-space:normal">What each condition does to each position. 1.00 is no change.</div>'
+        +'<table><tr><th>Condition</th>'+poss.map(p=>'<th class="n">'+p+'</th>').join('')+'</tr>'
+        +wxk.map(k=>'<tr><td>'+esc(k)+'</td>'+poss.map(p=>{const val=num(wx[k]&&wx[k][p]);
+          return '<td class="n" style="color:'+(val===null?'var(--mute)':(val>1?'var(--good)':(val<1?'var(--bad)':'var(--mute)')))+'">'+(val===null?'—':val.toFixed(2))+'</td>'}).join('')+'</tr>').join('')
+        +'</table></section>';
+    }
+  }
+  const live=[
+    ['Live NFL scoreboard',NFLG.ok,NFLG.at,'ESPN, from your phone every 45 seconds'],
+    ['Live fantasy points',LIVE.ok,LIVE.at,'Sleeper, every 45 seconds while games are on'],
+  ];
+  h+='<section><h2>Live feeds right now</h2>'+live.map(x=>'<div class="row" style="padding:6px 0"><div class="main"><div class="name">'+esc(x[0])+'</div><div class="sub">'+esc(x[3])+'</div></div><div class="pts"><b style="color:'+(x[1]?'var(--good)':'var(--mute)')+'">'+(x[1]?'on':'idle')+'</b><small>'+agoTxt(x[2])+'</small></div></div>').join('')+'</section>';
+  return h;
+}
+
 function renderDev(d){
-  if(PIN!==DEVPIN){
-    return '<section><h2>Engine room</h2><div class="sub" style="white-space:normal">Weights, source accuracy and the guts of the model. Enter the pin to open it.</div><div class="filters devwrap" style="margin-top:8px"><input id="pinin" type="password" inputmode="numeric" placeholder="pin" style="grid-column:1/3"><button class="more" id="pinsave" style="grid-column:1/3;margin:0">Unlock</button></div></section>';
+  if(String(PIN).toUpperCase()!==DEVPIN){   // letters now, so don't punish the caps key
+    return '<section><h2>Engine room</h2><div class="sub" style="white-space:normal">Weights, source accuracy and the guts of the model. Enter the pin to open it.</div><div class="filters devwrap" style="margin-top:8px"><input id="pinin" type="password" inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="pin" style="grid-column:1/3"><button class="more" id="pinsave" style="grid-column:1/3;margin:0">Unlock</button></div></section>';
   }
   const v=d.dev||{};const W=v.weights||{};const acc=(v.accuracy||{});const ov=acc.overall||[];const wk=acc.weekly||[];
   let h='<section><h2>Engine room</h2><div class="sub" style="white-space:normal">How every number on this app is built. <a href="#" id="pinout" style="color:var(--mute)">lock again</a></div>';
@@ -1381,6 +1483,7 @@ function renderDev(d){
   if(f.length)h+='<section><h2>Data freshness</h2><table><tr><th>File</th><th class="n">Rows</th><th class="n">Age</th></tr>'+f.map(x=>'<tr><td>'+esc(x.name)+'</td><td class="n">'+x.rows+'</td><td class="n" style="color:'+(num(x.ageH)>36?'var(--bad)':(num(x.ageH)>12?'var(--warn)':'var(--good)'))+'">'+f1(x.ageH)+' h</td></tr>').join('')+'</table></section>';
   const rl=(v.rules||[]);
   if(rl.length)h+='<section><h2>Board rules that fired</h2>'+svgBars({labels:rl.map(x=>String(x.where||'').slice(0,5)),series:[{vals:rl.map(x=>num(x.score)),cls:'me',clsAt:rl.map(x=>num(x.score)>=85?'bad':(num(x.score)>=60?'warn':''))}],h:120,line:{v:60,label:'push threshold'}})+'<div class="sub" style="white-space:normal">Each board line carries a 0–100 '+gl('urgency','urgency')+'. 85+ shows green (do it now), 40–84 yellow (soon), under 40 red (background noise).</div></section>';
+  h+=devSection(d);
   h+='<section><div class="sub" style="white-space:normal">The pin keeps this page out of the way when you hand someone your phone. It is not real security — the numbers live in the published data file, so treat it as a tidy drawer, not a safe.</div></section>';
   return h;
 }
@@ -1507,39 +1610,51 @@ function searchHits(q){q=q.toLowerCase();if(q.length<2)return [];const out=[];
 function crumbFill(d,v){
   const el=document.getElementById('crumb');if(!el)return;
   const P=n=>'<b>'+esc(n)+'</b>';const sep='<span class="sep">›</span>';
+  const A=(n,href)=>'<a class="pl" href="'+esc(href)+'">'+esc(n)+'</a>';
+  const up=f=>(state.backTo||f);      // back to the list he came from, not a guess
   let trail='',deep=false;
   if(v==='home')trail=P('Home');
   else if(v==='league')trail=P('League');
   else if(v==='players')trail=P('Players');
   else if(v==='games')trail=P('Games');
   else if(v==='matchups')trail=P('Matchups');
-  else if(v==='matchup'){deep=true;const x=weekPairs(d,state.mwk)[num(state.midx)];trail='Matchups'+sep+P(x?(mgrOf(d,x.a)||x.a)+' vs '+(mgrOf(d,x.b)||x.b):'Matchup');}
+  else if(v==='matchup'){deep=true;const x=weekPairs(d,state.mwk)[num(state.midx)];trail=A('Matchups','#matchups')+sep+P(x?(mgrOf(d,x.a)||x.a)+' vs '+(mgrOf(d,x.b)||x.b):'Matchup');}
   else if(v==='injuries')trail=P('Injuries');
   else if(v==='news')trail=P('News');
   else if(v==='dev')trail=P('Engine room');
   else if(v==='team'){deep=true;const t=(d.power||[]).find(x=>String(x.team)===String(state.team))||{};
-    trail='League'+sep+P((t.manager||'Team')+(t.name?' · '+t.name:''));}
+    trail=A('League',up('#league'))+sep+P((t.manager||'Team')+(t.name?' · '+t.name:''));}
   else if(v==='player'){deep=true;const nm=cleanName(state.player);const pl2=(d.players||[]).find(x=>String(x.name).toLowerCase()===String(nm).toLowerCase())||{};
-    trail=(state.ctxName?esc(state.ctxName):'Players')+sep+P(nm)+(pl2.pos?' <span class="sub">'+esc(pl2.pos)+(pl2.team?' · '+esc(pl2.team):'')+'</span>':'');}
+    trail=A(state.ctxName||'Players list',up('#players'))+sep+P(nm)+(pl2.pos?' <span class="sub">'+esc(pl2.pos)+(pl2.team?' · '+esc(pl2.team):'')+'</span>':'');}
   else if(v==='nfl'){deep=true;const t=(d.nflTeams||[]).find(x=>x.team===String(state.nfl2).toUpperCase())||{};
-    trail='NFL teams'+sep+P(t.name||state.nfl2);}
+    trail=A('NFL teams',up('#games'))+sep+P(t.name||state.nfl2);}
   else if(v==='coach'){deep=true;const nm=state.coach;const ts=(d.nflTeams||[]);let team='';
     ts.forEach(t=>{['hc','oc','dc'].forEach(r=>{if(String(t[r]).toLowerCase()===String(nm).toLowerCase())team=t.name})});
-    trail='Coaches'+sep+P(nm)+(team?' <span class="sub">'+esc(team)+'</span>':'');}
+    trail=A('Coaches',up('#games'))+sep+P(nm)+(team?' <span class="sub">'+esc(team)+'</span>':'');}
   else trail=P(v);
   el.innerHTML=(deep?'<a class="back" href="javascript:history.back()">‹</a>':'')+'<span class="path">'+trail+'</span>';
 }
 // ---------------- ROUTER ----------------
+const DEEPV=['player','team','nfl','coach','matchup'];
+let PREVHASH='',SCROLLMEM={};
 function route(){
   NAV=true;
   const hsh=decodeURIComponent(location.hash||"#home").slice(1);
   const parts=hsh.split("/");
-  state.view=parts[0]||"home";
+  const nv=parts[0]||"home";
+  // where a player (or team, or coach) page was opened from, so its breadcrumb can go back there
+  if(PREVHASH&&PREVHASH!=='#'+hsh){
+    SCROLLMEM[PREVHASH]=window.scrollY;
+    // a different kind of page is a real change of context; player -> player is just a swipe
+    if(DEEPV.indexOf(nv)>=0&&state.view!==nv)state.backTo=PREVHASH;
+  }
+  state.view=nv;
   if(state.view==="team")state.team=parts[1];
   if(state.view==="player")state.player=parts.slice(1).join("/");
   if(state.view==="nfl")state.nfl2=parts[1];
   if(state.view==="coach")state.coach=parts.slice(1).join("/");
   if(state.view==="matchup"){state.mwk=parts[1];state.midx=parts[2];}
+  PREVHASH='#'+hsh;
   render();
 }
 function render(){
@@ -1570,7 +1685,7 @@ function render(){
   document.querySelectorAll(".ctl button[data-cmd]").forEach(b=>b.addEventListener("click",()=>send(b.dataset.cmd,CMDKEY,b)));
   const ck=$("#cmdsave");if(ck)ck.addEventListener("click",()=>{const v=($("#cmdkey").value||"").trim();if(v){CMDKEY=v;try{localStorage.setItem('lhc_cmd',v)}catch(e){}render()}});
   const cc=$("#cmdclear");if(cc)cc.addEventListener("click",e=>{e.preventDefault();CMDKEY='';try{localStorage.removeItem('lhc_cmd')}catch(e){}render()});
-  const ps2=$('#pinsave');if(ps2)ps2.addEventListener('click',()=>{const val=($('#pinin').value||'').trim();PIN=val;try{localStorage.setItem('lhc_pin',val)}catch(e){}render()});
+  const ps2=$('#pinsave');if(ps2)ps2.addEventListener('click',()=>{const val=($('#pinin').value||'').trim().toUpperCase();PIN=val;try{localStorage.setItem('lhc_pin',val)}catch(e){}render()});
   const po=$('#pinout');if(po)po.addEventListener('click',e=>{e.preventDefault();PIN='';try{localStorage.removeItem('lhc_pin')}catch(e){}render()});
   const db=$('#devbtn');if(db){db.classList.toggle('on',v==='dev');db.style.display=SHOW?'none':'';}
   document.querySelectorAll('[data-want]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();
@@ -1593,7 +1708,10 @@ function render(){
   const ifl=$("#ifilt");if(ifl)ifl.addEventListener("change",()=>{state.ifilt=ifl.value;render()});
   const nfl=$("#nfilt");if(nfl)nfl.addEventListener("change",()=>{state.nfilt=nfl.value;render()});
   const nq=$("#nq");if(nq)nq.addEventListener("input",()=>{state.nq=nq.value;const k=nq.selectionStart;render();const q2=$("#nq");if(q2){q2.focus();try{q2.setSelectionRange(k,k)}catch(e){}}});
-  if(NAV){if(v!=="players"){RESTORING=1;window.scrollTo(0,0);RESTORING=0;SY=0}NAV=false}else{keepPlace(_sy)}
+  if(NAV){const back=SCROLLMEM[PREVHASH];
+    if(back>0){RESTORING=1;window.scrollTo(0,back);RESTORING=0;SY=back;delete SCROLLMEM[PREVHASH];}
+    else if(v!=="players"){RESTORING=1;window.scrollTo(0,0);RESTORING=0;SY=0}
+    NAV=false}else{keepPlace(_sy)}
 }
 function flash(btn,cls,txt,ms){if(!btn)return;const old=btn.dataset.lbl||btn.textContent;btn.dataset.lbl=old;
   btn.classList.remove('sending','sent','failed');btn.classList.add(cls);if(txt)btn.textContent=txt;
