@@ -1574,7 +1574,7 @@ const GLOSS={
  buzz:['Buzz','Net tone of the last 72 hours of news about him, from our keyword list. Negative is bad news piling up, positive is good news. It is a nudge, not a projection.'],
  linemove:['Line move','How far the betting line has shifted since the week opened, in points. Money moves for a reason — a line sliding toward a team usually means the market learned something (a starter is out, weather turned) before the injury reports and projections catch up. A move of 2 points or more is worth a look.'],
  teamstats:['Team stats','This team against the league: projected points this week, rest-of-season power (best lineup by value, every remaining week), bench value, points for and against, each with the league average and the team\'s rank among the 12. Green bars are top four, red bottom four.'],
- tradecalc:['Trade calculator','Pick who you are trading with, who asked, and tick the players on each side. Roster value is the best starting nine by value plus 30% of the bench, for both teams before and after. The grade leans on your roster-value change, adds rest of season and this week, takes off for injury risk, for any position the trade leaves empty, and for what the other side gains weighted by how big a threat they are (roster strength, standing, and how many more times you play them). A trade that helps them more than you is never recommended, whatever else it does. "Would they accept" compares their loss against how much rope they have: the side that asked wants it more.'],
+ tradecalc:['Trade calculator','Pick who you are trading with, who asked, and tick the players on each side. Roster value is the best starting nine by value plus 30% of the bench, for both teams before and after. The grade leans on your roster-value change, adds rest of season and this week, takes off for injury risk, for any position the trade leaves empty, and for what the other side gains weighted by how big a threat they are (roster strength, standing, and how many more times you play them). A trade that helps them more than you is never recommended, whatever else it does. "Would they accept" compares their loss against how much rope they have: the side that asked wants it more, and desperation adds rope - a losing record, a skid, hurt starters, thin positions (especially ones you are offering), frantic waiver activity, and anything they have said in the chat. High desperation with an easy yes means ask for more.'],
  tenure:['Coach tenure','Seasons with the team, his rank among the 32 (head coaches by win% with the team; coordinators by what their unit scored or allowed last full season), and a survival model: head coaches leave at about one in five a year, less with a winning record, playoff games and a long run, more with a losing record or a bad current season. Coordinators leave both ways - fired when the unit is bad, hired away when it is great. Expected seasons left is one over that yearly chance, capped at seven.'],
  wxtol:['Weather tolerance','His scoring in windy (15+ mph), wet and cold (35F or under) games against his calm-day average, using the real weather at every kickoff since 2024. When this week\'s forecast matches one of those, the weather adjustment uses his own rate, trusted in proportion to how many games back it up, instead of a one-size-fits-all cut for his position.'],
  alumni:['Alumni tracker','Every player in the pool grouped by the college he came from. A school\'s total is the sum of its players\' value per week, so it rewards schools that keep sending starters, not just bodies. Draft capital is the average of where its men were picked (100% = first overall).'],
@@ -2121,8 +2121,25 @@ function tcEval(d,mine,theirs,give,get,asked){
   R.gainMe=R.meV2-R.meV;R.gainThem=R.thV2-R.thV;R.wkMe=R.meW2-R.meW;R.wkThem=R.thW2-R.thW;R.rosMe=R.meR2-R.meR;R.rosThem=R.thR2-R.thR;
   // roster size must stay legal: an uneven swap means a drop for the side that gains a body
   R.dropMe=Math.max(0,ge.length-gi.length);R.dropThem=Math.max(0,gi.length-ge.length);
-  // what the other side will put up with: the asker wants it more
-  R.tol=asked==='them'?-2.0:(asked==='me'?-0.5:-1.0);
+  // desperation: how badly the other side needs a deal, read off their own situation - record and
+  // streak, hurt starters, positions they are thin at (especially the ones you are offering), how
+  // frantic their waiver activity is, and anything they have said in the chat (the wants chips)
+  const pw0=(d.power||[]).find(x=>x.name===(theirs[0]?theirs[0].teamName:''))||{};const why=[];let des=0;
+  const rec=/^(\d+)-(\d+)/.exec(pw0.record||'');const rw=rec?+rec[1]:0,rl=rec?+rec[2]:0;
+  if(rw+rl>=2&&rl>rw){des+=Math.min(30,15*(rl-rw));why.push(rw+'-'+rl+' record')}
+  if(/^L-?(\d+)/.test(pw0.streak||'')){const n=+RegExp.$1;if(n>=2){des+=Math.min(15,5*n);why.push('on a '+n+'-game skid')}}
+  const hurt=(d.players||[]).filter(p=>p.ownerName===pw0.name&&(num(p.value)||0)>=6&&/out|ir|pup|doubt/i.test((p.inj||{}).status||''));
+  if(hurt.length){des+=Math.min(25,12*hurt.length);why.push('hurt: '+hurt.map(p=>shortName(p.name)).join(', '))}
+  const pv0=pw0.posValue||{};const avgPV={};['QB','RB','WR','TE'].forEach(k=>{const v=(d.power||[]).map(x=>x.posValue&&num(x.posValue[k])).filter(x=>x!==null);avgPV[k]=v.length?v.reduce((a,b)=>a+b,0)/v.length:null});
+  const thin=['QB','RB','WR','TE'].filter(k=>num(avgPV[k])&&num(pv0[k])<avgPV[k]*0.85);
+  if(thin.length){const hits=thin.filter(k=>gi.some(r=>r.pos===k));des+=8*thin.length+(hits.length?12:0);why.push('thin at '+thin.join('/')+(hits.length?' and you are offering '+hits.join('/'):''))}
+  const act=pw0.activity||{};const moves=(num(act.adds)||0)+(num(act.drops)||0);if(moves>=3){des+=Math.min(15,3*moves);why.push(moves+' waiver moves lately')}
+  const W=wantsOf(pw0.manager||'');const wantHit=(W.pos||[]).filter(k=>gi.some(r=>r.pos===k));if(wantHit.length){des+=15;why.push('asked the league for '+wantHit.join('/'))}
+  const shopped=(W.offered||[]).filter(n=>ge.some(r=>cleanName(r.player)===cleanName(n)));if(shopped.length){des+=10;why.push('has shopped '+shopped.join(', '))}
+  if(asked==='them'){des+=15;why.push('they came to you')}
+  R.desperation=Math.min(100,Math.round(des));R.despWhy=why;
+  // what the other side will put up with: the asker wants it more, and desperation adds rope
+  R.tol=(asked==='them'?-2.0:(asked==='me'?-0.5:-1.0))-2.5*(R.desperation/100);
   R.accept=R.gainThem>=R.tol;
   // starters who leave and enter your best nine
   R.out=Object.keys(R.nineOld).filter(n=>!R.nineNew[n]),R.in=Object.keys(R.nineNew).filter(n=>!R.nineOld[n]);
@@ -2177,7 +2194,9 @@ function renderTradeCalc(d){
       ['This week, your lineup','<b style="'+col(R.wkMe)+'">'+sg(R.wkMe)+'</b> pts'],
       ['Rest of season, your lineup','<b style="'+col(R.rosMe)+'">'+sg(R.rosMe)+'</b> per week'],
       ['Injury risk taken on',R.meInj>0.05?'<b style="color:var(--bad)">'+f1(R.meInj)+'/wk</b> of value sits on hurt players':'<span class="sub">none</span>'],
-      ['Would they accept?','<b style="color:'+(R.accept?'var(--good)':'var(--bad)')+'">'+(R.accept?'Likely':'Unlikely')+'</b> <small class="sub">they '+(R.gainThem>=0?'gain':'lose')+' '+f1(Math.abs(R.gainThem))+'/wk; '+(TC.asked==='them'?'they asked, so they will wear up to 2.0':(TC.asked==='me'?'you asked, so they want it close to even':'nobody asked yet, about 1.0 of rope'))+'</small>'],
+      ['Desperation','<b style="color:'+(R.desperation>=50?'var(--good)':(R.desperation>=25?'var(--warn)':'var(--mute)'))+'">'+R.desperation+'%</b> <small class="sub">'+(R.despWhy.length?esc(R.despWhy.join(' · ')):'no sign they need a deal')+'</small>'],
+      ['Would they accept?','<b style="color:'+(R.accept?'var(--good)':'var(--bad)')+'">'+(R.accept?'Likely':'Unlikely')+'</b> <small class="sub">they '+(R.gainThem>=0?'gain':'lose')+' '+f1(Math.abs(R.gainThem))+'/wk; they will wear a loss of about '+f1(Math.abs(R.tol))+' ('+(TC.asked==='them'?'they asked':(TC.asked==='me'?'you asked':'nobody asked yet'))+(R.desperation>=25?', plus desperation':'')+')</small>'],
+      ['Leverage',R.desperation>=50&&R.gainThem>R.tol+0.8?'<b style="color:var(--good)">Ask for more</b> <small class="sub">they need this more than you do and would still take a deal about '+f1(R.gainThem-R.tol)+'/wk worse for them</small>':(R.desperation>=50?'<span class="sub">they need it, but this offer is already near their limit</span>':'<span class="sub">none to speak of</span>')],
       ['Roster spots',R.dropMe?'you must drop '+R.dropMe+' player'+(R.dropMe>1?'s':''):(R.dropThem?'they must drop '+R.dropThem:'even swap')],
       ['Threat level','<b style="color:'+(R.threat>=0.66?'var(--bad)':(R.threat>=0.4?'var(--warn)':'var(--good)'))+'">'+Math.round(R.threat*100)+'%</b> <small class="sub">'+(R.threatRank?'#'+R.threatRank+' roster':'')+(R.threatStand?' · #'+R.threatStand+' in standings':'')+(R.h2hN?' · you play them '+R.h2hN+' more time'+(R.h2hN>1?'s':''):' · not on your schedule')+'</small>'],
       ['Cost of helping them',R.threatAdj<-0.05?'<b style="color:var(--bad)">'+f1(R.threatAdj)+'</b> <small class="sub">their gain, weighted by threat and head-to-head weeks</small>':'<span class="sub">none - they do not gain</span>'],
