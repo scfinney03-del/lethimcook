@@ -193,10 +193,17 @@ body.big polygon.rad{stroke-width:3.5}
 .bar.them i{background:var(--them)}.mb i.them{background:var(--them)}
 .vs .me{color:var(--me)}.vs .them{color:var(--them)}
 /* the two sides get their own tinted columns so the split is obvious before you read a name */
-.vs .me,.vs .them{background:color-mix(in srgb,var(--me) 13%,var(--card));padding:5px 7px;border-radius:8px;align-self:stretch}
-.vs .them{background:color-mix(in srgb,var(--them) 16%,var(--card))}
+.vs .me,.vs .them{align-self:stretch;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;line-height:1.25}
+.vs{grid-template-columns:34px 1fr auto 1fr;gap:0 4px;padding:6px 6px;margin:0 -8px;border-top:0;border-radius:0}.vs .slot{width:34px;flex-basis:34px}.vs .edge{padding:1px 4px;position:relative;z-index:1}
+/* no white between the sides: the whole row is painted, left half yours, right half theirs */
+.vs{background:linear-gradient(90deg,var(--meT) 0 50%,var(--thT) 50% 100%)}
+.vs .me,.vs .them{background:transparent;border-radius:0;padding:4px 4px 4px 6px}.vs .them{padding:4px 6px 4px 4px}
 .vs .me{border-left:3px solid var(--me)}.vs .them{border-right:3px solid var(--them)}
-body.big .vs .me,body.big .vs .them{background:color-mix(in srgb,var(--me) 22%,var(--card))}body.big .vs .them{background:color-mix(in srgb,var(--them) 26%,var(--card))}
+.vs+.vs{border-top:2px solid var(--card)}
+body{--meT:color-mix(in srgb,var(--me) 13%,var(--card));--thT:color-mix(in srgb,var(--them) 16%,var(--card))}
+body.big{--meT:color-mix(in srgb,var(--me) 22%,var(--card));--thT:color-mix(in srgb,var(--them) 26%,var(--card))}
+.split{background:linear-gradient(90deg,var(--meT) 0 50%,var(--thT) 50% 100%);border-radius:10px;margin:0 -6px;padding:0 6px}
+.split .sideA,.split .sideB{background:transparent;border-radius:0}
 .pair .t.r i{background:var(--them)}
 .sideA,.sideB{padding:8px 10px;border-radius:10px;background:color-mix(in srgb,var(--me) 13%,var(--card));border-left:3px solid var(--me)}
 .sideB{background:color-mix(in srgb,var(--them) 16%,var(--card));border-left:0;border-right:3px solid var(--them)}
@@ -948,7 +955,7 @@ function renderMatchup(d,wk,idx){
   state.ctx=[].concat(A.lineup,B.lineup).filter(r=>!r.empty).map(r=>cleanName(r.name));state.ctxName=x.a+' vs '+x.b;
   const wa=M.win,wb=100-wa;
   let h='<section><a class="back" href="#matchups">← Matchups</a>';
-  h+='<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:end;margin-top:10px">'
+  h+='<div class="split" style="display:grid;grid-template-columns:1fr auto 1fr;gap:0 8px;align-items:end;margin-top:10px">'
     +'<div class="sideA" style="min-width:0"><div class="name" style="white-space:normal'+(isMine(A.team)?';color:var(--good)':'')+'">'+tn(A.team)+'</div><div class="sub">'+mg(A.mgr)+'</div><div class="num" style="font-size:28px;font-weight:800">'+f1(M.live?M.na:M.ea)+'</div></div>'
     +'<div class="sub" style="padding-bottom:8px">vs</div>'
     +'<div class="sideB" style="min-width:0;text-align:right"><div class="name" style="white-space:normal'+(isMine(B.team)?';color:var(--good)':'')+'">'+tn(B.team)+'</div><div class="sub">'+mg(B.mgr)+'</div><div class="num" style="font-size:28px;font-weight:800">'+f1(M.live?M.nb:M.eb)+'</div></div></div>';
@@ -971,7 +978,7 @@ function renderMatchup(d,wk,idx){
   h+=boomBust({expA:M.ea,expB:M.eb,vA:M.va,vB:M.vb,cov:M.cov,rowsA:A.lineup.filter(r=>!r.empty)},A.mgr||A.team,B.mgr||B.team);
   // benches
   const bl=(S)=>S.bench.length?S.bench.map(r=>'<div class="sub" style="display:flex;justify-content:space-between;gap:8px;padding:2px 0"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+pl(r.name)+' <small>'+esc(r.pos)+' '+esc(r.nfl||'')+'</small></span><span>'+(r.live!==null?'<b>'+f1(r.live)+'</b>':(r.bye?'bye':f1(r.proj)))+'</span></div>').join(''):'<div class="sub">nobody</div>';
-  h+='<section><h2>Benches</h2><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div class="sideA" style="min-width:0"><div class="sub" style="font-weight:600">'+tn(A.team)+(M.live&&M.benchA?' · '+f1(M.benchA)+' on the bench':'')+'</div>'+bl(A)+'</div><div class="sideB" style="min-width:0"><div class="sub" style="font-weight:600">'+tn(B.team)+(M.live&&M.benchB?' · '+f1(M.benchB)+' on the bench':'')+'</div>'+bl(B)+'</div></div></section>';
+  h+='<section><h2>Benches</h2><div class="split" style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px"><div class="sideA" style="min-width:0"><div class="sub" style="font-weight:600">'+tn(A.team)+(M.live&&M.benchA?' · '+f1(M.benchA)+' on the bench':'')+'</div>'+bl(A)+'</div><div class="sideB" style="min-width:0"><div class="sub" style="font-weight:600">'+tn(B.team)+(M.live&&M.benchB?' · '+f1(M.benchB)+' on the bench':'')+'</div>'+bl(B)+'</div></div></section>';
   return h;
 }
 
