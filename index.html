@@ -744,6 +744,7 @@ function renderPlayer(d,name){
       +svgBars({labels:['Weeks out','Weeks left'],series:[{vals:[Math.min(w,wl),wl],cls:'me',clsAt:['bad','']}],h:100})
       +'<div class="sub" style="white-space:normal">'+(iOut.basis==='reported'?'A reporter put this number on it, so it beats the table.':'Nobody has put a number on it yet, so this is how that injury usually goes — treat the range as the honest answer.')+'</div></section>';
   }
+  h+=histSections(d,p);
   if(p.pos==='DST'||p.pos==='DEF')h+=defUnit(p.unit,'This defence','Who actually generates the sacks and takeaways this unit gets paid for.');
   else if(p.oppDef)h+=defUnit(p.oppDef,'The defence he faces'+(p.game&&p.game.opp?' \u00b7 '+String(p.game.opp):''),'The men across from him this week, and who is not playing.');
   h+='<section><h2>'+gl('value','Value')+'</h2>';
@@ -1229,10 +1230,74 @@ function defUnit(u,heading,intro){
   return h+'<div class="sub" style="white-space:normal;margin-top:6px">Built from every defensive snap in the nflverse box scores. Your league has no defensive slots, so nobody here is startable — this is for reading how hard a week your own guys are facing.</div></section>';
 }
 
+
+function histSections(d,p){
+  let h='';
+  // ---- injury history ----
+  const ih=p.injHist;
+  if(ih){
+    const dur=Math.round(100*(num(ih.durability)||0));
+    const parts=(ih.parts||[]).filter(x=>num(x.weeks)>0);
+    const mult=num(ih.mult)||1;
+    h+='<section><h2>'+gl('durability','Injury history')+'</h2>'
+      +'<div style="display:flex;align-items:baseline;gap:10px;margin:2px 0 6px"><b style="font-size:26px;color:'+(dur>=90?'var(--good)':(dur>=80?'var(--warn)':'var(--bad)'))+'">'+dur+'%</b><span class="sub">available over the last '+ih.seasons+' season'+(ih.seasons===1?'':'s')+' · missed '+ih.missed+' of '+ih.weeks+' weeks to injury</span></div>';
+    if(parts.length)h+=svgBars({labels:parts.map(x=>x.part.length>8?x.part.slice(0,7)+'.':x.part),series:[{vals:parts.map(x=>x.weeks),cls:'me',clsAt:parts.map(x=>(ih.recurring||[]).indexOf(x.part)>=0?'bad':'')}],h:110})
+      +'<div class="sub" style="white-space:normal">Weeks he appeared on the injury report with each, over three seasons. Red is a <b>recurring</b> problem — listed four weeks or more.</div>';
+    const notes=[];
+    if((ih.recurring||[]).length)notes.push('keeps hurting his <b>'+ih.recurring.map(esc).join(', ')+'</b> — a new one there is expected to take longer');
+    if(num(ih.soft)>=4)notes.push(ih.soft+' weeks of soft-tissue trouble (hamstring, groin, calf) — the kind that comes back');
+    if(num(ih.concussions)>=2)notes.push(ih.concussions+' weeks listed with concussions');
+    if(num(ih.illness)>0)notes.push('sick '+ih.illness+(ih.illness===1?' week':' weeks'));
+    if(notes.length)h+='<div class="sub" style="white-space:normal;margin-top:4px">'+notes.join(' · ')+'.</div>';
+    h+='<div class="sub" style="white-space:normal;margin-top:4px">Effect on his value: <b style="color:'+(mult>=1?'var(--good)':'var(--bad)')+'">'+(mult>=1?'+':'')+Math.round((mult-1)*100)+'%</b>. Deliberately small — the sources already price in some of this.</div></section>';
+  }
+  // ---- teammates ----
+  const mt=(p.mates||[]);
+  if(mt.length){
+    h+='<section><h2>'+gl('stack','Moves with')+'</h2>'
+      +'<div class="sub" style="white-space:normal">How his weekly score rises and falls with each teammate\'s. Positive: big days together. Negative: they take each other\'s work.</div>'
+      +mt.map(m=>{const r=num(m.r)||0,w=Math.round(Math.abs(r)*100);
+        return '<div class="frow"><div class="ft"><span class="fn">'+pl(m.name)+' <small style="color:var(--mute);font-weight:400">'+esc(m.pos)+' · '+m.games+' games together</small></span><span class="fp" style="color:'+(r>=0?'var(--good)':'var(--bad)')+'">'+(r>=0?'+':'')+r.toFixed(2)+'</span></div>'
+          +'<div class="tr"><i class="'+(r<0?'neg':'')+'" style="width:'+Math.min(100,w*2)+'%"></i></div></div>';}).join('')
+      +'<div class="sub" style="white-space:normal;margin-top:4px">A typical quarterback and his receiver sit around +0.26. Starting two players who move together raises your ceiling and lowers your floor.</div></section>';
+  }
+  // ---- backup quarterback ----
+  const qe=p.qbEffect;
+  if(qe){
+    const r=num(qe.ratio)||1;
+    h+='<section><h2>'+gl('qbeff','With a backup quarterback')+'</h2>'
+      +(qe.active?'<div class="flag bad" style="display:inline-block;margin-bottom:6px">'+esc(qe.usual)+' is out this week — this is in his projection now</div>':'')
+      +svgBars({labels:['With '+String(qe.usual).split(' ').pop(),'Backup'],series:[{vals:[qe.withUsual,qe.withBackup],cls:'me',clsAt:['',r<0.9?'bad':(r>1.05?'good':'')]}],h:100})
+      +'<div class="sub" style="white-space:normal">'+f1(qe.withUsual)+' a game with '+esc(qe.usual)+', '+f1(qe.withBackup)+' with a backup ('+qe.games+' games, same team and season). '
+      +(r<0.85?'<b style="color:var(--bad)">He needs his quarterback</b> — ×'+r.toFixed(2)+' after shrinking for the small sample.':(r>1.05?'<b style="color:var(--good)">Gets more work with a backup</b> — ×'+r.toFixed(2)+'.':'<b>Barely notices who is throwing</b> — ×'+r.toFixed(2)+'. The volume comes regardless.'))+'</div></section>';
+  }
+  // ---- his handcuff chain (he is the starter) ----
+  const ch=p.cuffChain;
+  if(ch&&(ch.chain||[]).length){
+    h+='<section><h2>'+gl('cuff','If he goes down')+'</h2>'
+      +'<div class="sub" style="white-space:normal">'+Math.round(100*(num(ch.pMiss)||0))+'% chance he misses any given week, from his own injury history'+(ch.hurt?' — <b style="color:var(--bad)">and he is hurt now</b>':'')+'. Next in line:</div>'
+      +svgBars({labels:ch.chain.map(c=>shortName(c.name)),series:[{vals:ch.chain.map(c=>c.value),cls:'them'},{vals:ch.chain.map(c=>c.without),cls:'me'}],h:120,legend:[['them','now'],['me','if he starts']]})
+      +ch.chain.map((c,i)=>'<div class="row" style="padding:6px 0"><div class="main" style="white-space:normal"><div class="name" style="white-space:normal;overflow:visible">'+String.fromCharCode(67+i)+'. '+pl(c.name)+(c.free?' <span class="flag good">free agent</span>':'')+'</div>'
+        +'<div class="sub" style="white-space:normal">'+f1(c.without)+' a game if he starts'+(c.basis==='played without him'?' — <b>what he actually did in '+c.games+(c.games===1?' game':' games')+' without him</b>':' — <i>estimated from his place on the depth chart</i>')+' · worth '+f1(c.contingent)+' a week as insurance</div></div></div>').join('')
+      +'</section>';
+  }
+  // ---- he is someone's handcuff ----
+  const cf=p.cuffFor;
+  if(cf){
+    h+='<section><h2>'+gl('cuff','Handcuff')+'</h2>'
+      +kv([['Backs up',pl(cf.starter)+(cf.starterHurt?' <span class="flag bad">hurt now</span>':'')],
+           ['Place in line',['','','C — first up','D — second','E — third'][cf.depth]||('#'+cf.depth)],
+           ['If he starts',f1(cf.without)+' a game <small>'+(cf.basis==='played without him'?'('+cf.games+' games without him on record)':'(estimated)')+'</small>'],
+           ['Chance he\'s needed',Math.round(100*(num(cf.pMiss)||0))+'% a week <small>('+esc(cf.starter)+' is '+Math.round(100*(num(cf.starterDur)||0))+'% available)</small>'],
+           ['Insurance value',f1(cf.contingent)+' a week <small>already added to his value</small>']])
+      +(cf.starterHurt?'<div class="sub" style="white-space:normal;margin-top:4px"><b>His starter is hurt now</b> — this is no longer insurance, it is the job.</div>':'')+'</section>';
+  }
+  return h;
+}
 function envSection(p){
   const e=p.env||{};const t=num(e.total);
   if(t===null)return '';
-  const parts=[['wx','Weather',e.wx,'Weather'],['ha','Home / away',e.ha,'Home'],['matchup','This defence',e.matchup,'Defence'],['dmen','Defenders out',e.dmen,'Injured'],['alt','Altitude',e.alt,'Altitude'],['vegas','Game script',e.vegas,'Script']].filter(x=>num(x[2])!==null);
+  const parts=[['wx','Weather',e.wx,'Weather'],['ha','Home / away',e.ha,'Home'],['matchup','This defence',e.matchup,'Defence'],['dmen','Defenders out',e.dmen,'Injured'],['qb','Backup QB',e.qb,'Backup QB'],['alt','Altitude',e.alt,'Altitude'],['vegas','Game script',e.vegas,'Script']].filter(x=>num(x[2])!==null);
   if(!parts.length&&Math.abs(t-1)<0.005)return '';
   const pc=v=>((v-1)*100>=0?'+':'')+Math.round((v-1)*100)+'%';
   let h='<section><h2>'+gl('adjust','Adjustments')+' on this week</h2>';
@@ -1369,6 +1434,10 @@ const GLOSS={
  next3:['Next 3','How friendly his next three defenses are to his position, as a multiplier. 1.0 is average, 1.2 means those defenses give up 20% more than normal to his position, 0.8 means they are tough.'],
  buzz:['Buzz','Net tone of the last 72 hours of news about him, from our keyword list. Negative is bad news piling up, positive is good news. It is a nudge, not a projection.'],
  linemove:['Line move','How far the betting line has shifted since the week opened, in points. Money moves for a reason — a line sliding toward a team usually means the market learned something (a starter is out, weather turned) before the injury reports and projections catch up. A move of 2 points or more is worth a look.'],
+ durability:['Injury history','How often he has actually missed games hurt over the last three seasons — counted from weeks on injured reserve plus weeks ruled out, divided by weeks he was on a roster. A backup who simply never plays is not counted as fragile. Shrunk toward a normal 90% when there is only a season or so to go on. It nudges his value by a few percent at most, because the projection sources already price in some fragility.'],
+ stack:['Moves with','How much his weekly score rises and falls with a teammate\'s, from every game they played together since 2023 (a correlation from -1 to +1, shrunk toward zero when they have few games together). A quarterback and his top receiver usually sit around +0.26. Two running backs on the same team usually go negative — one\'s good day is the other\'s quiet one. Starting players who move together makes your week more boom-or-bust.'],
+ qbeff:['With a backup quarterback','What he scored with his usual quarterback against a backup — same team, same season only, so a team change is never mistaken for a quarterback change. Shrunk toward no effect when there are only a few backup games. It only touches his projection when his usual quarterback is actually out this week.'],
+ cuff:['Handcuffs','Who takes over if the starter goes down, and what that is worth. When the backup has actually played without that starter, it uses what he really scored in those games. When not, it estimates from the starter\'s value and the backup\'s place in line, and says so. Insurance value is the weekly chance the starter misses — from his own injury history — times the lift, and it is added to the backup\'s value.'],
  outweeks:['How long he is out','Two sources, and the app says which one it used. If a reporter has put a number on it — "expected to miss 4-6 weeks", "week to week", "out for the season" — that number wins, and it is marked reported. Otherwise it falls back to how that body part normally goes, marked typical, with a range because a knee can be a one-week sprain or a torn ACL. A designation sets a floor: on IR he cannot return for four games whatever the injury. The points figure is his value per week multiplied by the weeks he misses — what the injury actually costs, rather than just a label.'],
  rushv:['Pass rush','A per-game score for what a defender does to the quarterback: three points a sack, plus a bit for every quarterback hit and tackle for loss. It is not fantasy scoring — nobody in your league starts defenders — it is a way of ranking who actually wrecks a pocket, so you can see at a glance whether the guy your quarterback faces on Sunday is a problem or a name.'],
  coverv:['Coverage','A per-game score for a defensive back or linebacker in coverage: three points an interception, one a pass broken up. Thin on two weeks of data, so read it as a hint rather than a verdict.'],
