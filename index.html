@@ -829,7 +829,8 @@ function renderPlayer(d,name){
   }
   // team context
   if(p.coach||p.teamSplits){const c=p.coach,oc=p.oppCoach,ts=p.teamSplits;
-    h+=collegeSection(d,p);
+    h+=liftsSection(p);
+  h+=collegeSection(d,p);
 h+='<section><h2>Team context · '+tl(p.team)+'</h2>'+kv([['Coaches',c?coachLine(c,true):''],['This week\'s opponent',oc?tl(g.opp)+' — '+coachLine(oc,true):''],['Team scoring',ts?f1(ts.all)+' ppg · home '+f1(ts.home)+' / away '+f1(ts.away)+(num(ts.badN)>=3?' · bad weather '+f1(ts.badWx):'')+' <small>(2024–26)</small>':'']])+'</section>';}
   // splits
   const sp=p.splits;
@@ -917,7 +918,7 @@ function sideL(d,team){
   return {team:team,mgr:mgrOf(d,team),lineup:lineup,bench:bench};
 }
 function modelL(A,B){
-  const sdr=r=>{if(r.empty)return 0;const b=SDPOS[r.pos]||6;return b*Math.sqrt(Math.max(0.35,(r.proj||0)/12))*Math.sqrt(r.frac)};
+  const sdr=r=>{if(r.empty)return 0;const b=SDPOS[r.pos]||6;const p=findPlayer(r.name);const sm=(p&&num(p.sdMult))||1;return b*Math.sqrt(Math.max(0.35,(r.proj||0)/12))*Math.sqrt(r.frac)*sm};
   const sum=(L,f)=>L.reduce((s,r)=>s+(f(r)||0),0);
   const ea=sum(A.lineup,r=>r.exp),eb=sum(B.lineup,r=>r.exp),na=sum(A.lineup,r=>r.live),nb=sum(B.lineup,r=>r.live);
   const va=sum(A.lineup,r=>sdr(r)*sdr(r)),vb=sum(B.lineup,r=>sdr(r)*sdr(r));
@@ -1230,7 +1231,9 @@ function liveMatchup(d){
     const pM=num(r.myProj)!==null?num(r.myProj):num(r.myExp),pT=num(r.theirProj)!==null?num(r.theirProj):num(r.theirExp);
     const eM=lM!==null?(lM+(pM||0)*fM):(pM||0), eT=lT!==null?(lT+(pT||0)*fT):(pT||0);
     const sl=r.slot==='DEF'?'DST':r.slot;const b=SDPOS[sl]||6;
-    const sM=b*Math.sqrt(Math.max(0.35,(pM||0)/12))*Math.sqrt(fM), sT=b*Math.sqrt(Math.max(0.35,(pT||0)/12))*Math.sqrt(fT);
+    // source disagreement widens the swing: the engine's sdMult for my man, the player record for theirs
+    const smM=num(r.sdMult)||1,pT2=findPlayer(r.their),smT=(pT2&&num(pT2.sdMult))||1;
+    const sM=b*Math.sqrt(Math.max(0.35,(pM||0)/12))*Math.sqrt(fM)*smM, sT=b*Math.sqrt(Math.max(0.35,(pT||0)/12))*Math.sqrt(fT)*smT;
     return Object.assign({},r,{fM:fM,fT:fT,expM:eM,expT:eT,sdM:sM,sdT:sT,liveM:lM,liveT:lT,gap:eM-eT});
   });
   const myNow=rows.reduce((a,r)=>a+(r.liveM!==null?r.liveM:0),0), thNow=rows.reduce((a,r)=>a+(r.liveT!==null?r.liveT:0),0);
@@ -1431,6 +1434,14 @@ function histSections(d,p){
   }
   return h;
 }
+function liftsSection(p){
+  const L=p.lifts;if(!L)return '';
+  const rows=[['Environment',L.env,'weather, home/away, defence, defenders out, backup QB, altitude, game script'],['Durability',L.durability,'his injury history'],['News',L.buzz,'keyword signal, last 72h'],['Crowd',L.adds,'Sleeper trending adds'],['Expert tilt',L.ecr,'FantasyPros rank vs our rank'+(num(p.expertRank)&&num(p.valueRank)?' (experts '+esc(p.pos)+Math.round(p.expertRank)+', us '+esc(p.pos)+Math.round(p.valueRank)+')':'')],['Draft capital',L.capital,'rookies only']].filter(r=>num(r[1])!==null&&Math.abs(num(r[1])-1)>=0.001);
+  if(!rows.length)return '';
+  const pc=v=>((v-1)*100>=0?'+':'')+Math.round((v-1)*1000)/10+'%';
+  return '<section><h2>'+gl('lifts','What moved his value')+'</h2>'+svgBars({labels:rows.map(r=>r[0]),series:[{vals:rows.map(r=>Math.round((num(r[1])-1)*1000)/10),cls:'me',clsAt:rows.map(r=>num(r[1])>=1?'good':'bad')}],h:110})
+    +'<div class="sub" style="white-space:normal">'+rows.map(r=>esc(r[0])+' <b style="color:'+(num(r[1])>=1?'var(--good)':'var(--bad)')+'">'+pc(num(r[1]))+'</b> <small>('+r[2]+')</small>').join(' · ')+'. Each is a multiplier on his value on top of the projection blend; anything not listed did not move him this week.</div></section>';
+}
 function envSection(p){
   const e=p.env||{};const t=num(e.total);
   if(t===null)return '';
@@ -1573,6 +1584,7 @@ const GLOSS={
  next3:['Next 3','How friendly his next three defenses are to his position, as a multiplier. 1.0 is average, 1.2 means those defenses give up 20% more than normal to his position, 0.8 means they are tough.'],
  buzz:['Buzz','Net tone of the last 72 hours of news about him, from our keyword list. Negative is bad news piling up, positive is good news. It is a nudge, not a projection.'],
  linemove:['Line move','How far the betting line has shifted since the week opened, in points. Money moves for a reason — a line sliding toward a team usually means the market learned something (a starter is out, weather turned) before the injury reports and projections catch up. A move of 2 points or more is worth a look.'],
+ lifts:['What moved his value','Value starts as a blend of rest-of-season projections, recent form and his own history, then this week\'s consensus with the environment on it. These are the multipliers applied after that: durability from his injury record, the 72-hour news signal, the crowd (trending adds), the expert tilt (where 100+ ranked experts put him against our own rank, weighted by how much they agree), and draft capital for rookies with no sample. Each is capped so it nudges rather than decides.'],
  teamstats:['Team stats','This team against the league: projected points this week, rest-of-season power (best lineup by value, every remaining week), bench value, points for and against, each with the league average and the team\'s rank among the 12. Green bars are top four, red bottom four.'],
  tradecalc:['Trade calculator','Pick who you are trading with, who asked, and tick the players on each side. Roster value is the best starting nine by value plus 30% of the bench, for both teams before and after. The grade leans on your roster-value change, adds rest of season and this week, takes off for injury risk, for any position the trade leaves empty, and for what the other side gains weighted by how big a threat they are (roster strength, standing, and how many more times you play them). A trade that helps them more than you is never recommended, whatever else it does. "Would they accept" compares their loss against how much rope they have: the side that asked wants it more, and desperation adds rope - a losing record, a skid, hurt starters, thin positions (especially ones you are offering), frantic waiver activity, and anything they have said in the chat. High desperation with an easy yes means ask for more.'],
  tenure:['Coach tenure','Seasons with the team, his rank among the 32 (head coaches by win% with the team; coordinators by what their unit scored or allowed last full season), and a survival model: head coaches leave at about one in five a year, less with a winning record, playoff games and a long run, more with a losing record or a bad current season. Coordinators leave both ways - fired when the unit is bad, hired away when it is great. Expected seasons left is one over that yearly chance, capped at seven.'],
@@ -1673,6 +1685,8 @@ function devSection(d){
     +pay.map(x=>'<tr><td><b>'+esc(x.key)+'</b></td><td class="n">'+x.n.toLocaleString()+'</td><td class="sub" style="white-space:normal">'+esc(x.what)+'</td></tr>').join('')
     +'</table></section>';
   const cov=devCoverage(d);
+  const dm=v.dataMap||[];
+  if(dm.length)h+='<section><h2>What moves the numbers</h2><div class="sub" style="white-space:normal">Every data point the engine holds, what it feeds, and how hard it pushes. If something is on this app it is on this list with a weight; anything that only shows and never moves a number says so.</div><table><tr><th>Data</th><th>Feeds</th><th>Weight</th></tr>'+dm.map(x=>'<tr><td style="white-space:normal">'+esc(x.data)+'</td><td style="white-space:normal">'+esc(x.feeds)+'</td><td style="white-space:normal">'+esc(x.weight)+'</td></tr>').join('')+'</table></section>';
   h+='<section><h2>Coverage, data point by data point</h2><div class="sub" style="white-space:normal">Of the players that matter (rostered anywhere, or worth something), how many actually carry each thing. A low number is not a bug — live points only exist once games start, and college data only exists for drafted players.</div>'
     +cov.map(x=>'<div class="frow"><div class="ft"><span class="fn">'+esc(x.k)+'</span><span class="fp">'+x.pct+'%</span></div>'
       +'<div class="tr"><i class="'+(x.pct>=80?'':(x.pct>=40?'':'neg'))+'" style="width:'+x.pct+'%"></i></div>'
