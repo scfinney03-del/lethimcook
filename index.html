@@ -367,7 +367,8 @@ function svgBars(o){ // o: {labels:[], series:[{vals:[],cls:'',name:''}], line:{
   [0,0.5,1].forEach(t=>{const y=sc(mx/1.08*t);h+='<line x1="'+L+'" y1="'+y+'" x2="'+(W-R)+'" y2="'+y+'" stroke="var(--line)" stroke-width="1"/><text x="'+(L-4)+'" y="'+(y+4)+'" font-size="9" text-anchor="end" fill="var(--mute)">'+Math.round(mx/1.08*t)+'</text>'});
   o.series.forEach((s,si)=>{s.vals.forEach((v,i)=>{if(num(v)===null)return;const x=L+i*gw+2+si*bw,y=sc(v);h+='<rect class="b '+(s.cls||'')+(s.clsAt&&s.clsAt[i]?' '+s.clsAt[i]:'')+'" x="'+x+'" y="'+y+'" width="'+bw+'" height="'+((H-B)-y)+'" rx="2"/>'})});
   if(o.line&&num(o.line.v)!==null){const y=sc(o.line.v);h+='<line x1="'+L+'" y1="'+y+'" x2="'+(W-R)+'" y2="'+y+'" stroke="var(--warn)" stroke-width="1.5" stroke-dasharray="4 3"/><text x="'+(W-R)+'" y="'+(y-3)+'" font-size="9" text-anchor="end" fill="var(--warn)">'+esc(o.line.label||'')+'</text>'}
-  o.labels.forEach((l,i)=>{if(n>12&&i%2)return;h+='<text x="'+(L+i*gw+gw/2)+'" y="'+(H-6)+'" font-size="9" text-anchor="middle" fill="var(--mute)">'+esc(l)+'</text>'});
+  const wMax=Math.max.apply(null,o.labels.map(l=>String(l).length*5.6+6).concat([1])),stepB=Math.max(1,Math.ceil(wMax/Math.max(1,gw)));
+  o.labels.forEach((l,i)=>{if(stepB>1&&i%stepB)return;h+='<text x="'+(L+i*gw+gw/2)+'" y="'+(H-6)+'" font-size="9" text-anchor="middle" fill="var(--mute)">'+esc(l)+'</text>'});
   h+='</svg>';
   if(o.legend)h+='<div class="sub" style="white-space:normal">'+o.legend.map(x=>'<span class="lg '+x[0]+'"></span>'+esc(x[1])).join(' &nbsp; ')+'</div>';
   return h;
@@ -380,7 +381,28 @@ function svgScatter(o){ // o:{pts:[{x,y,label,cls}], xl, yl, h}
   h+='<line x1="'+L+'" y1="'+(H-B)+'" x2="'+(W-R)+'" y2="'+(H-B)+'" stroke="var(--line)"/><line x1="'+L+'" y1="'+T+'" x2="'+L+'" y2="'+(H-B)+'" stroke="var(--line)"/>';
   h+='<text x="'+((W+L)/2)+'" y="'+(H-4)+'" font-size="10" text-anchor="middle" fill="var(--mute)">'+esc(o.xl||'')+'</text><text x="9" y="'+((H-B+T)/2)+'" font-size="10" text-anchor="middle" fill="var(--mute)" transform="rotate(-90 9 '+((H-B+T)/2)+')">'+esc(o.yl||'')+'</text>';
   h+='<text x="'+L+'" y="'+(H-B+10)+'" font-size="9" fill="var(--mute)">'+f1(x0)+'</text><text x="'+(W-R)+'" y="'+(H-B+10)+'" font-size="9" text-anchor="end" fill="var(--mute)">'+f1(x1)+'</text><text x="'+(L-3)+'" y="'+(T+4)+'" font-size="9" text-anchor="end" fill="var(--mute)">'+f1(y1)+'</text><text x="'+(L-3)+'" y="'+(H-B)+'" font-size="9" text-anchor="end" fill="var(--mute)">'+f1(y0)+'</text>';
-  pts.forEach(p=>{h+='<circle class="d '+(p.cls||'')+'" cx="'+px(p.x)+'" cy="'+py(p.y)+'" r="'+(p.cls==='me'?5:3.5)+'"/>'+(p.label?'<text x="'+(px(p.x)+5)+'" y="'+(py(p.y)-4)+'" font-size="9" fill="var(--ink)">'+esc(p.label)+'</text>':'')});
+  // labels: keep them inside the box and off each other. Four slots per dot (right/left,
+  // above/below); take the first that neither runs off the edge nor lands on a label already placed.
+  const put=[];const hits=(a)=>put.some(b=>!(a.x1<b.x0||a.x0>b.x1||a.y1<b.y0||a.y0>b.y1));
+  pts.forEach(p=>{const cx=px(p.x),cy=py(p.y),r=(p.cls==='me'?5:3.5);
+    h+='<circle class="d '+(p.cls||'')+'" cx="'+cx+'" cy="'+cy+'" r="'+r+'"/>';
+    if(!p.label)return;
+    const wd=String(p.label).length*5.6+4,ht=11;   // the viewBox stretches to the phone width, so estimate generously
+    const slots=[[cx+r+3,cy-r-3,0],[cx-r-3,cy-r-3,1],[cx+r+3,cy+r+9,0],[cx-r-3,cy+r+9,1]];
+    let best=null;
+    for(const [tx,ty0,end] of slots){
+      const ty=Math.min(H-B-2,Math.max(T+8,ty0));
+      const x0=end?tx-wd:tx,x1=end?tx:tx+wd;
+      if(x0<L+1||x1>W-2)continue;
+      const box={x0:x0,x1:x1,y0:ty-ht,y1:ty};
+      if(hits(box))continue;
+      best={tx:tx,ty:ty,end:end,box:box};break;
+    }
+    if(!best){const end=(cx+r+3+wd)>(W-2)?1:0;const ty=Math.min(H-B-2,Math.max(T+8,cy-r-3));const tx=end?cx-r-3:cx+r+3;
+      best={tx:tx,ty:ty,end:end,box:{x0:end?tx-wd:tx,x1:end?tx:tx+wd,y0:ty-ht,y1:ty}};}
+    put.push(best.box);
+    h+='<text x="'+best.tx+'" y="'+best.ty+'" font-size="9"'+(best.end?' text-anchor="end"':'')+' fill="var(--ink)">'+esc(p.label)+'</text>';
+  });
   h+='</svg>';return h;
 }
 
@@ -394,7 +416,9 @@ function svgLine(o){ // o:{labels:[], series:[{vals:[],cls:'',dash:bool}], h}
   o.series.forEach(s=>{let d='',started=false;s.vals.forEach((v,i)=>{if(num(v)===null){started=false;return}d+=(started?' L':' M')+px(i).toFixed(1)+' '+py(+v).toFixed(1);started=true});
     h+='<path class="ln '+(s.cls||'')+'" d="'+d.trim()+'" fill="none" stroke-width="2.2"'+(s.dash?' stroke-dasharray="5 4"':'')+' stroke-linejoin="round"/>';
     s.vals.forEach((v,i)=>{if(num(v)===null)return;h+='<circle class="pt '+(s.cls||'')+'" cx="'+px(i)+'" cy="'+py(+v)+'" r="2.6"/>'});});
-  o.labels.forEach((l,i)=>{if(n>12&&i%2&&i!==n-1)return;h+='<text x="'+px(i)+'" y="'+(H-6)+'" font-size="9" text-anchor="'+(i===0?'start':(i===n-1?'end':'middle'))+'" fill="var(--mute)">'+esc(l)+'</text>'});
+  const wMax=Math.max.apply(null,o.labels.map(l=>String(l).length*5.6+6).concat([1])),stepL=Math.max(1,Math.ceil(wMax/Math.max(1,(W-L-R)/n)));
+  // count back from the last label so it is always shown without landing on its neighbour
+  o.labels.forEach((l,i)=>{if(stepL>1&&(n-1-i)%stepL)return;h+='<text x="'+px(i)+'" y="'+(H-6)+'" font-size="9" text-anchor="'+(i===0?'start':(i===n-1?'end':'middle'))+'" fill="var(--mute)">'+esc(l)+'</text>'});
   h+='</svg>';
   if(o.legend)h+='<div class="sub" style="white-space:normal">'+o.legend.map(x=>'<span class="lg '+x[0]+'"></span>'+esc(x[1])).join(' &nbsp; ')+'</div>';
   return h;
