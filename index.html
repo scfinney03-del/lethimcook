@@ -447,7 +447,7 @@ const isMine=n=>/let him cook/i.test(String(n||""));
 
 // ---------------- HOME ----------------
 function renderHome(d){
-  let h="";
+  let h=hurtPanel(d);
   if(!SHOW){
   const push=(d.board||[]).filter(b=>num(b.push)>=1&&!/^LIVE:/i.test(b.text||""));
   const rest=(d.board||[]).filter(b=>!(num(b.push)>=1)&&!blank(b.text)&&!/^LIVE:/i.test(b.text||""));
@@ -565,6 +565,20 @@ function renderHome(d){
   return h;
 }
 
+// The offer window: a rival's man goes down and the first reasonable offer usually gets the
+// conversation. Time-sensitive, so it sits at the top of Home rather than in the trades page.
+function hurtPanel(d){
+  const hr=(d.hurtRivals||[]);if(!hr.length)return '';
+  const tr=(d.trades||[]);
+  return '<section style="border-left:4px solid var(--warn)"><h2>Offer window</h2>'
+    +'<div class="sub" style="white-space:normal">Someone else\'s player just went down. Being first in usually gets the conversation, even if the deal takes days.</div>'
+    +hr.map(x=>{const best=tr.filter(t=>t.partner===x.manager&&String(t.get||'').indexOf(x.player)<0).sort((a,b)=>(num(b.score)||0)-(num(a.score)||0))[0];
+      return '<div class="row" style="padding:8px 0"><div class="main" style="white-space:normal">'
+        +'<div class="name" style="white-space:normal;overflow:visible">'+mg(x.manager)+' lost '+pl(x.player)+' <span class="flag">'+esc(x.kw)+'</span></div>'
+        +'<div class="sub" style="white-space:normal">'+esc(x.pos)+' · '+(String(x.slot)==='BN'||String(x.slot)==='IR'?'was on their bench':'was in their starting lineup')
+        +(best?' · <b>offer now: give '+pl(best.give)+', get '+pl(best.get)+'</b>':' · nothing scores well against them yet')+'</div></div></div>';}).join('')
+    +'<div class="sub" style="white-space:normal;margin-top:4px">Their loss is the reason the window is open, not a reason to take a bad deal — the offer still has to be good for you.</div></section>';
+}
 // A problem the app can still render around is worse than a crash, because it looks fine. When a
 // self check fails, say so where he already looks rather than only in the engine room.
 function healthBanner(d){
