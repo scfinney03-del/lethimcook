@@ -1619,7 +1619,8 @@ function glSheet(){const el=document.getElementById('glsheet');if(el)return el;c
 function glShow(key){const g=GLOSS[key];if(!g)return;const d=glSheet();d.querySelector('.gl-t').textContent=g[0];d.querySelector('.gl-b').textContent=g[1];d.classList.add('on');}
 // ---------------- DEV PAGE (pin-gated) ----------------
 let PIN='';try{PIN=localStorage.getItem('lhc_pin')||''}catch(e){}
-const DEVPIN='91NK';
+const DEVPINH=687533592;   // hash of the pin, so it is not sitting in the page source
+function pinHash(s){let h=2166136261;for(const c of String(s).toUpperCase()){h^=c.charCodeAt(0);h=Math.imul(h,16777619)>>>0}return h}
 
 // ---------------- ENGINE ROOM: everything the app is holding ----------------
 function agoTxt(t){if(!t)return '\u2014';const m=Math.round((Date.now()-t.getTime())/60000);return m<1?'just now':(m<90?m+' min ago':Math.round(m/60)+' h ago');}
@@ -1725,7 +1726,7 @@ function devSection(d){
 }
 
 function renderDev(d){
-  if(String(PIN).toUpperCase()!==DEVPIN){   // letters now, so don't punish the caps key
+  if(!PIN||pinHash(PIN)!==DEVPINH){   // compared by hash; case does not matter
     return '<section><h2>Engine room</h2><div class="sub" style="white-space:normal">Weights, source accuracy and the guts of the model. Enter the pin to open it.</div><div class="filters devwrap" style="margin-top:8px"><input id="pinin" type="password" inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="pin" style="grid-column:1/3"><button class="more" id="pinsave" style="grid-column:1/3;margin:0">Unlock</button></div></section>';
   }
   const v=d.dev||{};const W=v.weights||{};const acc=(v.accuracy||{});const ov=acc.overall||[];const wk=acc.weekly||[];
@@ -2152,8 +2153,20 @@ function tcEval(d,mine,theirs,give,get,asked){
   const shopped=(W.offered||[]).filter(n=>ge.some(r=>cleanName(r.player)===cleanName(n)));if(shopped.length){des+=10;why.push('has shopped '+shopped.join(', '))}
   if(asked==='them'){des+=15;why.push('they came to you')}
   R.desperation=Math.min(100,Math.round(des));R.despWhy=why;
+  // positional fit, both sides: does what changes hands actually start, and does it fill a hole
+  const nineT0=bestNine(theirs,'value').used,nineT1=bestNine(newTheirs,'value').used;
+  R.startsForThem=gi.filter(r=>nineT1[r.player]).map(r=>r.player);R.benchForThem=gi.filter(r=>!nineT1[r.player]).map(r=>r.player);
+  R.startsForMe=ge.filter(r=>R.nineNew[r.player]).map(r=>r.player);R.benchForMe=ge.filter(r=>!R.nineNew[r.player]).map(r=>r.player);
+  const cnt=(rows,k)=>rows.filter(r=>r.pos===k&&(num(r.value)||0)>=6).length;const needN={QB:1,RB:2,WR:2,TE:1};
+  R.fillsThem=gi.filter(r=>needN[r.pos]&&cnt(theirs,r.pos)<needN[r.pos]).map(r=>r.pos);
+  R.fillsMe=ge.filter(r=>needN[r.pos]&&cnt(mine,r.pos)<needN[r.pos]).map(r=>r.pos);
+  R.surplusMe=ge.filter(r=>needN[r.pos]&&cnt(mine,r.pos)>=needN[r.pos]+2).map(r=>r.pos);
+  R.thinTheyHit=thin.filter(k=>gi.some(r=>r.pos===k));
+  R.fitThem=(R.startsForThem.length?1:0)+(R.fillsThem.length?1:0)+(R.thinTheyHit.length?0.5:0)-(R.benchForThem.length&&!R.startsForThem.length?1:0);
   // what the other side will put up with: the asker wants it more, and desperation adds rope
-  R.tol=(asked==='them'?-2.0:(asked==='me'?-0.5:-1.0))-2.5*(R.desperation/100);
+  // fit moves the rope too: a piece that starts for them, or fills a hole, is worth more to them than
+  // the value line says; a bench-only piece is worth less
+  R.tol=(asked==='them'?-2.0:(asked==='me'?-0.5:-1.0))-2.5*(R.desperation/100)-0.5*R.fitThem;
   R.accept=R.gainThem>=R.tol;
   // starters who leave and enter your best nine
   R.out=Object.keys(R.nineOld).filter(n=>!R.nineNew[n]),R.in=Object.keys(R.nineNew).filter(n=>!R.nineOld[n]);
@@ -2174,7 +2187,7 @@ function tcEval(d,mine,theirs,give,get,asked){
   const left=Math.max(1,16-cw+1);const h2hN=sched.filter(x=>x.opp===pt&&num(x.week)>=cw).length;R.h2hN=h2hN;
   R.threatAdj=-(0.6*R.threat+h2hN/left)*Math.max(0,R.gainThem);
   // the verdict
-  let score=R.gainMe*1.0+R.rosMe*0.15+R.wkMe*0.1-R.meInj*0.5+R.threatAdj;
+  let score=R.gainMe*1.0+R.rosMe*0.15+R.wkMe*0.1-R.meInj*0.5+R.threatAdj-(R.surplusMe.length?0.5:0);
   if(R.holes.some(h=>/nobody/.test(h)))score-=3;
   // "better for you than them" on the same composite both ways: roster value, rest of season, this week
   R.meTot=R.gainMe+0.15*R.rosMe+0.1*R.wkMe;R.thTot=R.gainThem+0.15*R.rosThem+0.1*R.wkThem;
@@ -2210,6 +2223,8 @@ function renderTradeCalc(d){
       ['Injury risk taken on',R.meInj>0.05?'<b style="color:var(--bad)">'+f1(R.meInj)+'/wk</b> of value sits on hurt players':'<span class="sub">none</span>'],
       ['Desperation','<b style="color:'+(R.desperation>=50?'var(--good)':(R.desperation>=25?'var(--warn)':'var(--mute)'))+'">'+R.desperation+'%</b> <small class="sub">'+(R.despWhy.length?esc(R.despWhy.join(' · ')):'no sign they need a deal')+'</small>'],
       ['Would they accept?','<b style="color:'+(R.accept?'var(--good)':'var(--bad)')+'">'+(R.accept?'Likely':'Unlikely')+'</b> <small class="sub">they '+(R.gainThem>=0?'gain':'lose')+' '+f1(Math.abs(R.gainThem))+'/wk; they will wear a loss of about '+f1(Math.abs(R.tol))+' ('+(TC.asked==='them'?'they asked':(TC.asked==='me'?'you asked':'nobody asked yet'))+(R.desperation>=25?', plus desperation':'')+')</small>'],
+      ['Fit for them',(R.gi.length?(R.startsForThem.length?'<b style="color:var(--good)">starts for them</b> ('+R.startsForThem.map(shortName).join(', ')+')':'<b style="color:var(--warn)">bench for them</b>')+(R.fillsThem.length?' · fills an empty '+R.fillsThem.join('/')+' slot':'')+(R.thinTheyHit.length?' · they are thin at '+R.thinTheyHit.join('/'):''):'<span class="sub">-</span>')],
+      ['Fit for you',(R.ge.length?(R.startsForMe.length?'<b style="color:var(--good)">starts for you</b> ('+R.startsForMe.map(shortName).join(', ')+')':'<b style="color:var(--warn)">bench for you</b>')+(R.fillsMe.length?' · fills your empty '+R.fillsMe.join('/')+' slot':'')+(R.surplusMe.length?' · <span style="color:var(--bad)">you already have a surplus at '+R.surplusMe.join('/')+'</span>':''):'<span class="sub">-</span>')],
       ['Leverage',R.desperation>=50&&R.gainThem>R.tol+0.8?'<b style="color:var(--good)">Ask for more</b> <small class="sub">they need this more than you do and would still take a deal about '+f1(R.gainThem-R.tol)+'/wk worse for them</small>':(R.desperation>=50?'<span class="sub">they need it, but this offer is already near their limit</span>':'<span class="sub">none to speak of</span>')],
       ['Roster spots',R.dropMe?'you must drop '+R.dropMe+' player'+(R.dropMe>1?'s':''):(R.dropThem?'they must drop '+R.dropThem:'even swap')],
       ['Threat level','<b style="color:'+(R.threat>=0.66?'var(--bad)':(R.threat>=0.4?'var(--warn)':'var(--good)'))+'">'+Math.round(R.threat*100)+'%</b> <small class="sub">'+(R.threatRank?'#'+R.threatRank+' roster':'')+(R.threatStand?' · #'+R.threatStand+' in standings':'')+(R.h2hN?' · you play them '+R.h2hN+' more time'+(R.h2hN>1?'s':''):' · not on your schedule')+'</small>'],
