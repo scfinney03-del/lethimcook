@@ -2153,7 +2153,10 @@ function tcEval(d,mine,theirs,give,get,asked){
   const W=wantsOf(pw0.manager||'');const wantHit=(W.pos||[]).filter(k=>gi.some(r=>r.pos===k));if(wantHit.length){des+=15;why.push('asked the league for '+wantHit.join('/'))}
   const shopped=(W.offered||[]).filter(n=>ge.some(r=>cleanName(r.player)===cleanName(n)));if(shopped.length){des+=10;why.push('has shopped '+shopped.join(', '))}
   if(asked==='them'){des+=15;why.push('they came to you')}
+  // the laptop's own reading (with its daily history) is blended in: 60% now, 40% the running average
+  if(num(pw0.desperationAvg)!==null){des=0.6*des+0.4*num(pw0.desperationAvg);why.push('running average '+Math.round(pw0.desperationAvg)+'%')}
   R.desperation=Math.min(100,Math.round(des));R.despWhy=why;
+  const pc0=pw0.proclivity||{};R.ropeAdj=num(pc0.ropeAdj)||0;R.proclivity=pc0;
   // positional fit, both sides: does what changes hands actually start, and does it fill a hole
   const nineT0=bestNine(theirs,'value').used,nineT1=bestNine(newTheirs,'value').used;
   R.startsForThem=gi.filter(r=>nineT1[r.player]).map(r=>r.player);R.benchForThem=gi.filter(r=>!nineT1[r.player]).map(r=>r.player);
@@ -2167,7 +2170,7 @@ function tcEval(d,mine,theirs,give,get,asked){
   // what the other side will put up with: the asker wants it more, and desperation adds rope
   // fit moves the rope too: a piece that starts for them, or fills a hole, is worth more to them than
   // the value line says; a bench-only piece is worth less
-  R.tol=(asked==='them'?-2.0:(asked==='me'?-0.5:-1.0))-2.5*(R.desperation/100)-0.5*R.fitThem;
+  R.tol=(asked==='them'?-2.0:(asked==='me'?-0.5:-1.0))-2.5*(R.desperation/100)-0.5*R.fitThem-R.ropeAdj;
   R.accept=R.gainThem>=R.tol;
   // starters who leave and enter your best nine
   R.out=Object.keys(R.nineOld).filter(n=>!R.nineNew[n]),R.in=Object.keys(R.nineNew).filter(n=>!R.nineOld[n]);
@@ -2274,6 +2277,9 @@ function renderTradeCalc(d){
       ['Would they accept?','<b style="color:'+(R.accept?'var(--good)':'var(--bad)')+'">'+(R.accept?'Likely':'Unlikely')+'</b> <small class="sub">they '+(R.gainThem>=0?'gain':'lose')+' '+f1(Math.abs(R.gainThem))+'/wk; they will wear a loss of about '+f1(Math.abs(R.tol))+' ('+(TC.asked==='them'?'they asked':(TC.asked==='me'?'you asked':'nobody asked yet'))+(R.desperation>=25?', plus desperation':'')+')</small>'],
       ['Fit for them',(R.gi.length?(R.startsForThem.length?'<b style="color:var(--good)">starts for them</b> ('+R.startsForThem.map(shortName).join(', ')+')':'<b style="color:var(--warn)">bench for them</b>')+(R.fillsThem.length?' · fills an empty '+R.fillsThem.join('/')+' slot':'')+(R.thinTheyHit.length?' · they are thin at '+R.thinTheyHit.join('/'):''):'<span class="sub">-</span>')],
       ['Fit for you',(R.ge.length?(R.startsForMe.length?'<b style="color:var(--good)">starts for you</b> ('+R.startsForMe.map(shortName).join(', ')+')':'<b style="color:var(--warn)">bench for you</b>')+(R.fillsMe.length?' · fills your empty '+R.fillsMe.join('/')+' slot':'')+(R.surplusMe.length?' · <span style="color:var(--bad)">you already have a surplus at '+R.surplusMe.join('/')+'</span>':''):'<span class="sub">-</span>')],
+      ['Their track record',(function(){const p=R.proclivity||{};const n=(num(p.offersReceived)||0)+(num(p.offersSent)||0);if(!n&&!num(p.tradesDone))return '<span class="sub">nothing recorded yet - use the buttons below when offers come and go</span>';
+        return (num(p.tradesDone)?'<b>'+p.tradesDone+'</b> trade'+(p.tradesDone>1?'s':'')+' made · ':'')+(num(p.offersReceived)||0)+' received / '+(num(p.offersSent)||0)+' sent · '+(num(p.accepted)||0)+' accepted / '+(num(p.declined)||0)+' declined'
+          +(num(p.worstTaken)!==null?' · worst deal taken '+f1(p.worstTaken)+'/wk':'')+(num(p.bestRefused)!==null?' · best refused '+f1(p.bestRefused)+'/wk':'')+(Math.abs(R.ropeAdj)>=0.05?' · <b style="color:'+(R.ropeAdj>0?'var(--good)':'var(--bad)')+'">rope '+(R.ropeAdj>0?'+':'')+f1(R.ropeAdj)+'</b>':'')})()],
       ['Leverage',R.desperation>=50&&R.gainThem>R.tol+0.8?'<b style="color:var(--good)">Ask for more</b> <small class="sub">they need this more than you do and would still take a deal about '+f1(R.gainThem-R.tol)+'/wk worse for them</small>':(R.desperation>=50?'<span class="sub">they need it, but this offer is already near their limit</span>':'<span class="sub">none to speak of</span>')],
       ['Roster spots',R.dropMe?'you must drop '+R.dropMe+' player'+(R.dropMe>1?'s':''):(R.dropThem?'they must drop '+R.dropThem:'even swap')],
       ['Threat level','<b style="color:'+(R.threat>=0.66?'var(--bad)':(R.threat>=0.4?'var(--warn)':'var(--good)'))+'">'+Math.round(R.threat*100)+'%</b> <small class="sub">'+(R.threatRank?'#'+R.threatRank+' roster':'')+(R.threatStand?' · #'+R.threatStand+' in standings':'')+(R.h2hN?' · you play them '+R.h2hN+' more time'+(R.h2hN>1?'s':''):' · not on your schedule')+'</small>'],
@@ -2289,6 +2295,12 @@ function renderTradeCalc(d){
     const before=pv(mine),after=pv(mine.filter(r=>TC.give.indexOf(r.player)<0).concat(R.ge));
     h+='<div class="sub" style="font-weight:600;margin-top:8px">Your value by position, before and after</div>'+svgBars({labels:pk,series:[{vals:pk.map(k=>before[k]),cls:'proj'},{vals:pk.map(k=>after[k]),cls:'me'}],h:120,legend:[['proj','before'],['me','after']]});
     h+='<div class="sub" style="white-space:normal;margin-top:6px">Roster value = best starting nine by '+gl('value','value')+' plus 30% of the bench. The grade leans on roster value, adds rest-of-season and this week, and takes off for injury risk and any hole it opens.</div>';
+  }
+  if(R.gi.length||R.ge.length){
+    h+='<div class="sub" style="font-weight:600;margin-top:10px">Record this offer</div><div class="sub" style="white-space:normal">Every one you record teaches the model how '+esc(pt.manager||'they')+' actually trades. It goes to the laptop on its own (needs the buttons key, set on Home under the laptop panel).</div>'
+      +'<div class="opt">'+[['received',(pt.manager||'They')+' offered this'],['sent','I sent this'],['accepted','They accepted'],['declined','They declined'],['idecl','I declined']].map(x=>'<button data-tcrec="'+x[0]+'">'+esc(x[1])+'</button>').join('')+'</div>'
+      +(function(){const mine2=TLOG.filter(ev=>ev.mgr===(pt.manager||'')&&/received|sent|accepted|declined|idecl/.test(ev.kind)).slice(-5).reverse();return mine2.length?'<div class="sub" style="white-space:normal">Recorded: '+mine2.map(ev=>esc(ev.kind)+' '+esc((ev.give||'')+' for '+(ev.get||''))+(ev.sent?'':' <i>(not on the laptop yet)</i>')).join(' · ')+'</div>':''})()
+      +(CMDKEY?'':'<div class="sub" style="white-space:normal;color:var(--warn)">Buttons key not set - events stay on this phone until it is (Home, laptop panel, Unlock buttons).</div>');
   }
   h+='<div class="opt" style="margin-top:8px"><button data-tcclear="1">Clear</button></div></section>';
   if((R.gi.length||R.ge.length)&&R.verdict!=='Do it'){
@@ -2321,6 +2333,10 @@ function teamStats(d,pw){
   h+='<div class="sub" style="font-weight:600;margin-top:10px">Rest-of-season power, all '+N+' teams</div>'+svgBars({labels:srt.map(x=>String(x.manager||x.name).slice(0,7)),series:[{vals:srt.map(x=>num(x.ros)),cls:'me',clsAt:srt.map(x=>String(x.team)===String(pw.team)?'good':(isMine(x.name)?'warn':'them'))}],h:130,legend:[['good','this team'],['warn','you'],['them','the rest']]});
   const srt2=all.slice().sort((a,b)=>(num(b.pf)||0)-(num(a.pf)||0));
   if(num(pw.pf))h+='<div class="sub" style="font-weight:600;margin-top:10px">Points scored so far, all '+N+' teams</div>'+svgBars({labels:srt2.map(x=>String(x.manager||x.name).slice(0,7)),series:[{vals:srt2.map(x=>num(x.pf)),cls:'me',clsAt:srt2.map(x=>String(x.team)===String(pw.team)?'good':(isMine(x.name)?'warn':'them'))}],h:130});
+  if(num(pw.desperation)!==null){const dh=(pw.desperationHist||[]);
+    h+='<div class="sub" style="font-weight:600;margin-top:10px">Desperation · '+Math.round(pw.desperation)+'%'+(num(pw.desperationAvg)!==null?' <small class="sub">(running average '+Math.round(pw.desperationAvg)+'%)</small>':'')+'</div>'
+      +(dh.length>1?svgBars({labels:dh.map(x=>String(x.day).slice(5)),series:[{vals:dh.map(x=>x.v),cls:'me',clsAt:dh.map(x=>x.v>=50?'good':(x.v>=25?'warn':'them'))}],h:110}):'')
+      +'<div class="sub" style="white-space:normal">'+((pw.desperationWhy||[]).length?esc((pw.desperationWhy||[]).join(' · ')):'no sign they need a deal')+(pw.proclivity&&(num(pw.proclivity.tradesDone)||num(pw.proclivity.offersReceived)||num(pw.proclivity.offersSent))?' · trades made '+(pw.proclivity.tradesDone||0)+', offers '+(pw.proclivity.offersReceived||0)+' in / '+(pw.proclivity.offersSent||0)+' out, '+(pw.proclivity.accepted||0)+' accepted / '+(pw.proclivity.declined||0)+' declined':'')+'</div>';}
   // the week-by-week record of the team: projected starters and ROS power at each check-in
   const hist=(pw.history||[]).filter(x=>num(x.week)!==null);
   if(hist.length>1)h+='<div class="sub" style="font-weight:600;margin-top:10px">Points for, week by week</div>'+svgBars({labels:hist.map(x=>'wk'+x.week),series:[{vals:hist.map((x,i)=>i?(num(x.pf)||0)-(num(hist[i-1].pf)||0):num(x.pf)),cls:'me'}],h:120});
@@ -2384,7 +2400,9 @@ function render(){
     const [m,kind,val]=b.dataset.want.split('|');const w=WANTS[m]||(WANTS[m]={pos:[],offered:[]});
     const arr=kind==='pos'?(w.pos=w.pos||[]):(w.offered=w.offered||[]);
     const i=arr.indexOf(val); if(i>=0)arr.splice(i,1); else arr.push(val);
-    saveWants();render();}));
+    saveWants();
+    if(i<0){if(kind==='pos')logEvent({kind:'want',mgr:m,note:val});else logEvent({kind:'shopped',mgr:m,give:val});}
+    render();}));
   document.querySelectorAll('[data-look]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();const [k,val]=b.dataset.look.split('|');
     if(k==='theme')LOOK.theme=val;else if(k==='scheme')LOOK.scheme=val;else if(k==='cb')LOOK.cb=!LOOK.cb;
     else if(k==='big'){const a=document.getElementById('aa');if(a)a.click();render();return}
@@ -2394,6 +2412,10 @@ function render(){
   document.querySelectorAll('[data-tcp]').forEach(b=>b.addEventListener('click',()=>{if(String(TC.partner)!==b.dataset.tcp){TC.partner=b.dataset.tcp;TC.get=[];}saveTC();render()}));
   document.querySelectorAll('[data-tca]').forEach(b=>b.addEventListener('click',()=>{TC.asked=b.dataset.tca;saveTC();render()}));
   document.querySelectorAll('[data-tcuse]').forEach(b=>b.addEventListener('click',()=>{const [g,x]=b.dataset.tcuse.split('||');TC.give=g?g.split('|'):[];TC.get=x?x.split('|'):[];saveTC();render();window.scrollTo(0,0)}));
+  document.querySelectorAll('[data-tcrec]').forEach(b=>b.addEventListener('click',()=>{const d2=D;const tid=myTeamId(d2);const mine=rosterOf(d2,tid),theirs=rosterOf(d2,TC.partner);const pt=(d2.teams||[]).find(t=>String(t.team)===String(TC.partner))||{};
+    const R=tcEval(d2,mine,theirs,TC.give,TC.get,TC.asked);const k=b.dataset.tcrec;
+    logEvent({kind:k==='idecl'?'declined-by-me':k,mgr:pt.manager||'',give:TC.give.join('+'),get:TC.get.join('+'),asked:TC.asked,gainMe:f1(R.gainMe),gainThem:f1(R.gainThem),desp:R.desperation,note:'wk'+(d2.week||'')});
+    b.textContent='Recorded ✓';setTimeout(render,700)}));
   document.querySelectorAll('[data-tcclear]').forEach(b=>b.addEventListener('click',()=>{TC.give=[];TC.get=[];saveTC();render()}));
   document.querySelectorAll("[data-college]").forEach(el=>el.addEventListener("click",e=>{if(e.target.closest('a'))return;location.hash="#college/"+encodeURIComponent(el.dataset.college)}));
   document.querySelectorAll("[data-csort]").forEach(b=>b.addEventListener("click",()=>{state.csort=b.dataset.csort;render()}));
@@ -2424,6 +2446,17 @@ function render(){
 function flash(btn,cls,txt,ms){if(!btn)return;const old=btn.dataset.lbl||btn.textContent;btn.dataset.lbl=old;
   btn.classList.remove('sending','sent','failed');btn.classList.add(cls);if(txt)btn.textContent=txt;
   if(ms)setTimeout(()=>{btn.classList.remove(cls);btn.textContent=old},ms);}
+// ---------------- EVENT LOG: things you record on the phone, relayed to the laptop ----------------
+// Each event is kept here and posted to the command channel as "log|...". The laptop appends it to
+// trade_log.csv; the engine then lists the ids it has, and anything not yet listed is re-sent on the
+// next load, so a laptop that was asleep still gets it.
+let TLOG=[];try{TLOG=JSON.parse(localStorage.getItem('lhc_tlog')||'[]')}catch(e){}
+function saveTLOG(){try{localStorage.setItem('lhc_tlog',JSON.stringify(TLOG.slice(-300)))}catch(e){}}
+function logEvent(ev){ev.id=ev.id||(Date.now().toString(36)+Math.random().toString(36).slice(2,6));ev.ts=ev.ts||new Date().toISOString();ev.sent=false;TLOG.push(ev);saveTLOG();flushTLOG();return ev}
+function evLine(ev){const c=x=>String(x==null?'':x).replace(/[|"]/g,'').slice(0,80);return ['log',ev.id,c(ev.kind),c(ev.mgr),c(ev.give),c(ev.get),c(ev.asked),c(ev.gainMe),c(ev.gainThem),c(ev.desp),c(ev.note)].join('|')}
+function flushTLOG(){if(!CMDKEY)return;const acked=new Set((D&&D.tradeLogIds)||[]);
+  TLOG.filter(ev=>!acked.has(ev.id)&&(!ev.sent||(Date.now()-new Date(ev.sentAt||0).getTime())>600000)).slice(0,20).forEach(ev=>{
+    fetch("https://ntfy.sh/"+CMDKEY,{method:"POST",body:evLine(ev)}).then(r=>{if(r.ok){ev.sent=true;ev.sentAt=new Date().toISOString();saveTLOG()}}).catch(()=>{})});}
 function send(cmd,topic,btn){
   const m=$("#ctlmsg"); if(m)m.textContent="Sending…";
   flash(btn,'sending','Sending…');
@@ -2433,7 +2466,7 @@ function send(cmd,topic,btn){
   }).catch(()=>{if(m)m.textContent="Couldn't send — no connection.";flash(btn,'failed','No connection',2600);});
 }
 function load(){
-  fetch("data.json?v="+Date.now(),{cache:"no-store"}).then(r=>{if(!r.ok)throw 0;return r.json()}).then(d=>{D=d;try{localStorage.setItem("lhc",JSON.stringify(d))}catch(e){}if(LIVE.stats&&LIVE.at&&(Date.now()-LIVE.at.getTime())<180000)applyLive();render();liveTick(true)})
+  fetch("data.json?v="+Date.now(),{cache:"no-store"}).then(r=>{if(!r.ok)throw 0;return r.json()}).then(d=>{D=d;try{localStorage.setItem("lhc",JSON.stringify(d))}catch(e){}if(LIVE.stats&&LIVE.at&&(Date.now()-LIVE.at.getTime())<180000)applyLive();render();liveTick(true);try{flushTLOG()}catch(e){}})
   .catch(()=>{try{const c=localStorage.getItem("lhc");if(c&&!D){D=JSON.parse(c);render();$("#stamp").textContent+=" · offline copy"}else if(!D){$("#stamp").textContent="no data yet"}}catch(e){$("#stamp").textContent="no data yet"}});
 }
 (function(){const inp=document.getElementById('gs'),box=document.getElementById('gsr');if(!inp)return;
