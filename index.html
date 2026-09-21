@@ -1743,6 +1743,15 @@ function renderDev(d){
   const hh=(v.health||[]);
   if(hh.length){h+='<div style="margin-top:8px">'+hh.map(x=>'<div class="sub" style="white-space:normal;display:flex;gap:8px;align-items:flex-start;padding:2px 0"><span style="color:'+(x.ok?'var(--good)':'var(--bad)')+';font-weight:700">'+(x.ok?'✓':'✕')+'</span><span><b>'+esc(x.key)+'</b>'+(x.ok?'':' — '+esc(x.msg))+'</span></div>').join('')+'</div>';}
   h+=kv([['Week','engine '+esc(v.engineWeek)+' · stats through week '+esc(v.statsWeek)],['Last run',(num(v.runSec)||0)+' seconds'],['Board lines',(v.rules||[]).length]])+'</section>';
+  // Server console: one line runs on the server as the engine user; the reply comes back on the phone
+  // channel within seconds and the last few exchanges ride along in data.json for the record.
+  h+='<section><h2>Server console</h2><div class="sub" style="white-space:normal">Runs one line on the server (the machine that computes this app). Paste what Claude gives you, or your own. The answer shows here in a few seconds'+(CMDKEY?'':' — needs the command key (Home, Unlock buttons)')+'.</div>'
+    +'<textarea id="shin" rows="3" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="command" style="width:100%;box-sizing:border-box;margin-top:8px;font-family:ui-monospace,Menlo,monospace;font-size:12px;background:var(--card2,var(--card));color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px"></textarea>'
+    +'<div class="ctl" style="margin-top:6px"><button class="go" id="shrun"'+(CMDKEY?'':' disabled')+'>Run on server</button></div><div class="sub" id="shmsg" style="margin-top:4px"></div>'
+    +'<pre id="shout" style="white-space:pre-wrap;word-break:break-word;font-size:11px;line-height:1.35;max-height:320px;overflow:auto;background:var(--card2,var(--card));border:1px solid var(--line);border-radius:8px;padding:8px;margin-top:6px;display:none"></pre>';
+  const con=(d.console||[]);
+  if(con.length){h+='<details style="margin-top:8px"><summary class="sub">Earlier ('+con.length+')</summary>'+con.slice().reverse().map(c=>'<div style="margin-top:8px"><div class="sub"><b>'+esc(c.when)+'</b> $ '+esc(c.cmd)+'</div><pre style="white-space:pre-wrap;word-break:break-word;font-size:11px;line-height:1.35;margin:4px 0 0;max-height:200px;overflow:auto">'+esc(c.out)+'</pre></div>').join('')+'</details>';}
+  h+='</section>';
   h+='<section><h2>Value recipe</h2><div class="sub" style="white-space:normal">Value per week = rest-of-season consensus, pulled toward recent form and his own history, scaled for snap share and trend, then blended with this week\'s consensus.</div>'
     +kv([['Recent form weight',Math.round((num(W.w_form)||0)*100)+'% <small>(scaled by games played)</small>'],['History weight',Math.round((num(W.w_hist)||0)*100)+'%'],['This-week weight',Math.round((num(W.w_week)||0)*100)+'%'],['Low snaps (under 40%)','×'+f1(W.snap_low)],['Heavy snaps (70%+)','×'+f1(W.snap_high)]])
     +svgBars({labels:['Form','History','This week'],series:[{vals:[(num(W.w_form)||0)*100,(num(W.w_hist)||0)*100,(num(W.w_week)||0)*100],cls:'me'}],h:110})+'</section>';
@@ -2438,6 +2447,7 @@ function render(){
   const ck=$("#cmdsave");if(ck)ck.addEventListener("click",()=>{const v=($("#cmdkey").value||"").trim();if(v){CMDKEY=v;try{localStorage.setItem('lhc_cmd',v)}catch(e){}render()}});
   const cc=$("#cmdclear");if(cc)cc.addEventListener("click",e=>{e.preventDefault();CMDKEY='';try{localStorage.removeItem('lhc_cmd')}catch(e){}render()});
   const ps2=$('#pinsave');if(ps2)ps2.addEventListener('click',()=>{const val=($('#pinin').value||'').trim().toUpperCase();PIN=val;try{localStorage.setItem('lhc_pin',val)}catch(e){}render()});
+  const sr=$('#shrun');if(sr)sr.addEventListener('click',()=>runOnServer());
   const po=$('#pinout');if(po)po.addEventListener('click',e=>{e.preventDefault();PIN='';try{localStorage.removeItem('lhc_pin')}catch(e){}render()});
   const db=$('#devbtn');if(db){db.classList.toggle('on',v==='dev'||v==='settings');}
   document.querySelectorAll('[data-want]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();
@@ -2509,6 +2519,28 @@ function send(cmd,topic,btn){
     if(m)m.textContent=r.ok?"Sent. The laptop replies to your phone in a few seconds.":"Couldn't send ("+r.status+").";
     flash(btn,r.ok?'sent':'failed',r.ok?'Sent ✓':'Failed',2600);
   }).catch(()=>{if(m)m.textContent="Couldn't send — no connection.";flash(btn,'failed','No connection',2600);});
+}
+// Server console: "sh|<pin hash>|<id>|<base64 command>" goes down the command channel; the listener runs it
+// and answers on the phone channel with the title "console <id>", which this polls for (about 2.5 minutes max).
+const PHONE_TOPIC="lethimcook-7k3q9v2m";
+function b64utf8(s){return btoa(unescape(encodeURIComponent(s)))}
+function runOnServer(){
+  const ta=$("#shin"),msg=$("#shmsg"),out=$("#shout");if(!ta||!CMDKEY)return;
+  const cmd=(ta.value||"").trim();if(!cmd){if(msg)msg.textContent="Type a command first.";return}
+  const id=Date.now().toString(36)+Math.random().toString(36).slice(2,5);const sentAt=Math.floor(Date.now()/1000)-2;
+  if(msg)msg.textContent="Sending…";if(out){out.style.display="block";out.textContent="$ "+cmd+"\n";}
+  fetch("https://ntfy.sh/"+CMDKEY,{method:"POST",body:"sh|"+DEVPINH+"|"+id+"|"+b64utf8(cmd)}).then(r=>{
+    if(!r.ok){if(msg)msg.textContent="Couldn't send ("+r.status+").";return}
+    if(msg)msg.textContent="Sent — waiting for the server…";
+    let tries=0;const poll=()=>{tries++;
+      fetch("https://ntfy.sh/"+PHONE_TOPIC+"/json?poll=1&since="+sentAt).then(r=>r.text()).then(t=>{
+        let hit=null;t.split("\n").forEach(ln=>{if(!ln.trim())return;try{const o=JSON.parse(ln);if(o.event==="message"&&o.title==="console "+id)hit=o}catch(e){}});
+        if(hit){if(out)out.textContent="$ "+cmd+"\n"+hit.message;if(msg)msg.textContent="Done "+new Date(hit.time*1000).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})+".";}
+        else if(tries<50){if(msg)msg.textContent="Waiting for the server… ("+(tries*3)+"s)";setTimeout(poll,3000)}
+        else if(msg)msg.textContent="No answer in 2.5 minutes. The listener may be restarting; try again in a minute.";
+      }).catch(()=>{if(tries<50)setTimeout(poll,3000)});};
+    setTimeout(poll,2500);
+  }).catch(()=>{if(msg)msg.textContent="Couldn't send — no connection.";});
 }
 // The page is served by GitHub Pages, which rebuilds the site after every publish - usually a
 // minute, sometimes ten when their queue is busy. The raw file on GitHub itself skips that build
