@@ -1433,8 +1433,20 @@ function svgRadar(axes,opts){ // axes:[{label,v(0..1),txt}]
   return h+'</svg>';
 }
 function pctRank(v,arr){const a=arr.filter(x=>num(x)!==null).map(Number);if(!a.length||num(v)===null)return 0;const below=a.filter(x=>x<v).length;return below/a.length;}
+// Ranking a player against every rostered body at his position flatters everyone: three quarters
+// of the tight ends in the league are worth under 3 a week, so anyone startable came out at 95%+
+// on every axis and the shape said nothing. Compare him instead to the ones who actually get
+// started in a 12-team league - the pool he is really competing with for your slot.
+const POOLN={QB:24,RB:42,WR:42,TE:24,K:24,DST:20,DEF:20};
+function peerPool(d,p){
+  const n=POOLN[p.pos]||24;
+  const all=(d.players||[]).filter(x=>x.pos===p.pos&&(num(x.value)||0)>0).sort((a,b)=>(num(b.value)||0)-(num(a.value)||0));
+  const pool=all.slice(0,n);
+  if(!pool.some(x=>x.name===p.name))pool.push(p);   // he still has to be measured against them
+  return pool;
+}
 function playerRadar(d,p){
-  const peers=(d.players||[]).filter(x=>x.pos===p.pos&&(num(x.value)||0)>0);
+  const peers=peerPool(d,p);
   const ax=[
     {label:'This week',v:pctRank(p.proj,peers.map(x=>x.proj)),txt:f1(p.proj)},
     {label:'Value',v:pctRank(p.value,peers.map(x=>x.value)),txt:f1(p.value)},
@@ -1444,7 +1456,7 @@ function playerRadar(d,p){
     {label:'Usage',v:p.pos==='QB'?(num(p.form&&p.form.snap)||0):pctRank(p.form&&p.form.tgt,peers.map(x=>x.form&&x.form.tgt)),txt:p.pos==='QB'?pct(p.form&&p.form.snap):pct(p.form&&p.form.tgt)},
     {label:'History',v:pctRank(p.histUsed,peers.map(x=>x.histUsed)),txt:num(p.histUsed)?f1(p.histUsed):'—'},
     {label:'Health',v:num(p.avail)===null?1:p.avail,txt:num(p.avail)===null?'':Math.round(p.avail*100)+'%'}];
-  return svgRadar(ax)+'<div class="sub" style="text-align:center;white-space:normal">percentile among '+peers.length+' '+esc(p.pos)+'s (outer edge = best)</div><div class="sub" style="text-align:center;white-space:normal;margin-top:4px">tap to explain: '+[gl('week','this week'),gl('value','value'),gl('ros','ROS'),gl('experts','experts'),gl('form','form'),gl('usage','usage'),gl('history','history'),gl('health','health')].join(' · ')+'</div>';
+  return svgRadar(ax)+'<div class="sub" style="text-align:center;white-space:normal">percentile among the '+peers.length+' '+esc(p.pos)+'s worth starting in a 12-team league, not every '+esc(p.pos)+' alive (outer edge = best)</div><div class="sub" style="text-align:center;white-space:normal;margin-top:4px">tap to explain: '+[gl('week','this week'),gl('value','value'),gl('ros','ROS'),gl('experts','experts'),gl('form','form'),gl('usage','usage'),gl('history','history'),gl('health','health')].join(' · ')+'</div>';
 }
 function teamRadar(d,pw){
   const all=(d.power||[]);const rec=x=>{const m=/^(\d+)-(\d+)/.exec(x.record||'');return m?(+m[1])/((+m[1])+(+m[2])||1):0};
