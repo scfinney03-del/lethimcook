@@ -1289,7 +1289,7 @@ function histSections(d,p){
            ['Place in line',['','','C — first up','D — second','E — third'][cf.depth]||('#'+cf.depth)],
            ['If he starts',f1(cf.without)+' a game <small>'+(cf.basis==='played without him'?'('+cf.games+' games without him on record)':'(estimated)')+'</small>'],
            ['Chance he\'s needed',Math.round(100*(num(cf.pMiss)||0))+'% a week <small>('+esc(cf.starter)+' is '+Math.round(100*(num(cf.starterDur)||0))+'% available)</small>'],
-           ['Insurance value',f1(cf.contingent)+' a week <small>already added to his value</small>']])
+           ['Insurance value',f1(cf.contingent)+' a week <small>'+(cf.inValue?'already added to his value':'only to whoever owns '+esc(cf.starter)+' — one '+(p.pos==='QB'?'quarterback':'tight end')+' starts, so it is not in his general value')+'</small>']])
       +(cf.starterHurt?'<div class="sub" style="white-space:normal;margin-top:4px"><b>His starter is hurt now</b> — this is no longer insurance, it is the job.</div>':'')+'</section>';
   }
   return h;
