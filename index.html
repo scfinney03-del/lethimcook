@@ -343,6 +343,20 @@ function statusPill(st,kick){
   return st?'<span class="pill">'+esc(st)+'</span>':"";
 }
 const cleanName=n=>String(n||"").replace(/\s+(Jr\.|Sr\.|III|II|IV)$/,"").trim();
+// Wrap every player or league-team name inside a sentence in a portal. Longest names first so
+// "James Cook III" is matched before "James Cook"; the text is escaped first, then linked.
+let NAMERX=null,NAMERX_D=null;
+function linkNames(text){
+  const t=esc(text);if(!D)return t;
+  if(NAMERX_D!==D){NAMERX_D=D;const names=[];
+    (D.players||[]).forEach(p=>{if(p.name&&String(p.name).length>4)names.push({n:String(p.name),h:'#player/'+encodeURIComponent(cleanName(p.name))})});
+    (D.teams||[]).forEach(t2=>{if(t2.name&&t2.team!==undefined&&String(t2.name).length>3)names.push({n:String(t2.name),h:'#team/'+t2.team})});
+    names.sort((a,b)=>b.n.length-a.n.length);const byName={};names.forEach(x=>{byName[esc(x.n)]=x.h});
+    NAMERX=names.length?{rx:new RegExp('('+names.map(x=>esc(x.n).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')','g'),by:byName}:null;}
+  if(!NAMERX)return t;
+  return t.replace(NAMERX.rx,m=>'<a class="pl" href="'+NAMERX.by[m]+'">'+m+'</a>');
+}
+function collegeLink(name){if(blank(name))return '';return '<a class="pl" href="#college/'+encodeURIComponent(name)+'">'+esc(name)+'</a>';}
 function pl(name){if(blank(name))return "";return '<a class="pl" href="#player/'+encodeURIComponent(cleanName(name))+'">'+esc(name)+'</a>';}
 function findPlayer(name){const c=cleanName(name).toLowerCase();return (D&&D.players||[]).find(p=>String(p.name).toLowerCase()===c)||null;}
 function gradeColor(g){return /^A/.test(g)?'var(--good)':(/^B/.test(g)?'#2f8f5b':(/^C/.test(g)?'#b8860b':'var(--bad)'));}
@@ -498,9 +512,9 @@ function renderHome(d){
   const rest=(d.board||[]).filter(b=>!(num(b.push)>=1)&&!blank(b.text)&&!/^LIVE:/i.test(b.text||""));
   h+='<section><h2>Do this</h2>';
   const ucl=b=>{const s=num(b.score)||0;return s>=85?'u1':(s>=40?'u2':'u3')};
-  if(push.length)h+=push.map(b=>'<div class="act '+ucl(b)+'"><div class="when'+(/now/i.test(b.when)?' now':'')+'"><span class="dot"></span>'+esc(b.when)+(num(b.score)!==null?' · '+Math.round(num(b.score)):'')+'</div><div class="text">'+esc(b.text)+'</div>'+(blank(b.where)?'':'<div class="where">'+esc(b.where)+'</div>')+'</div>').join("");
+  if(push.length)h+=push.map(b=>'<div class="act '+ucl(b)+'"><div class="when'+(/now/i.test(b.when)?' now':'')+'"><span class="dot"></span>'+esc(b.when)+(num(b.score)!==null?' · '+Math.round(num(b.score)):'')+'</div><div class="text">'+linkNames(b.text)+'</div>'+(blank(b.where)?'':'<div class="where">'+esc(b.where)+'</div>')+'</div>').join("");
   else h+='<div class="empty">Nothing needs a move right now.</div>';
-  if(rest.length)h+='<details><summary>'+rest.length+' more on the board</summary>'+rest.map(b=>'<div class="act '+ucl(b)+'"><div class="when"><span class="dot"></span>'+esc(b.when)+'</div><div class="text">'+esc(b.text)+'</div></div>').join("")+'</details>';
+  if(rest.length)h+='<details><summary>'+rest.length+' more on the board</summary>'+rest.map(b=>'<div class="act '+ucl(b)+'"><div class="when"><span class="dot"></span>'+esc(b.when)+'</div><div class="text">'+linkNames(b.text)+'</div></div>').join("")+'</details>';
   h+='</section>';
   }
 
@@ -605,8 +619,8 @@ function renderHome(d){
       h+='</section><section><h2>Predictions · rest of season</h2><div class="sub" style="white-space:normal">Your ROS power vs each opponent\'s (starters + 30% bench). Projected finish: <b>'+((recsW(d))+Math.round(expW))+'-'+((recsL(d))+up.length-Math.round(expW))+'</b></div>'
         +'<div style="margin-top:6px">'+svgBars({labels:preds.map(p=>'Wk '+p.week),series:[{vals:preds.map(p=>Math.abs(p.margin)),cls:'me',clsAt:preds.map(p=>p.margin>=0?'good':'bad')}],h:130,legend:[['good','favored (margin)'],['bad','underdog (margin)']]})+'</div>'
         +'<div style="margin-top:6px">'+svgLine({labels:preds.map(p=>'Wk '+p.week),series:[{vals:preds.map(p=>p.model),cls:'me'},{vals:preds.map(p=>p.yahoo),cls:'them',dash:true}],h:130,legend:[['me','model win %'],['them','Yahoo win %']]})+'</div>'
-        +'<table><tr><th>Wk</th><th>Opponent</th><th class="n">Margin</th><th class="n">Model</th><th class="n">Yahoo</th></tr>'+preds.map(p=>'<tr><td>'+p.week+'</td><td>'+esc(p.opp)+'</td><td class="n '+(p.margin>=0?'win':'loss')+'">'+(p.margin>=0?'+':'')+f1(p.margin)+'</td><td class="n">'+p.model+'%</td><td class="n">'+(p.yahoo===null?'':p.yahoo+'%')+'</td></tr>').join("")+'</table>';}
-    if(up.length)h+='<details><summary>Rest of schedule</summary><table>'+up.map(s=>'<tr><td style="width:30px">'+esc(s.week)+'</td><td>'+teamLink(s.opp)+' <small style="color:var(--mute)">'+esc(s.manager)+'</small></td><td class="n">'+(num(s.yahooWin)?Math.round(s.yahooWin*100)+'% Yahoo':'')+'</td></tr>').join("")+'</table></details>';
+        +'<table><tr><th>Wk</th><th>Opponent</th><th class="n">Margin</th><th class="n">Model</th><th class="n">Yahoo</th></tr>'+preds.map(p=>'<tr><td>'+p.week+'</td><td>'+teamLink(p.opp)+'</td><td class="n '+(p.margin>=0?'win':'loss')+'">'+(p.margin>=0?'+':'')+f1(p.margin)+'</td><td class="n">'+p.model+'%</td><td class="n">'+(p.yahoo===null?'':p.yahoo+'%')+'</td></tr>').join("")+'</table>';}
+    if(up.length)h+='<details><summary>Rest of schedule</summary><table>'+up.map(s=>'<tr><td style="width:30px">'+esc(s.week)+'</td><td>'+teamLink(s.opp)+' <small style="color:var(--mute)">'+mg(s.manager)+'</small></td><td class="n">'+(num(s.yahooWin)?Math.round(s.yahooWin*100)+'% Yahoo':'')+'</td></tr>').join("")+'</table></details>';
     h+='</section>';
   }
   return h;
@@ -711,7 +725,8 @@ function managerSection(d,pw){
 const SORTS={value:["Value /wk",p=>p.value],proj:["This week",p=>p.proj],ros:["ROS /wk",p=>p.ros&&p.ros.cons],cons:["Consensus",p=>p.cons],avg3:["Last 3 wks",p=>p.form&&p.form.avg3],last:["Last week",p=>p.form&&p.form.last],adds:["Adds 24h",p=>p.adds],ecr:["Expert rank",p=>p.ecr?-p.ecr.rank:null],snap:["Snap %",p=>p.form&&p.form.snap],buzz:["Buzz",p=>p.buzz]};
 function renderPlayers(d){
   const f=state.filters; const teams=d.teams||[];
-  let h='<section><div class="filters">';
+  let h='<section style="padding:9px 14px"><a class="pl" href="#colleges" style="font-weight:700">Colleges · alumni tracker</a> <span class="sub">which schools are producing the players in this pool</span></section>';
+  h+='<section><div class="filters">';
   h+='<select id="f-pos">'+["ALL","QB","RB","WR","TE","K","DST"].map(p=>'<option value="'+p+'"'+(f.pos===p?' selected':'')+'>'+(p==="ALL"?"All positions":p)+'</option>').join("")+'</select>';
   h+='<select id="f-owner"><option value="ALL"'+(f.owner==="ALL"?' selected':'')+'>Everyone</option><option value="FA"'+(f.owner==="FA"?' selected':'')+'>Free agents</option>'+teams.map(t=>'<option value="'+esc(t.team)+'"'+(String(f.owner)===String(t.team)?' selected':'')+'>'+esc(t.name)+'</option>').join("")+'</select>';
   h+='<select id="f-sort">'+Object.keys(SORTS).map(k=>'<option value="'+k+'"'+(f.sort===k?' selected':'')+'>'+SORTS[k][0]+'</option>').join("")+'</select>';
@@ -732,7 +747,7 @@ function renderPlayers(d){
   h+=list.slice(0,n).map(p=>{const v=num(key(p));const g=p.game||{};
     return '<div class="row tapp" data-player="'+esc(p.name)+'">'+face(p.sid,p.team,p.pos)+'<div class="main"><div class="name'+(num(p.owner)===5?' mine':'')+'">'+esc(p.name)+(p.inj&&!blank(p.inj.status)?' <span class="flag'+(/out|ir/i.test(p.inj.status)?' bad':'')+'" style="font-weight:400">'+esc(p.inj.status)+'</span>':'')+'</div><div class="sub">'+posChip(p.pos)+' '+tl(p.team)+' · '+esc(num(p.owner)?p.ownerName+(p.slot?' ('+p.slot+')':''):'Free agent')+'</div>'
       +'<div class="fbar" style="margin-top:2px"><div class="t"><i style="width:'+(100*Math.abs(v||0)/mx)+'%"></i></div></div>'
-      +'<div class="sub" style="white-space:normal">wk '+f1(p.proj)+' · value '+f1(p.value)+' · ROS '+f1(p.ros&&p.ros.cons)+(p.form&&num(p.form.avg3)!==null?' · 3wk '+f1(p.form.avg3):'')+(p.ecr&&p.ecr.grade?' · <b style="color:'+gradeColor(p.ecr.grade)+'">'+esc(p.ecr.grade)+'</b>':'')+(g.opp?' · '+(g.ha==='Home'?'v ':'@ ')+esc(g.opp):'')+'</div></div><div class="pts"><b>'+(f.sort==='ecr'?(p.ecr?Math.round(p.ecr.rank):''):(f.sort==='snap'?pct(v):(f.sort==='adds'?Math.round(v||0):f1(v))))+'</b></div></div>'}).join("");
+      +'<div class="sub" style="white-space:normal">wk '+f1(p.proj)+' · value '+f1(p.value)+' · ROS '+f1(p.ros&&p.ros.cons)+(p.form&&num(p.form.avg3)!==null?' · 3wk '+f1(p.form.avg3):'')+(p.ecr&&p.ecr.grade?' · <b style="color:'+gradeColor(p.ecr.grade)+'">'+esc(p.ecr.grade)+'</b>':'')+(g.opp?' · '+(g.ha==='Home'?'v ':'@ ')+tl(g.opp):'')+'</div></div><div class="pts"><b>'+(f.sort==='ecr'?(p.ecr?Math.round(p.ecr.rank):''):(f.sort==='snap'?pct(v):(f.sort==='adds'?Math.round(v||0):f1(v))))+'</b></div></div>'}).join("");
   if(list.length>n)h+='<button class="more" id="more">Show more</button>';
   h+='</section>';
   return h;
@@ -753,7 +768,7 @@ function renderPlayer(d,name){
   h+='<section><h2>Profile</h2>'+playerRadar(d,p)+'</section>';
   // this week
   h+='<section><h2>This week</h2>';
-  if(g.opp){h+='<div style="display:flex;justify-content:space-between;align-items:center"><div><b>'+(g.ha==='Home'?'v ':'@ ')+esc(g.opp)+'</b> <span class="sub">'+esc(g.kick)+'</span> '+gamePill(g.status)+'</div><div class="pts">'+(num(g.live)!==null&&/progress|final/i.test(g.status)?'<b>'+f1(g.live)+'</b><small>live</small>':'<b>'+f1(p.proj)+'</b><small>proj</small>')+'</div></div>';
+  if(g.opp){h+='<div style="display:flex;justify-content:space-between;align-items:center"><div><b>'+(g.ha==='Home'?'v ':'@ ')+tl(g.opp)+'</b> <span class="sub">'+esc(g.kick)+'</span> '+gamePill(g.status)+'</div><div class="pts">'+(num(g.live)!==null&&/progress|final/i.test(g.status)?'<b>'+f1(g.live)+'</b><small>live</small>':'<b>'+f1(p.proj)+'</b><small>proj</small>')+'</div></div>';
     h+=kv([['Implied team total',num(g.implied)!==null?f1(g.implied)+' pts <small style="color:var(--mute)">(spread '+esc(g.spread)+', total '+esc(g.total)+')</small>':''],['Air / altitude',[num(g.aqi)!==null?'air '+aqiTxt(g.aqi):'',num(g.altitude)?'⛰️ '+Math.round(g.altitude).toLocaleString()+' ft'+(g.altitude>=5000?' — Denver altitude; check his Denver split below':''):''].filter(x=>x).join(' · ')],['Weather',blank(g.impact)?'':wxIcon(g.impact)+' <span class="'+(/wind|rain|cold/i.test(g.impact)?'flag':'')+'">'+esc(g.impact)+'</span>'+(blank(g.cond)?'':' <small style="color:var(--mute)">'+esc(g.cond)+'</small>')]]);}
   else h+='<div class="sub">Bye week.</div>';
   const src=p.sources||{}; const sk=Object.keys(src).filter(k=>num(src[k])>0);
@@ -805,7 +820,7 @@ function renderPlayer(d,name){
   // team context
   if(p.coach||p.teamSplits){const c=p.coach,oc=p.oppCoach,ts=p.teamSplits;
     h+=collegeSection(d,p);
-h+='<section><h2>Team context · '+tl(p.team)+'</h2>'+kv([['Coaches',c?coachLine(c,true):''],['This week\'s opponent',oc?esc(g.opp)+' — '+coachLine(oc,true):''],['Team scoring',ts?f1(ts.all)+' ppg · home '+f1(ts.home)+' / away '+f1(ts.away)+(num(ts.badN)>=3?' · bad weather '+f1(ts.badWx):'')+' <small>(2024–26)</small>':'']])+'</section>';}
+h+='<section><h2>Team context · '+tl(p.team)+'</h2>'+kv([['Coaches',c?coachLine(c,true):''],['This week\'s opponent',oc?tl(g.opp)+' — '+coachLine(oc,true):''],['Team scoring',ts?f1(ts.all)+' ppg · home '+f1(ts.home)+' / away '+f1(ts.away)+(num(ts.badN)>=3?' · bad weather '+f1(ts.badWx):'')+' <small>(2024–26)</small>':'']])+'</section>';}
   // splits
   const sp=p.splits;
   if(sp&&num(sp.games)>=4){const rows=[['Home',sp.home,sp.homeN],['Away',sp.away,sp.awayN],['Good weather',sp.goodWx,sp.goodN],['Bad weather',sp.badWx,sp.badN],['Dome',sp.dome,sp.domeN],['At Denver',sp.denver,sp.denverN]].filter(r=>num(r[2])>0);
@@ -814,7 +829,7 @@ h+='<section><h2>Team context · '+tl(p.team)+'</h2>'+kv([['Coaches',c?coachLine
   if(hs)h+='<section><h2>History</h2>'+kv([['2025',num(hs.ppg2025)?f1(hs.ppg2025)+' ppg over '+Math.round(hs.g2025)+' games':'did not play'],['Career',f1(hs.career)+' ppg · '+Math.round(hs.games)+' games · '+Math.round(hs.seasons)+' seasons'],['Range','floor '+f1(hs.floor)+' · ceiling '+f1(hs.ceiling)+' · best '+f1(hs.best)],['Boom / bust',Math.round(hs.boom*100)+'% of games 20+ · '+Math.round(hs.bust*100)+'% under 5'],['Week-to-week swing','±'+f1(hs.std)]])+'</section>';
   // next 3
   const n3=(p.next3||[]);
-  if(n3.length&&p.pos!=='K'&&p.pos!=='DST')h+='<section><h2>Next 3</h2><table><tr><th style="width:40px">Wk</th><th>Opponent</th><th class="n">Pts allowed to '+esc(p.pos)+' (2025)</th></tr>'+n3.map(x=>'<tr><td>'+esc(x.week)+'</td><td>'+esc(x.opp)+'</td><td class="n">'+(num(x.allowed)!==null?f1(x.allowed):'')+'</td></tr>').join("")+'</table></section>';
+  if(n3.length&&p.pos!=='K'&&p.pos!=='DST')h+='<section><h2>Next 3</h2><table><tr><th style="width:40px">Wk</th><th>Opponent</th><th class="n">Pts allowed to '+esc(p.pos)+' (2025)</th></tr>'+n3.map(x=>'<tr><td>'+esc(x.week)+'</td><td>'+tl(x.opp)+'</td><td class="n">'+(num(x.allowed)!==null?f1(x.allowed):'')+'</td></tr>').join("")+'</table></section>';
   // season: actual so far, projected the rest of the way
   const wkNow=num(d.week);const lgA={};(p.log||[]).forEach(x=>{lgA[x.week]=x.ppr});const wkP={};(p.weekly||[]).forEach(x=>{wkP[x.week]=x.proj});
   const labs=[],va=[],vp=[],cls=[];for(let w=1;w<=17;w++){labs.push(''+w);const a=lgA[w],pr=wkP[w];if(a!==undefined&&w<wkNow){va.push(a);vp.push(null)}else if(a!==undefined&&w===wkNow&&(/final|progress/i.test(g.status||''))){va.push(a);vp.push(null)}else{va.push(null);vp.push(pr===undefined?(p.bye===w?0:null):pr)}}
@@ -833,12 +848,12 @@ h+='<section><h2>Team context · '+tl(p.team)+'</h2>'+kv([['Coaches',c?coachLine
     h+=lg.map(x=>{const cells=isD?'<td class="n">'+Math.round(num(x.sack)||0)+'</td><td class="n">'+Math.round(num(x.dint)||0)+'</td><td class="n">'+Math.round(num(x.fr)||0)+'</td><td class="n">'+Math.round(num(x.dtd)||0)+'</td><td class="n">'+Math.round(num(x.pa)||0)+'</td>'
         :isK?'<td class="n">'+Math.round(num(x.fgm)||0)+'</td><td class="n">'+Math.round(num(x.fga)||0)+'</td><td class="n">'+Math.round(num(x.pat)||0)+'</td>'
         :(isQB?'<td class="n">'+Math.round(x.payd)+'</td><td class="n">'+Math.round(x.ruyd)+'</td>':'<td class="n">'+Math.round(x.car)+'</td><td class="n">'+Math.round(x.tgt)+'</td><td class="n">'+Math.round(x.rec)+'</td><td class="n">'+Math.round((x.ruyd||0)+(x.reyd||0))+'</td>')+'<td class="n">'+Math.round(x.td)+'</td><td class="n">'+pct(x.snap)+'</td>';
-      return '<tr><td>'+esc(x.week)+'</td><td>'+esc(x.opp)+'</td><td class="n"><b>'+f1(x.ppr)+'</b></td>'+cells+'</tr>';}).join("")+'</table></section>';
+      return '<tr><td>'+esc(x.week)+'</td><td>'+tl(x.opp)+'</td><td class="n"><b>'+f1(x.ppr)+'</b></td>'+cells+'</tr>';}).join("")+'</table></section>';
   }
   // news
   const nw=(p.news||[]);
   if(nw.length)h+='<section><h2>News</h2>'+nw.map(x=>{const ago=num(x.age)===null?'':(x.age<1?'now':(x.age<24?Math.round(x.age)+'h':Math.round(x.age/24)+'d'));
-    return '<div style="padding:6px 0;border-top:1px solid var(--line);white-space:normal;line-height:1.35">'+esc(x.head)+'<div class="sub">'+esc(x.src)+' · '+ago+(blank(x.kw)?'':' · '+esc(x.kw))+(num(x.sig)?' · <span class="'+(x.sig<0?'form dn':'form up')+'">'+(x.sig>0?'+':'')+esc(x.sig)+'</span>':'')+'</div></div>'}).join("")+'</section>';
+    return '<div style="padding:6px 0;border-top:1px solid var(--line);white-space:normal;line-height:1.35">'+linkNames(x.head)+'<div class="sub">'+esc(x.src)+' · '+ago+(blank(x.kw)?'':' · '+esc(x.kw))+(num(x.sig)?' · <span class="'+(x.sig<0?'form dn':'form up')+'">'+(x.sig>0?'+':'')+esc(x.sig)+'</span>':'')+'</div></div>'}).join("")+'</section>';
   return h;
 }
 
@@ -961,7 +976,7 @@ function renderMatchup(d,wk,idx){
 }
 
 // ---------------- GAME CHARTS & HISTORY ----------------
-function histChips(rows){return '<div class="hist">'+(rows||[]).slice().reverse().map(x=>'<i class="'+esc(x.result)+'">'+esc(x.result)+' '+Math.round(x.pts)+'-'+Math.round(x.pa)+' '+(x.ha==='Home'?'v ':'@ ')+esc(x.opp)+'</i>').join('')+'</div>';}
+function histChips(rows){return '<div class="hist">'+(rows||[]).slice().reverse().map(x=>'<i class="'+esc(x.result)+'">'+esc(x.result)+' '+Math.round(x.pts)+'-'+Math.round(x.pa)+' '+(x.ha==='Home'?'v ':'@ ')+tl(x.opp)+'</i>').join('')+'</div>';}
 function liveWin(g){
   const L=nflWin(g);if(!L||L.winHome===null||L.winHome===undefined)return '';
   const wh=Math.round(L.winHome),wa=100-wh;
@@ -1506,7 +1521,7 @@ function collegeSection(d,p){
   const mets=CMET.map(m=>({k:m[0],lab:m[1],u:m[2],low:m[3],v:num(c[m[0]])})).filter(m=>m.v>0);
   const pcts=mets.map(m=>({...m,p:cPct(p.pos,m.k,m.v,m.low)})).filter(m=>m.p!==null);
   let h='<section><h2>'+(rook?'Rookie profile — no NFL sample yet':'Out of college')+'</h2>';
-  h+=kv([['School',esc(c.school||'')],['Drafted',rd?('round '+Math.round(rd)+', pick '+Math.round(pk)+' in '+Math.round(num(c.draftYear))):(num(c.draftYear)?'undrafted ('+Math.round(num(c.draftYear))+')':'')],
+  h+=kv([['School',collegeLink(c.school||'')],['Drafted',rd?('round '+Math.round(rd)+', pick '+Math.round(pk)+' in '+Math.round(num(c.draftYear))):(num(c.draftYear)?'undrafted ('+Math.round(num(c.draftYear))+')':'')],
     [gl('capital','Draft capital'),capPct!==null?capPct+'/100 <small style="color:var(--mute)">'+(capPct>=70?'premium pick — teams force these on the field':(capPct>=40?'solid investment':'late pick — has to earn the work'))+'</small>':''],
     ['Age when drafted',num(c.draftAge)?Math.round(num(c.draftAge))+(num(c.draftAge)<=21?' <small style="color:var(--good)">young for his class</small>':''):''],
     ['Size',[c.height,num(c.weight)?Math.round(num(c.weight))+' lb':''].filter(x=>x).join(' · ')],
@@ -1517,7 +1532,7 @@ function collegeSection(d,p){
     const sh=num(c.collShare),us=num(c.collUsage);
     const line=[];if(rc)line.push(rc+' catches, '+Math.round(ry)+' yds, '+Math.round(rt)+' TD');if(ca)line.push(Math.round(ca)+' carries, '+Math.round(uy)+' yds, '+Math.round(ut)+' TD');if(py)line.push(Math.round(py)+' pass yds, '+Math.round(pt)+' TD');
     const shPct=sh!==null?Math.round(sh*100):null;
-    h+='<h2 style="margin-top:14px">Last college season · '+Math.round(cy)+' '+esc(c.collTeam||'')+'</h2>'+kv([['Production',line.join('<br>')],
+    h+='<h2 style="margin-top:14px">Last college season · '+Math.round(cy)+' '+collegeLink(c.collTeam||'')+'</h2>'+kv([['Production',line.join('<br>')],
       [gl('share','Share of his offense'),shPct!==null?shPct+'% <small style="color:var(--mute)">'+(shPct>=30?'carried that offense':(shPct>=20?'a real focal point':(shPct>=10?'one of several options':'a complementary piece')))+'</small>':''],
       ['Snap usage',us!==null?Math.round(us*100)+'% of his team\'s plays':'']]);
     const peers=(D&&D.players||[]).filter(x=>x.pos===p.pos&&x.college&&num(x.college.collShare)!==null).map(x=>num(x.college.collShare));
@@ -1540,6 +1555,7 @@ const GLOSS={
  next3:['Next 3','How friendly his next three defenses are to his position, as a multiplier. 1.0 is average, 1.2 means those defenses give up 20% more than normal to his position, 0.8 means they are tough.'],
  buzz:['Buzz','Net tone of the last 72 hours of news about him, from our keyword list. Negative is bad news piling up, positive is good news. It is a nudge, not a projection.'],
  linemove:['Line move','How far the betting line has shifted since the week opened, in points. Money moves for a reason — a line sliding toward a team usually means the market learned something (a starter is out, weather turned) before the injury reports and projections catch up. A move of 2 points or more is worth a look.'],
+ alumni:['Alumni tracker','Every player in the pool grouped by the college he came from. A school\'s total is the sum of its players\' value per week, so it rewards schools that keep sending starters, not just bodies. Draft capital is the average of where its men were picked (100% = first overall).'],
  boom:['Boom or bust','How far each side can still land from its expected final. Each starter swings by an amount set by his position and projection, shrinking as his game runs out. Then the stacks: two of your players from the same offence rise and fall together, so your side swings wider than nine independent players would; one of yours against one of theirs from the same offence partly cancels. That true spread is what the win chance uses. A boom is 15+ points over expected, a bust 15+ under. Each starter\'s own rates come from his career game logs: a boom game is 20+ points, a bust game under 5.'],
  durability:['Injury history','How often he has actually missed games hurt over the last three seasons — counted from weeks on injured reserve plus weeks ruled out, divided by weeks he was on a roster. A backup who simply never plays is not counted as fragile. Shrunk toward a normal 90% when there is only a season or so to go on. It nudges his value by a few percent at most, because the projection sources already price in some fragility.'],
  stack:['Moves with','How much his weekly score rises and falls with a teammate\'s, from every game they played together since 2023 (a correlation from -1 to +1, shrunk toward zero when they have few games together). A quarterback and his top receiver usually sit around +0.26. Two running backs on the same team usually go negative — one\'s good day is the other\'s quiet one. Starting players who move together makes your week more boom-or-bust.'],
@@ -1851,7 +1867,7 @@ function renderNews(d){
   else h+='<div class="sub" style="white-space:normal">Nothing in the last 3 days carried a strong signal'+(f==='ALL'?'':' under this filter')+'.</div>';
   h+='<div class="sub" style="margin-top:6px">'+list.length+(f==='ALL'?'':' of '+all.length)+' report'+(list.length===1?'':'s')+' in the last 7 days.</div>'+'<div class="filters" style="margin-top:8px"><select id="nfilt">'+[['ALL','Everything'],['MINE','My players'],['LEAGUE','Rostered in league'],['NEG','Bad news'],['POS','Good news']].concat(srcs.map(s=>[s,s])).map(o=>'<option value="'+o[0]+'"'+(f===o[0]?' selected':'')+'>'+esc(o[1])+'</option>').join('')+'</select><input id="nq" type="search" placeholder="Search news" value="'+esc(state.nq||'')+'"></div></section>';
   h+='<section>'+list.slice(0,80).map(x=>{const ago=num(x.age)===null?'':(x.age<1?'now':(x.age<24?Math.round(x.age)+'h':Math.round(x.age/24)+'d'));const sg=num(x.sig)||0;
-    return '<div style="padding:8px 0;border-top:1px solid var(--line);white-space:normal;line-height:1.35"><div><b>'+pl(x.player)+'</b>'+(x.team?' <span class="sub">'+esc(x.pos)+' · '+esc(x.team)+'</span>':'')+(num(x.owner)?' <span class="pill'+(num(x.owner)===5?' warn':'')+'">'+(num(x.owner)===5?'YOU':tn(x.ownerName))+'</span>':'')+'</div><div>'+esc(x.head)+'</div>'+(blank(x.body)?'':'<div class="sub" style="white-space:normal">'+esc(x.body)+'</div>')+'<div class="sub">'+esc(x.src)+' · '+ago+(blank(x.kw)?'':' · <span class="'+(sg<0?'form dn':(sg>0?'form up':''))+'">'+esc(x.kw)+'</span>')+'</div></div>'}).join('')+'</section>';
+    return '<div style="padding:8px 0;border-top:1px solid var(--line);white-space:normal;line-height:1.35"><div><b>'+pl(x.player)+'</b>'+(x.team?' <span class="sub">'+esc(x.pos)+' · '+tl(x.team)+'</span>':'')+(num(x.owner)?' <span class="pill'+(num(x.owner)===5?' warn':'')+'">'+(num(x.owner)===5?'YOU':tn(x.ownerName))+'</span>':'')+'</div><div>'+esc(x.head)+'</div>'+(blank(x.body)?'':'<div class="sub" style="white-space:normal">'+esc(x.body)+'</div>')+'<div class="sub">'+esc(x.src)+' · '+ago+(blank(x.kw)?'':' · <span class="'+(sg<0?'form dn':(sg>0?'form up':''))+'">'+esc(x.kw)+'</span>')+'</div></div>'}).join('')+'</section>';
   return h;
 }
 // ---------------- SEARCH ----------------
@@ -1878,6 +1894,8 @@ function crumbFill(d,v){
   else if(v==='news')trail=P('News');
   else if(v==='dev')trail=A('Settings','#settings')+sep+P('Engine room');
   else if(v==='settings')trail=P('Settings');
+  else if(v==='colleges')trail=A('Players','#players')+sep+P('Colleges');
+  else if(v==='college'){deep=true;trail=A('Colleges',up('#colleges'))+sep+P(state.college);}
   else if(v==='team'){deep=true;const t=(d.power||[]).find(x=>String(x.team)===String(state.team))||{};
     trail=A('League',up('#league'))+sep+P((t.manager||'Team')+(t.name?' · '+t.name:''));}
   else if(v==='player'){deep=true;const nm=cleanName(state.player);const pl2=(d.players||[]).find(x=>String(x.name).toLowerCase()===String(nm).toLowerCase())||{};
@@ -1891,7 +1909,7 @@ function crumbFill(d,v){
   el.innerHTML=(deep?'<a class="back" href="javascript:history.back()">‹</a>':'')+'<span class="path">'+trail+'</span>';
 }
 // ---------------- ROUTER ----------------
-const DEEPV=['player','team','nfl','coach','matchup'];
+const DEEPV=['player','team','nfl','coach','matchup','college'];
 let PREVHASH='',SCROLLMEM={};
 function route(){
   NAV=true;
@@ -1908,6 +1926,7 @@ function route(){
   if(state.view==="team")state.team=parts[1];
   if(state.view==="player")state.player=parts.slice(1).join("/");
   if(state.view==="nfl")state.nfl2=parts[1];
+  if(state.view==="college")state.college=parts.slice(1).join("/");
   if(state.view==="coach")state.coach=parts.slice(1).join("/");
   if(state.view==="matchup"){state.mwk=parts[1];state.midx=parts[2];}
   PREVHASH='#'+hsh;
@@ -1940,6 +1959,68 @@ function applyLook(){
   const m=document.querySelector('meta[name=theme-color]');if(m)m.setAttribute('content',isDark()?'#111418':'#f4f5f7');
 }
 if(window.matchMedia)try{window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',applyLook)}catch(e){}
+
+// ---------------- COLLEGES: an alumni tracker ----------------
+// Every player in the pool who has a college on file, grouped by school. "What a school produces"
+// is read off the players themselves: how many, at which positions, how good (value per week),
+// how they were drafted, and how athletic they tested.
+function collegeRows(d){
+  const by={};
+  (d.players||[]).forEach(p=>{const c=p.college;const sch=c&&(c.school||c.collTeam);if(!sch)return;(by[sch]||(by[sch]=[])).push(p)});
+  return Object.keys(by).map(k=>{const ps=by[k];const v=ps.map(p=>num(p.value)||0);const st=ps.filter(p=>(num(p.value)||0)>=6);
+    const pos={};ps.forEach(p=>{pos[p.pos]=(pos[p.pos]||0)+1});
+    const cap=ps.map(p=>num(p.college.capital)).filter(x=>x!==null);
+    const rook=ps.filter(p=>num(p.college.expYears)!==null&&num(p.college.expYears)<=0).length;
+    const mine=ps.filter(p=>num(p.owner)===5).length,owned=ps.filter(p=>num(p.owner)).length;
+    return {school:k,players:ps.slice().sort((a,b)=>(num(b.value)||0)-(num(a.value)||0)),n:ps.length,total:v.reduce((a,b)=>a+b,0),avg:v.reduce((a,b)=>a+b,0)/ps.length,starters:st.length,pos:pos,
+      cap:cap.length?cap.reduce((a,b)=>a+b,0)/cap.length:null,rookies:rook,mine:mine,owned:owned,top:ps.slice().sort((a,b)=>(num(b.value)||0)-(num(a.value)||0))[0]};});
+}
+function posMix(pos){return ['QB','RB','WR','TE','K','DST'].filter(k=>pos[k]).map(k=>pos[k]+' '+k).join(' · ');}
+function renderColleges(d){
+  const rows=collegeRows(d);if(!rows.length)return '<section><div class="empty">No college data yet.</div></section>';
+  const sort=state.csort||'total';const f=state.cpos||'ALL';
+  let list=rows.slice();if(f!=='ALL')list=list.filter(r=>r.pos[f]);
+  const key={total:r=>r.total,n:r=>r.n,avg:r=>r.avg,starters:r=>r.starters,cap:r=>r.cap||0,rookies:r=>r.rookies}[sort]||(r=>r.total);
+  list.sort((a,b)=>key(b)-key(a)||b.total-a.total);
+  const pool=(d.players||[]).length,withC=rows.reduce((a,r)=>a+r.n,0);
+  let h='<section><h2>'+gl('alumni','Alumni tracker')+'</h2><div class="sub" style="white-space:normal">'+withC+' of the '+pool+' players in this pool have a school on file, from '+rows.length+' colleges. Tap a school for its pipeline.</div>';
+  h+='<div class="opt" style="margin-top:8px">'+[['total','total value'],['starters','starters'],['n','head count'],['avg','value per man'],['cap','draft capital'],['rookies','rookies']].map(x=>'<button data-csort="'+x[0]+'" class="'+(sort===x[0]?'on':'')+'">'+x[1]+'</button>').join('')+'</div>';
+  h+='<div class="opt">'+['ALL','QB','RB','WR','TE'].map(x=>'<button data-cpos="'+x+'" class="'+(f===x?'on':'')+'">'+(x==='ALL'?'every position':x)+'</button>').join('')+'</div>';
+  const top=list.slice(0,12);
+  h+=svgBars({labels:top.map(r=>r.school.replace(/ St\.$/,' St').slice(0,9)),series:[{vals:top.map(r=>Math.round(key(r)*10)/10),cls:'me'}],h:150})+'<div class="sub">top 12 by '+esc({total:'total value per week',n:'players in the pool',avg:'value per player',starters:'players worth starting (6+/wk)',cap:'average draft capital',rookies:'2026 rookies'}[sort]||sort)+'</div></section>';
+  h+='<section><table><tr><th>School</th><th class="n" style="width:44px">Men</th><th class="n" style="width:48px">Start</th><th class="n" style="width:56px">Value</th></tr>'+list.slice(0,state.climit||40).map(r=>'<tr class="tap" data-college="'+esc(r.school)+'"><td style="white-space:normal"><b>'+esc(r.school)+'</b><small style="display:block;color:var(--mute)">'+posMix(r.pos)+' · best '+esc(r.top.name)+(r.mine?' · <b style="color:var(--good)">'+r.mine+' yours</b>':'')+'</small></td><td class="n">'+r.n+'</td><td class="n">'+r.starters+'</td><td class="n"><b>'+f1(r.total)+'</b></td></tr>').join('')+'</table>'
+    +(list.length>(state.climit||40)?'<button class="more" id="cmore">Show more schools</button>':'')+'</section>';
+  return h;
+}
+function renderCollege(d,name){
+  const rows=collegeRows(d);const r=rows.find(x=>x.school===name)||rows.find(x=>x.school.toLowerCase()===String(name||'').toLowerCase());
+  if(!r)return '<section><a class="back" href="#colleges">← Colleges</a><div class="empty">No players from '+esc(name)+' in this pool.</div></section>';
+  const all=rows.slice().sort((a,b)=>b.total-a.total);const rank=all.indexOf(r)+1;
+  const pr=(v,f)=>{const a=rows.map(f).filter(x=>num(x)!==null);return a.length?Math.round(100*a.filter(x=>x<v).length/a.length):0};
+  let h='<section><a class="back" href="'+esc(state.backTo||'#colleges')+'">← Colleges</a><div style="margin-top:8px"><div style="font-size:19px;font-weight:700">'+esc(r.school)+'</div><div class="sub" style="white-space:normal">#'+rank+' of '+rows.length+' schools by total value in this pool · '+r.n+' players · '+posMix(r.pos)+'</div></div>';
+  h+=kv([['Total value','<b>'+f1(r.total)+'</b>/wk'],['Per player',f1(r.avg)+'/wk'],['Worth starting',r.starters+' of '+r.n],['Rostered in the league',r.owned+' of '+r.n+(r.mine?' · <b style="color:var(--good)">'+r.mine+' on your team</b>':'')],['Average draft capital',r.cap!==null?Math.round(r.cap*100)+'%':'—'],['2026 rookies',String(r.rookies)]]);
+  h+='</section>';
+  // what kind of players: position mix and the value each position carries
+  const posV={};r.players.forEach(p=>{posV[p.pos]=(posV[p.pos]||0)+(num(p.value)||0)});
+  const pk=['QB','RB','WR','TE','K','DST'].filter(k=>r.pos[k]);
+  h+='<section><h2>What '+esc(r.school)+' produces</h2>'+svgBars({labels:pk.map(k=>k+' ('+r.pos[k]+')'),series:[{vals:pk.map(k=>Math.round(posV[k]*10)/10),cls:'me'}],h:130})+'<div class="sub">value per week at each position (number of players in brackets)</div>'
+    +'<div class="sub" style="white-space:normal">'+(function(){const best=pk.slice().sort((a,b)=>posV[b]-posV[a])[0];const share=Math.round(100*posV[best]/Math.max(0.01,r.total));return best?'A '+best+' school: '+share+'% of its value in this pool is at '+best+'.':''})()+'</div>';
+  // athletic and draft profile against the other schools
+  const m=(f)=>{const a=r.players.map(f).filter(x=>num(x)!==null&&x>0);return a.length?a.reduce((x,y)=>x+y,0)/a.length:null};
+  const forty=m(p=>num(p.college.forty)),wt=m(p=>num(p.college.weight)),age=m(p=>num(p.college.draftAge));
+  const prof=[];if(forty)prof.push(['Average 40',forty.toFixed(2)+'s']);if(wt)prof.push(['Average weight',Math.round(wt)+' lb']);if(age)prof.push(['Average draft age',age.toFixed(1)]);
+  if(r.cap!==null)prof.push(['Draft capital',Math.round(r.cap*100)+'% · '+pr(r.cap,x=>x.cap)+'th pct of schools']);
+  if(prof.length)h+=kv(prof);
+  h+='</section>';
+  // the pipeline year by year
+  const yrs={};r.players.forEach(p=>{const y=num(p.college.draftYear);if(y)yrs[y]=(yrs[y]||0)+(num(p.value)||0)});
+  const yk=Object.keys(yrs).sort();
+  if(yk.length>1)h+='<section><h2>Pipeline by draft class</h2>'+svgBars({labels:yk,series:[{vals:yk.map(y=>Math.round(yrs[y]*10)/10),cls:'me'}],h:120})+'<div class="sub">value per week in this pool, by the year they came out</div></section>';
+  // the alumni
+  h+='<section><h2>Alumni in the pool</h2>'+r.players.map(p=>{const c=p.college;const dr=num(c.round)?'R'+Math.round(num(c.round))+' '+Math.round(num(c.draftYear)):(num(c.draftYear)?'UDFA '+Math.round(num(c.draftYear)):'');
+    return '<div class="row tapp" data-player="'+esc(p.name)+'">'+face(p.sid,p.team,p.pos)+'<div class="main"><div class="name'+(num(p.owner)===5?' mine':'')+'">'+esc(p.name)+'</div><div class="sub">'+esc(p.pos)+' · '+tl(p.team)+(dr?' · '+esc(dr):'')+(p.ownerName?' · '+tn(p.ownerName):' · FA')+'</div></div><div class="pts"><b>'+f1(p.value)+'</b><small>value</small></div></div>'}).join('')+'</section>';
+  return h;
+}
 function renderSettings(d){
   const t=THEMES.find(x=>x.id===LOOK.theme)||THEMES[0];
   let big=false;try{big=localStorage.getItem('lhc_big')==='1'}catch(e){}
@@ -1977,6 +2058,8 @@ function render(){
   else if(v==="coach")h=renderCoach(d,state.coach);
   else if(v==="dev")h=renderDev(d);
   else if(v==="settings")h=renderSettings(d);
+  else if(v==="colleges")h=renderColleges(d);
+  else if(v==="college")h=renderCollege(d,state.college);
   else if(v==="injuries")h=renderInjuries(d);
   else if(v==="news")h=renderNews(d);
   else h=renderHome(d);
@@ -1984,7 +2067,7 @@ function render(){
   h+=laptopPanel(d);
   $("#app").innerHTML=h;
   crumbFill(d,v);
-  document.querySelectorAll(".nav a").forEach(a=>a.classList.toggle("on",a.dataset.v===(v==="team"||v==="coach"||v==="nfl"?"league":(v==="player"?"players":v))));
+  document.querySelectorAll(".nav a").forEach(a=>a.classList.toggle("on",a.dataset.v===(v==="team"||v==="coach"||v==="nfl"?"league":(v==="player"||v==="colleges"||v==="college"?"players":v))));
   document.querySelectorAll(".ctl button[data-cmd]").forEach(b=>b.addEventListener("click",()=>send(b.dataset.cmd,CMDKEY,b)));
   const ck=$("#cmdsave");if(ck)ck.addEventListener("click",()=>{const v=($("#cmdkey").value||"").trim();if(v){CMDKEY=v;try{localStorage.setItem('lhc_cmd',v)}catch(e){}render()}});
   const cc=$("#cmdclear");if(cc)cc.addEventListener("click",e=>{e.preventDefault();CMDKEY='';try{localStorage.removeItem('lhc_cmd')}catch(e){}render()});
@@ -2001,8 +2084,12 @@ function render(){
     else if(k==='big'){const a=document.getElementById('aa');if(a)a.click();render();return}
     else if(k==='show'){const a=document.getElementById('show');if(a)a.click();return}
     saveLook();applyLook();render()}));
-  document.querySelectorAll("[data-team]").forEach(el=>el.addEventListener("click",()=>{location.hash="#team/"+el.dataset.team}));
-  document.querySelectorAll("[data-player]").forEach(el=>el.addEventListener("click",()=>{location.hash="#player/"+encodeURIComponent(el.dataset.player)}));
+  document.querySelectorAll("[data-college]").forEach(el=>el.addEventListener("click",e=>{if(e.target.closest('a'))return;location.hash="#college/"+encodeURIComponent(el.dataset.college)}));
+  document.querySelectorAll("[data-csort]").forEach(b=>b.addEventListener("click",()=>{state.csort=b.dataset.csort;render()}));
+  document.querySelectorAll("[data-cpos]").forEach(b=>b.addEventListener("click",()=>{state.cpos=b.dataset.cpos;render()}));
+  const cm=$("#cmore");if(cm)cm.addEventListener("click",()=>{state.climit=(state.climit||40)+40;render()});
+  document.querySelectorAll("[data-team]").forEach(el=>el.addEventListener("click",e=>{if(e.target.closest('a,button,select,input'))return;location.hash="#team/"+el.dataset.team}));
+  document.querySelectorAll("[data-player]").forEach(el=>el.addEventListener("click",e=>{if(e.target.closest('a,button,select,input'))return;location.hash="#player/"+encodeURIComponent(el.dataset.player)}));
   const fp=$("#f-pos"),fo=$("#f-owner"),fs=$("#f-sort"),fq=$("#f-q"),mo=$("#more");
   const save=()=>{try{localStorage.setItem("lhc_filters",JSON.stringify(state.filters))}catch(e){}};
   if(fp)fp.addEventListener("change",()=>{state.filters.pos=fp.value;state.limit=60;save();render()});
