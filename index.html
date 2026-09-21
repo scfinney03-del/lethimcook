@@ -417,8 +417,8 @@ function clockText(d){
   // a cycle with the hourly sources pull and the trade engine in it can run long; the page is also
   // served through a cache that can lag a couple of minutes. Say "asleep" only once it is well past.
   if(ms>-420000)return 'updating now… (~'+t+')';
-  if(ms>-900000)return 'update is late (due '+t+') — a long run or a slow refresh, not asleep yet';
-  return 'next update was due '+t+' — laptop may be asleep';
+  if(ms>-900000)return 'update is late (due '+t+') — a long run or a slow refresh';
+  return 'next update was due '+t+' — '+(D&&D.host==='server'?'the server is not answering':'laptop may be asleep');
 }
 function stamp(d){
   const st=$("#stamp");
@@ -426,7 +426,7 @@ function stamp(d){
   let age="";
   if(t){const m=Math.round((Date.now()-t.getTime())/60000);age=m<1?"just now":(m<90?m+" min ago":Math.round(m/60)+" h ago");st.classList.toggle("stale",m>40)}
   const recs=(d.season||[]).filter(s=>!blank(s.record)).map(s=>String(s.record).replace(/\s/g,""));
-  st.innerHTML=esc((d.week?"Week "+d.week+(recs.length?" · "+recs[recs.length-1]:"")+" · ":"")+(d.updated||"")+(age?" ("+age+")":""))+(SHOW?'':'<br><span id="clock" style="font-size:11px">'+esc(clockText(d))+'</span>')+(LIVE.at?'<br><span style="font-size:11px;color:var(--good)">live scores '+esc(LIVE.at.toLocaleTimeString([],{hour:'numeric',minute:'2-digit',second:'2-digit'}))+(anyLiveNow()?' · refreshing every 45 s':'')+'</span>':'');
+  st.innerHTML=esc((d.week?"Week "+d.week+(recs.length?" · "+recs[recs.length-1]:"")+" · ":"")+(d.updated||"")+(age?" ("+age+")":"")+(d.host?" · "+d.host:"")+(d.viaRaw?" ⚡":""))+(SHOW?'':'<br><span id="clock" style="font-size:11px">'+esc(clockText(d))+'</span>')+(LIVE.at?'<br><span style="font-size:11px;color:var(--good)">live scores '+esc(LIVE.at.toLocaleTimeString([],{hour:'numeric',minute:'2-digit',second:'2-digit'}))+(anyLiveNow()?' · refreshing every 45 s':'')+'</span>':'');
 }
 
 
