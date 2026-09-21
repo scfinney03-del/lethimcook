@@ -716,6 +716,7 @@ function managerSection(d,pw){
   if(poss.length){const avg={};poss.forEach(k=>{const v=pwAll.map(x=>x.posValue&&num(x.posValue[k])).filter(v=>v!==null);avg[k]=v.length?v.reduce((a,b)=>a+b,0)/v.length:null});
     const strong=poss.filter(k=>num(avg[k])&&pv[k]>avg[k]*1.15),weak=poss.filter(k=>num(avg[k])&&pv[k]<avg[k]*0.85);
     h+='<section><h2>Where the roster is stacked</h2>'+svgBars({labels:poss,series:[{vals:poss.map(k=>pv[k]),cls:'me',clsAt:poss.map(k=>strong.indexOf(k)>=0?'good':(weak.indexOf(k)>=0?'bad':''))},{vals:poss.map(k=>avg[k]),cls:'them'}],h:130,legend:[['me','this roster'],['them','league average'],['good','surplus'],['bad','thin']]})+'<div class="sub" style="white-space:normal">Total value per week by position. '+(!me&&strong.length?'<b>Surplus:</b> '+strong.join(', ')+' — ask for one of these. ':'')+(!me&&weak.length?'<b>Thin:</b> '+weak.join(', ')+' — what they\'ll be shopping for.':'')+'</div></section>';}
+  h+=teamStats(d,pw);
   const vs=(pw.vsMe||[]);
   if(!me&&vs.length){const w=vs.filter(x=>num(x.my)>num(x.their)).length;h+='<section><h2>Head to head with you</h2><div class="sub" style="white-space:normal">You are '+w+'-'+(vs.length-w)+' against '+esc(pw.manager)+' this season.</div><table><tr><th>Wk</th><th class="n">You</th><th class="n">'+esc(pw.manager)+'</th></tr>'+vs.map(x=>'<tr><td>'+x.week+'</td><td class="n '+(num(x.my)>num(x.their)?'win':'loss')+'">'+f1(x.my)+'</td><td class="n">'+f1(x.their)+'</td></tr>').join('')+'</table></section>';}
   const up=(d.schedule||[]).filter(s=>s.manager===pw.manager&&num(s.week)>=num(d.week));
@@ -1572,6 +1573,7 @@ const GLOSS={
  next3:['Next 3','How friendly his next three defenses are to his position, as a multiplier. 1.0 is average, 1.2 means those defenses give up 20% more than normal to his position, 0.8 means they are tough.'],
  buzz:['Buzz','Net tone of the last 72 hours of news about him, from our keyword list. Negative is bad news piling up, positive is good news. It is a nudge, not a projection.'],
  linemove:['Line move','How far the betting line has shifted since the week opened, in points. Money moves for a reason — a line sliding toward a team usually means the market learned something (a starter is out, weather turned) before the injury reports and projections catch up. A move of 2 points or more is worth a look.'],
+ teamstats:['Team stats','This team against the league: projected points this week, rest-of-season power (best lineup by value, every remaining week), bench value, points for and against, each with the league average and the team\'s rank among the 12. Green bars are top four, red bottom four.'],
  tradecalc:['Trade calculator','Pick who you are trading with, who asked, and tick the players on each side. Roster value is the best starting nine by value plus 30% of the bench, for both teams before and after. The grade leans on your roster-value change, adds rest of season and this week, takes off for injury risk and for any position the trade leaves empty. "Would they accept" compares their loss against how much rope they have: the side that asked wants it more.'],
  tenure:['Coach tenure','Seasons with the team, his rank among the 32 (head coaches by win% with the team; coordinators by what their unit scored or allowed last full season), and a survival model: head coaches leave at about one in five a year, less with a winning record, playoff games and a long run, more with a losing record or a bad current season. Coordinators leave both ways - fired when the unit is bad, hired away when it is great. Expected seasons left is one over that yearly chance, capped at seven.'],
  wxtol:['Weather tolerance','His scoring in windy (15+ mph), wet and cold (35F or under) games against his calm-day average, using the real weather at every kickoff since 2024. When this week\'s forecast matches one of those, the weather adjustment uses his own rate, trusted in proportion to how many games back it up, instead of a one-size-fits-all cut for his position.'],
@@ -2180,6 +2182,29 @@ function renderTradeCalc(d){
   }
   h+='<div class="opt" style="margin-top:8px"><button data-tcclear="1">Clear</button></div></section>';
   return h;
+}
+
+// ---------------- TEAM STATS: one league team against the other eleven ----------------
+function teamStats(d,pw){
+  const all=(d.power||[]);if(!all.length||!pw)return '';
+  const N=all.length;const rk=(key,desc)=>{const arr=all.map(x=>num(x[key])).filter(x=>x!==null);const v=num(pw[key]);if(v===null)return null;const better=arr.filter(x=>desc?x>v:x<v).length;return better+1};
+  const avg=key=>{const a=all.map(x=>num(x[key])).filter(x=>x!==null);return a.length?a.reduce((p,q)=>p+q,0)/a.length:null};
+  const adds=x=>num(x.activity&&x.activity.adds)||0,drops=x=>num(x.activity&&x.activity.drops)||0;
+  const rows=[['This week (projected)',pw.week,avg('week'),rk('week',true)],['Rest-of-season power',pw.ros,avg('ros'),rk('ros',true)],['Bench value',pw.bench,avg('bench'),rk('bench',true)],['Points for',pw.pf,avg('pf'),rk('pf',true)],['Points against',pw.pa,avg('pa'),rk('pa',false)]].filter(r=>num(r[1])!==null);
+  let h='<section><h2>'+gl('teamstats','Team stats')+' · '+esc(pw.name)+'</h2>';
+  h+=svgBars({labels:rows.map(r=>r[0].replace(' (projected)','').replace('Rest-of-season','ROS')),series:[{vals:rows.map(r=>r[1]),cls:'me',clsAt:rows.map(r=>r[3]!==null&&r[3]<=4?'good':(r[3]!==null&&r[3]>=N-3?'bad':''))},{vals:rows.map(r=>r[2]),cls:'them'}],h:140,legend:[['me','this team'],['them','league average'],['good','top 4'],['bad','bottom 4']]});
+  h+='<table><tr><th>Stat</th><th class="n">Team</th><th class="n">League avg</th><th class="n">Rank</th></tr>'+rows.map(r=>'<tr><td>'+esc(r[0])+'</td><td class="n"><b>'+f1(r[1])+'</b></td><td class="n">'+f1(r[2])+'</td><td class="n">'+(r[3]!==null?'#'+r[3]+' of '+N:'')+'</td></tr>').join('')
+    +'<tr><td>Record · standing</td><td class="n"><b>'+esc(pw.record||'')+'</b></td><td class="n"></td><td class="n">'+(num(pw.standing)?'#'+Math.round(pw.standing):'')+'</td></tr>'
+    +'<tr><td>Moves (adds / drops)</td><td class="n"><b>'+adds(pw)+' / '+drops(pw)+'</b></td><td class="n">'+f1(all.reduce((a,x)=>a+adds(x),0)/N)+' / '+f1(all.reduce((a,x)=>a+drops(x),0)/N)+'</td><td class="n"></td></tr></table>';
+  // every team on rest-of-season power, this one lit up
+  const srt=all.slice().sort((a,b)=>(num(b.ros)||0)-(num(a.ros)||0));
+  h+='<div class="sub" style="font-weight:600;margin-top:10px">Rest-of-season power, all '+N+' teams</div>'+svgBars({labels:srt.map(x=>String(x.manager||x.name).slice(0,7)),series:[{vals:srt.map(x=>num(x.ros)),cls:'me',clsAt:srt.map(x=>String(x.team)===String(pw.team)?'good':(isMine(x.name)?'warn':'them'))}],h:130,legend:[['good','this team'],['warn','you'],['them','the rest']]});
+  const srt2=all.slice().sort((a,b)=>(num(b.pf)||0)-(num(a.pf)||0));
+  if(num(pw.pf))h+='<div class="sub" style="font-weight:600;margin-top:10px">Points scored so far, all '+N+' teams</div>'+svgBars({labels:srt2.map(x=>String(x.manager||x.name).slice(0,7)),series:[{vals:srt2.map(x=>num(x.pf)),cls:'me',clsAt:srt2.map(x=>String(x.team)===String(pw.team)?'good':(isMine(x.name)?'warn':'them'))}],h:130});
+  // the week-by-week record of the team: projected starters and ROS power at each check-in
+  const hist=(pw.history||[]).filter(x=>num(x.week)!==null);
+  if(hist.length>1)h+='<div class="sub" style="font-weight:600;margin-top:10px">Points for, week by week</div>'+svgBars({labels:hist.map(x=>'wk'+x.week),series:[{vals:hist.map((x,i)=>i?(num(x.pf)||0)-(num(hist[i-1].pf)||0):num(x.pf)),cls:'me'}],h:120});
+  return h+'</section>';
 }
 function renderSettings(d){
   const t=THEMES.find(x=>x.id===LOOK.theme)||THEMES[0];
