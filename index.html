@@ -169,14 +169,14 @@ circle.d{fill:var(--them);opacity:.75}circle.d.me{fill:var(--good);opacity:1}cir
 .lg{background:var(--them)}.lg.me{background:var(--me)}.lg.them{background:var(--them)}.lg.proj{background:var(--proj);opacity:1}.lg.fa{background:var(--fa)}
 path.ln{stroke:var(--me)}path.ln.them{stroke:var(--them)}path.ln.proj{stroke:var(--proj);opacity:1}circle.pt{fill:var(--me)}circle.pt.them{fill:var(--them)}circle.pt.proj{fill:var(--proj)}
 polygon.rad{fill:var(--me);fill-opacity:.25;stroke:var(--me);stroke-width:2}polygon.rad.me{fill:var(--good);stroke:var(--good)}circle.radp{fill:var(--me)}
-.nav{grid-template-columns:repeat(6,1fr);gap:3px}.nav a{font-size:12px;padding:8px 2px}
+.nav{grid-template-columns:repeat(4,1fr);gap:3px}.nav a{font-size:12px;padding:8px 2px}
 .search{position:relative;margin:0 0 10px}.search input{font:inherit;font-size:15px;width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
 .search #gsr{display:none;position:absolute;left:0;right:0;top:44px;background:var(--card);border:1px solid var(--line);border-radius:10px;z-index:20;box-shadow:0 6px 20px rgba(0,0,0,.15);max-height:60vh;overflow:auto}
 .hit{display:flex;gap:10px;align-items:center;padding:8px 10px;border-top:1px solid var(--line);text-decoration:none;color:inherit}.hit:first-child{border-top:0}
 .face{border-radius:50%;object-fit:cover;background:var(--chip)}
 .hdrbtns{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .aa.show{font-weight:600}.aa.on{background:var(--acc);color:#fff;border-color:var(--acc)}
-body.big .nav{grid-template-columns:repeat(3,1fr)}body.big .nav a{font-size:18px}
+body.big .nav{grid-template-columns:repeat(4,1fr)}body.big .nav a{font-size:18px}
 body.big polygon.rad{stroke-width:3.5}
 .ch rect.b.good{fill:var(--good)}.ch rect.b.bad{fill:var(--bad)}.ch rect.b.warn{fill:var(--warn)}
 .vs .face{width:22px;height:22px;flex-basis:22px;vertical-align:middle;margin:0 3px}body.big .search input{font-size:19px;padding:12px}
@@ -295,7 +295,7 @@ body.big .wchip{font-size:17px;padding:8px 14px}
 </head>
 <body>
 <header><div><h1>Let Him Cook</h1><div class="hdrbtns"><button class="aa" id="aa" title="Easy-read mode: bigger text, higher contrast" aria-pressed="false">Aa</button><a class="aa" id="devbtn" href="#settings" title="Settings">⚙</a><button class="aa show" id="show" title="Hide the private stuff when showing others">Show mode</button></div></div><div class="stamp" id="stamp">loading…</div></header>
-<div class="stick"><nav class="nav"><a href="#home" data-v="home">Home</a><a href="#matchups" data-v="matchups">Matchups</a><a href="#league" data-v="league">League</a><a href="#players" data-v="players">Players</a><a href="#games" data-v="games">Games</a><a href="#injuries" data-v="injuries">Injuries</a><a href="#news" data-v="news">News</a></nav><div class="crumb" id="crumb"></div></div>
+<div class="stick"><nav class="nav"><a href="#home" data-v="home">Home</a><a href="#matchups" data-v="matchups">Matchups</a><a href="#league" data-v="league">League</a><a href="#players" data-v="players">Players</a><a href="#games" data-v="games">Games</a><a href="#injuries" data-v="injuries">Injuries</a><a href="#news" data-v="news">News</a><a href="#tradecalc" data-v="tradecalc">Trade</a></nav><div class="crumb" id="crumb"></div></div>
 <div class="search"><input id="gs" type="search" placeholder="Search players, teams, managers" autocomplete="off"><div id="gsr"></div></div>
 <div id="app"><section><div class="empty">Waiting for the first refresh…</div></section></div>
 <footer>Updates every 5 minutes while the laptop is on. Pull down to reload the page.</footer>
@@ -560,8 +560,8 @@ function renderHome(d){
       return '<div class="row" style="padding:8px 0"><div class="main" style="white-space:normal"><div class="name">'+(i+1)+'. '+mg(x.partner)+' <small style="color:var(--mute)">'+teamLink(x.teamName)+'</small></div>'
         +'<div style="margin:2px 0">Give <b>'+String(x.give).split(" + ").map(pl).join(" + ")+'</b> · get <b>'+String(x.get).split(" + ").map(pl).join(" + ")+'</b></div>'
         +'<div class="sub" style="white-space:normal">You <b style="color:var(--good)">+'+f1(x.myGain)+'/wk</b> (lineup +'+f1(x.lineupGain)+') · them <b style="color:'+(num(x.theirGain)>=0?'var(--good)':'var(--bad)')+'">'+(num(x.theirGain)>=0?'+':'')+f1(x.theirGain)+'</b>'+(num(x.myWeek)!==null&&Math.abs(x.myWeek)>=1?' · this week '+(x.myWeek>0?'+':'')+f1(x.myWeek):'')+(blank(x.h2h)?'':' · you play them wk '+esc(x.h2h))+'</div>'
-        +'<div class="sub" style="white-space:normal"><span class="flag'+(ok?' good':'')+'">'+esc(x.ask)+'</span> · '+esc(x.timing)+'</div></div></div>'}).join("")
-      +'<div class="sub" style="white-space:normal;margin-top:6px">Every 1-for-1, 2-for-1 and 1-for-2 across the league, scored by best-lineup value per week on both sides, adjusted for the weeks you play the partner and each player\'s next three defenses. Only trades that raise your starting lineup are listed.</div></section>';
+        +'<div class="sub" style="white-space:normal"><span class="flag'+(ok?' good':'')+'">'+esc(x.ask)+'</span> · '+esc(x.timing)+(num(x.threat)!==null?' · threat '+Math.round(num(x.threat)*100)+'%':'')+'</div></div></div>'}).join("")
+      +'<div class="sub" style="white-space:normal;margin-top:6px">Every 1-for-1, 2-for-1 and 1-for-2 across the league, scored by best-lineup value per week on both sides, adjusted for the weeks you play the partner, how big a threat that team is to your season, and each player\'s next three defenses. Nothing is listed unless it helps you more than it helps them. Only trades that raise your starting lineup are listed.</div></section>';
   }
 
   const rm=SHOW?[]:(d.rivalMoves||[]);
@@ -1574,7 +1574,7 @@ const GLOSS={
  buzz:['Buzz','Net tone of the last 72 hours of news about him, from our keyword list. Negative is bad news piling up, positive is good news. It is a nudge, not a projection.'],
  linemove:['Line move','How far the betting line has shifted since the week opened, in points. Money moves for a reason — a line sliding toward a team usually means the market learned something (a starter is out, weather turned) before the injury reports and projections catch up. A move of 2 points or more is worth a look.'],
  teamstats:['Team stats','This team against the league: projected points this week, rest-of-season power (best lineup by value, every remaining week), bench value, points for and against, each with the league average and the team\'s rank among the 12. Green bars are top four, red bottom four.'],
- tradecalc:['Trade calculator','Pick who you are trading with, who asked, and tick the players on each side. Roster value is the best starting nine by value plus 30% of the bench, for both teams before and after. The grade leans on your roster-value change, adds rest of season and this week, takes off for injury risk and for any position the trade leaves empty. "Would they accept" compares their loss against how much rope they have: the side that asked wants it more.'],
+ tradecalc:['Trade calculator','Pick who you are trading with, who asked, and tick the players on each side. Roster value is the best starting nine by value plus 30% of the bench, for both teams before and after. The grade leans on your roster-value change, adds rest of season and this week, takes off for injury risk, for any position the trade leaves empty, and for what the other side gains weighted by how big a threat they are (roster strength, standing, and how many more times you play them). A trade that helps them more than you is never recommended, whatever else it does. "Would they accept" compares their loss against how much rope they have: the side that asked wants it more.'],
  tenure:['Coach tenure','Seasons with the team, his rank among the 32 (head coaches by win% with the team; coordinators by what their unit scored or allowed last full season), and a survival model: head coaches leave at about one in five a year, less with a winning record, playoff games and a long run, more with a losing record or a bad current season. Coordinators leave both ways - fired when the unit is bad, hired away when it is great. Expected seasons left is one over that yearly chance, capped at seven.'],
  wxtol:['Weather tolerance','His scoring in windy (15+ mph), wet and cold (35F or under) games against his calm-day average, using the real weather at every kickoff since 2024. When this week\'s forecast matches one of those, the weather adjustment uses his own rate, trusted in proportion to how many games back it up, instead of a one-size-fits-all cut for his position.'],
  alumni:['Alumni tracker','Every player in the pool grouped by the college he came from. A school\'s total is the sum of its players\' value per week, so it rewards schools that keep sending starters, not just bodies. Draft capital is the average of where its men were picked (100% = first overall).'],
@@ -1974,7 +1974,7 @@ function crumbFill(d,v){
   else if(v==='dev')trail=A('Settings','#settings')+sep+P('Engine room');
   else if(v==='settings')trail=P('Settings');
   else if(v==='colleges')trail=A('Players','#players')+sep+P('Colleges');
-  else if(v==='tradecalc')trail=A('Home','#home')+sep+P('Trade calculator');
+  else if(v==='tradecalc')trail=P('Trade calculator');
   else if(v==='college'){deep=true;trail=A('Colleges',up('#colleges'))+sep+P(state.college);}
   else if(v==='team'){deep=true;const t=(d.power||[]).find(x=>String(x.team)===String(state.team))||{};
     trail=A('League',up('#league'))+sep+P((t.manager||'Team')+(t.name?' · '+t.name:''));}
@@ -2135,10 +2135,20 @@ function tcEval(d,mine,theirs,give,get,asked){
   R.timing=[];const sched=(d.schedule||[]);const pt=theirs[0]?theirs[0].teamName:'';const vs=sched.find(x=>x.opp===pt&&num(x.week)>=cw);if(vs)R.timing.push('you play '+(mgrOf(d,pt)||pt)+' in week '+vs.week+(num(vs.week)===cw?' - this week':''));
   gi.forEach(r=>{const p=findPlayer(r.player);const n3=(p&&p.next3)||[];if(n3.length>=2){const soft=n3.filter(x=>num(x.allowed)!==null&&num(x.allowed)>=(num(p.histUsed)||num(p.proj)||0)*1.15).length;if(soft>=2)R.timing.push(r.player+' has '+soft+' of his next 3 against soft defenses - selling before his best stretch')}});
   ge.forEach(r=>{const p=findPlayer(r.player);const n3=(p&&p.next3)||[];if(n3.length>=2){const hard=n3.filter(x=>num(x.allowed)!==null&&num(x.allowed)<=(num(p.histUsed)||num(p.proj)||0)*0.85).length;if(hard>=2)R.timing.push(r.player+' faces '+hard+' tough defenses in his next 3 - the price may drop if you wait')}});
+  // how big a threat this team is to your season: roster strength rank and standing, blended
+  const pw=(d.power||[]).find(x=>x.name===pt)||{};const N=(d.power||[]).length||12;
+  const rr=num(pw.rankRos),sr=num(pw.standing);
+  R.threat=(rr!==null?0.6*(1-(rr-1)/Math.max(1,N-1)):0.3)+(sr!==null?0.4*(1-(sr-1)/Math.max(1,N-1)):0.2);
+  R.threatRank=rr;R.threatStand=sr;
+  const left=Math.max(1,16-cw+1);const h2hN=sched.filter(x=>x.opp===pt&&num(x.week)>=cw).length;R.h2hN=h2hN;
+  R.threatAdj=-(0.6*R.threat+h2hN/left)*Math.max(0,R.gainThem);
   // the verdict
-  let score=R.gainMe*1.0+R.rosMe*0.15+R.wkMe*0.1-R.meInj*0.5;
+  let score=R.gainMe*1.0+R.rosMe*0.15+R.wkMe*0.1-R.meInj*0.5+R.threatAdj;
   if(R.holes.some(h=>/nobody/.test(h)))score-=3;
-  let v,cls;if(!gi.length&&!ge.length){v='Pick players';cls='warn'}else if(score>=2){v='Do it';cls='good'}else if(score>=0.8){v='Lean yes';cls='good'}else if(score>=-0.5){v='About even';cls='warn'}else if(score>=-2){v='Lean no';cls='bad'}else{v='No';cls='bad'}
+  // "better for you than them" on the same composite both ways: roster value, rest of season, this week
+  R.meTot=R.gainMe+0.15*R.rosMe+0.1*R.wkMe;R.thTot=R.gainThem+0.15*R.rosThem+0.1*R.wkThem;
+  R.helpsThem=(gi.length||ge.length)&&R.thTot>=R.meTot;
+  let v,cls;if(!gi.length&&!ge.length){v='Pick players';cls='warn'}else if(R.helpsThem){v=R.thTot-R.meTot>1?'No - helps them more':'Lean no - helps them more';cls='bad'}else if(score>=2){v='Do it';cls='good'}else if(score>=0.8){v='Lean yes';cls='good'}else if(score>=-0.5){v='About even';cls='warn'}else if(score>=-2){v='Lean no';cls='bad'}else{v='No';cls='bad'}
   R.score=score;R.verdict=v;R.cls=cls;
   return R;
 }
@@ -2168,7 +2178,10 @@ function renderTradeCalc(d){
       ['Rest of season, your lineup','<b style="'+col(R.rosMe)+'">'+sg(R.rosMe)+'</b> per week'],
       ['Injury risk taken on',R.meInj>0.05?'<b style="color:var(--bad)">'+f1(R.meInj)+'/wk</b> of value sits on hurt players':'<span class="sub">none</span>'],
       ['Would they accept?','<b style="color:'+(R.accept?'var(--good)':'var(--bad)')+'">'+(R.accept?'Likely':'Unlikely')+'</b> <small class="sub">they '+(R.gainThem>=0?'gain':'lose')+' '+f1(Math.abs(R.gainThem))+'/wk; '+(TC.asked==='them'?'they asked, so they will wear up to 2.0':(TC.asked==='me'?'you asked, so they want it close to even':'nobody asked yet, about 1.0 of rope'))+'</small>'],
-      ['Roster spots',R.dropMe?'you must drop '+R.dropMe+' player'+(R.dropMe>1?'s':''):(R.dropThem?'they must drop '+R.dropThem:'even swap')]]);
+      ['Roster spots',R.dropMe?'you must drop '+R.dropMe+' player'+(R.dropMe>1?'s':''):(R.dropThem?'they must drop '+R.dropThem:'even swap')],
+      ['Threat level','<b style="color:'+(R.threat>=0.66?'var(--bad)':(R.threat>=0.4?'var(--warn)':'var(--good)'))+'">'+Math.round(R.threat*100)+'%</b> <small class="sub">'+(R.threatRank?'#'+R.threatRank+' roster':'')+(R.threatStand?' · #'+R.threatStand+' in standings':'')+(R.h2hN?' · you play them '+R.h2hN+' more time'+(R.h2hN>1?'s':''):' · not on your schedule')+'</small>'],
+      ['Cost of helping them',R.threatAdj<-0.05?'<b style="color:var(--bad)">'+f1(R.threatAdj)+'</b> <small class="sub">their gain, weighted by threat and head-to-head weeks</small>':'<span class="sub">none - they do not gain</span>'],
+      ['Better for you than them?','<b style="color:'+(R.helpsThem?'var(--bad)':'var(--good)')+'">'+(R.helpsThem?'No':'Yes')+'</b> <small class="sub">all-in (value, rest of season, this week): you '+(R.meTot>=0?'+':'')+f1(R.meTot)+' vs them '+(R.thTot>=0?'+':'')+f1(R.thTot)+' - a trade is never recommended unless you come out ahead of them</small>']]);
     h+=svgBars({labels:['Roster value','This week','Rest of season'],series:[{vals:[R.gainMe,R.wkMe,R.rosMe],cls:'me'},{vals:[R.gainThem,R.wkThem,R.rosThem],cls:'them'}],h:130,legend:[['me','you'],['them',pt.manager||'them']]});
     if(R.in.length||R.out.length)h+='<div class="sub" style="white-space:normal;margin-top:6px"><b>Your best nine:</b> '+(R.in.length?'in: '+R.in.map(pl).join(', '):'')+(R.in.length&&R.out.length?' · ':'')+(R.out.length?'out: '+R.out.map(pl).join(', '):'')+'</div>';
     if(R.holes.length)h+='<div class="sub" style="white-space:normal;margin-top:4px"><b style="color:var(--bad)">Depth after the trade:</b> '+R.holes.join(', ')+'</div>';
