@@ -2510,8 +2510,19 @@ function send(cmd,topic,btn){
     flash(btn,r.ok?'sent':'failed',r.ok?'Sent ✓':'Failed',2600);
   }).catch(()=>{if(m)m.textContent="Couldn't send — no connection.";flash(btn,'failed','No connection',2600);});
 }
+// The page is served by GitHub Pages, which rebuilds the site after every publish - usually a
+// minute, sometimes ten when their queue is busy. The raw file on GitHub itself skips that build
+// (it lags at most about five minutes), so fetch both and keep whichever is newer.
+const RAW_URL=(location.hostname.indexOf('github.io')>=0&&D0RAW())||'';
+function D0RAW(){const m=/^([^.]+)\.github\.io$/.exec(location.hostname);const seg=location.pathname.split('/').filter(x=>x);if(!m||!seg.length)return '';return 'https://raw.githubusercontent.com/'+m[1]+'/'+seg[0]+'/main/data.json'}
+function fetchJ(u){return fetch(u,{cache:"no-store"}).then(r=>{if(!r.ok)throw 0;return r.json()})}
 function load(){
-  fetch("data.json?v="+Date.now(),{cache:"no-store"}).then(r=>{if(!r.ok)throw 0;return r.json()}).then(d=>{D=d;try{localStorage.setItem("lhc",JSON.stringify(d))}catch(e){}if(LIVE.stats&&LIVE.at&&(Date.now()-LIVE.at.getTime())<180000)applyLive();render();liveTick(true);try{flushTLOG()}catch(e){}})
+  const local=fetchJ("data.json?v="+Date.now());
+  const raw=RAW_URL?fetchJ(RAW_URL+"?v="+Date.now()).catch(()=>null):Promise.resolve(null);
+  Promise.all([local.catch(()=>null),raw]).then(([a,b])=>{
+    const t=x=>x&&x.updatedIso?new Date(x.updatedIso).getTime():(x?0:-1);
+    let d=a;if(b&&t(b)>t(a)){d=b;d.viaRaw=true}
+    if(!d)throw 0;return d}).then(d=>{D=d;try{localStorage.setItem("lhc",JSON.stringify(d))}catch(e){}if(LIVE.stats&&LIVE.at&&(Date.now()-LIVE.at.getTime())<180000)applyLive();render();liveTick(true);try{flushTLOG()}catch(e){}})
   .catch(()=>{try{const c=localStorage.getItem("lhc");if(c&&!D){D=JSON.parse(c);render();$("#stamp").textContent+=" · offline copy"}else if(!D){$("#stamp").textContent="no data yet"}}catch(e){$("#stamp").textContent="no data yet"}});
 }
 (function(){const inp=document.getElementById('gs'),box=document.getElementById('gsr');if(!inp)return;
