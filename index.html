@@ -360,12 +360,25 @@ function stamp(d){
 // ---------------- CHARTS (inline SVG, bars + one scatter) ----------------
 function svgBars(o){ // o: {labels:[], series:[{vals:[],cls:'',name:''}], line:{v,label}, h}
   const W=360,H=o.h||150,L=30,B=22,T=10,R=6;const n=o.labels.length;if(!n)return '';
-  const all=[].concat.apply([],o.series.map(s=>s.vals.map(v=>num(v)||0))).concat([o.line?num(o.line.v)||0:0,1]);
-  const mx=Math.max.apply(null,all)*1.08;const sc=v=>(H-B)-((H-B-T)*(Math.max(0,num(v)||0)/mx));
+  const all=[].concat.apply([],o.series.map(s=>s.vals.map(v=>num(v)||0))).concat(o.line?[num(o.line.v)||0]:[]);
+  // negative values used to be clamped to zero, which drew an empty chart for anything that only
+  // goes down (the adjustment percentages, for one). Keep a real zero line and let bars hang below it.
+  const hi=Math.max.apply(null,all),lo=Math.min.apply(null,all);
+  const mx=(hi>0?hi*1.08:0),mn=(lo<0?lo*1.08:0),span=(mx-mn)||1;
+  const sc=v=>(H-B)-((H-B-T)*(((num(v)||0)-mn)/span));
   const gw=(W-L-R)/n,bw=Math.max(2,(gw-4)/o.series.length);
   let h='<svg class="ch" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" style="width:100%;height:'+H+'px;display:block">';
-  [0,0.5,1].forEach(t=>{const y=sc(mx/1.08*t);h+='<line x1="'+L+'" y1="'+y+'" x2="'+(W-R)+'" y2="'+y+'" stroke="var(--line)" stroke-width="1"/><text x="'+(L-4)+'" y="'+(y+4)+'" font-size="9" text-anchor="end" fill="var(--mute)">'+Math.round(mx/1.08*t)+'</text>'});
-  o.series.forEach((s,si)=>{s.vals.forEach((v,i)=>{if(num(v)===null)return;const x=L+i*gw+2+si*bw,y=sc(v);h+='<rect class="b '+(s.cls||'')+(s.clsAt&&s.clsAt[i]?' '+s.clsAt[i]:'')+'" x="'+x+'" y="'+y+'" width="'+bw+'" height="'+((H-B)-y)+'" rx="2"/>'})});
+  const gv=(mn<0&&mx>0)?[mn/1.08,0,mx/1.08]:(mn<0?[mn/1.08,mn/2/1.08,0]:[0,mx/1.08/2,mx/1.08]);
+  // on a small range every gridline rounds to the same number and the labels sit on top of
+  // each other, so show a decimal there and never print the same label twice
+  const gfmt=v=>(Math.abs(mx-mn)<5?f1(v):String(Math.round(v)));let gprev=null;
+  gv.forEach(val=>{const y=sc(val),lab=gfmt(val);
+    h+='<line x1="'+L+'" y1="'+y+'" x2="'+(W-R)+'" y2="'+y+'" stroke="var(--line)" stroke-width="'+(val===0&&mn<0?1.5:1)+'"/>';
+    if(lab!==gprev){h+='<text x="'+(L-4)+'" y="'+(y+4)+'" font-size="9" text-anchor="end" fill="var(--mute)">'+lab+'</text>';gprev=lab}});
+  const z=sc(0);
+  o.series.forEach((s,si)=>{s.vals.forEach((v,i)=>{if(num(v)===null)return;const x=L+i*gw+2+si*bw,y=sc(v);
+    const top=Math.min(y,z),ht=Math.max(1,Math.abs(y-z));
+    h+='<rect class="b '+(s.cls||'')+(s.clsAt&&s.clsAt[i]?' '+s.clsAt[i]:'')+'" x="'+x+'" y="'+top+'" width="'+bw+'" height="'+ht+'" rx="2"/>'})});
   if(o.line&&num(o.line.v)!==null){const y=sc(o.line.v);h+='<line x1="'+L+'" y1="'+y+'" x2="'+(W-R)+'" y2="'+y+'" stroke="var(--warn)" stroke-width="1.5" stroke-dasharray="4 3"/><text x="'+(W-R)+'" y="'+(y-3)+'" font-size="9" text-anchor="end" fill="var(--warn)">'+esc(o.line.label||'')+'</text>'}
   const wMax=Math.max.apply(null,o.labels.map(l=>String(l).length*5.6+6).concat([1])),stepB=Math.max(1,Math.ceil(wMax/Math.max(1,gw)));
   o.labels.forEach((l,i)=>{if(stepB>1&&i%stepB)return;h+='<text x="'+(L+i*gw+gw/2)+'" y="'+(H-6)+'" font-size="9" text-anchor="middle" fill="var(--mute)">'+esc(l)+'</text>'});
@@ -669,7 +682,12 @@ function renderPlayer(d,name){
   if(g.opp){h+='<div style="display:flex;justify-content:space-between;align-items:center"><div><b>'+(g.ha==='Home'?'v ':'@ ')+esc(g.opp)+'</b> <span class="sub">'+esc(g.kick)+'</span> '+gamePill(g.status)+'</div><div class="pts">'+(num(g.live)!==null&&/progress|final/i.test(g.status)?'<b>'+f1(g.live)+'</b><small>live</small>':'<b>'+f1(p.proj)+'</b><small>proj</small>')+'</div></div>';
     h+=kv([['Implied team total',num(g.implied)!==null?f1(g.implied)+' pts <small style="color:var(--mute)">(spread '+esc(g.spread)+', total '+esc(g.total)+')</small>':''],['Air / altitude',[num(g.aqi)!==null?'air '+aqiTxt(g.aqi):'',num(g.altitude)?'⛰️ '+Math.round(g.altitude).toLocaleString()+' ft'+(g.altitude>=5000?' — Denver altitude; check his Denver split below':''):''].filter(x=>x).join(' · ')],['Weather',blank(g.impact)?'':wxIcon(g.impact)+' <span class="'+(/wind|rain|cold/i.test(g.impact)?'flag':'')+'">'+esc(g.impact)+'</span>'+(blank(g.cond)?'':' <small style="color:var(--mute)">'+esc(g.cond)+'</small>')]]);}
   else h+='<div class="sub">Bye week.</div>';
-  const src=p.sources||{}; const sk=Object.keys(src);
+  const src=p.sources||{}; const sk=Object.keys(src).filter(k=>num(src[k])>0);
+  if(!sk.length){
+    const why=(p.inj&&p.inj.status)?('He is '+esc(p.inj.status)+(p.inj.part?' ('+esc(p.inj.part)+(p.inj.note?', '+esc(p.inj.note):'')+')':'')):'He is not in this week\'s plans';
+    h+='<div class="sub" style="white-space:normal;margin-top:8px">No source is projecting him this week. '+why+', so there is nothing to average and his week shows as zero. '
+      +(num(p.value)!==null?'His <b>'+f1(p.value)+'</b> a week of '+gl('value','value')+' is the number that still matters — that is what he is worth when he plays again.':'')+'</div>';
+  }
   if(sk.length){const mx=Math.max.apply(null,sk.map(k=>num(src[k])||0).concat([num(p.cons)||0,1]));
     h+='<div style="margin-top:8px"><b>Consensus '+f1(p.cons)+'</b> <small style="color:var(--mute)">'+p.nsrc+' sources'+(num(p.spread)!==null?', spread '+f1(p.spread):'')+(num(p.avail)!==null&&p.avail<1?', × availability = '+f1(p.proj):'')+'</small></div>';
     const ks=sk.sort((a,b)=>(num(src[b])||0)-(num(src[a])||0));
@@ -1169,12 +1187,14 @@ function defUnit(u,heading,intro){
 function envSection(p){
   const e=p.env||{};const t=num(e.total);
   if(t===null)return '';
-  const parts=[['wx','Weather',e.wx],['ha','Home / away',e.ha],['matchup','This defence',e.matchup],['dmen','Defenders out',e.dmen],['alt','Altitude',e.alt],['vegas','Game script',e.vegas]].filter(x=>num(x[2])!==null);
+  const parts=[['wx','Weather',e.wx,'Weather'],['ha','Home / away',e.ha,'Home'],['matchup','This defence',e.matchup,'Defence'],['dmen','Defenders out',e.dmen,'Injured'],['alt','Altitude',e.alt,'Altitude'],['vegas','Game script',e.vegas,'Script']].filter(x=>num(x[2])!==null);
   if(!parts.length&&Math.abs(t-1)<0.005)return '';
   const pc=v=>((v-1)*100>=0?'+':'')+Math.round((v-1)*100)+'%';
   let h='<section><h2>'+gl('adjust','Adjustments')+' on this week</h2>';
-  h+='<div class="sub" style="white-space:normal">Sources say <b>'+f1(p.cons)+'</b>'+(num(p.avail)<1?' · health ×'+f1(p.avail):'')+' · conditions <b style="color:'+(t>=1?'var(--good)':'var(--bad)')+'">'+pc(t)+'</b> → <b>'+f1(p.proj)+'</b> projected.</div>';
-  if(parts.length)h+=svgBars({labels:parts.map(x=>x[1].split(' ')[0]),series:[{vals:parts.map(x=>Math.round((num(x[2])-1)*100)),cls:'me',clsAt:parts.map(x=>num(x[2])>=1?'good':'bad')}],h:110})
+  h+=(num(p.cons)===null
+    ? '<div class="sub" style="white-space:normal">No source has a number for him this week, so there is nothing to adjust. The percentages below are what this week\'s conditions <i>would</i> do to him if he played.</div>'
+    : '<div class="sub" style="white-space:normal">Sources say <b>'+f1(p.cons)+'</b>'+(num(p.avail)<1?' · health ×'+f1(p.avail):'')+' · conditions <b style="color:'+(t>=1?'var(--good)':'var(--bad)')+'">'+pc(t)+'</b> → <b>'+f1(p.proj)+'</b> projected.</div>');
+  if(parts.length)h+=svgBars({labels:parts.map(x=>x[3]),series:[{vals:parts.map(x=>Math.round((num(x[2])-1)*100)),cls:'me',clsAt:parts.map(x=>num(x[2])>=1?'good':'bad')}],h:110})
     +'<div class="sub" style="white-space:normal">'+parts.map(x=>esc(x[1])+' <b style="color:'+(num(x[2])>=1?'var(--good)':'var(--bad)')+'">'+pc(num(x[2]))+'</b>').join(' · ')+'. Combined and damped to '+pc(t)+'.</div>';
   return h+'</section>';
 }
