@@ -781,6 +781,7 @@ function renderPlayer(d,name){
   const st=[];if(!blank(inj.status))st.push('<span class="flag'+(/out|ir|pup|sus/i.test(inj.status)?' bad':'')+'" style="font-weight:600">'+esc(inj.status)+(blank(inj.part)?'':' – '+esc(inj.part))+'</span>');if(!blank(inj.report)&&inj.report!==inj.status)st.push('<span class="flag">report: '+esc(inj.report)+'</span>');if(!blank(inj.practice))st.push('<span class="flag">'+esc(inj.practice)+'</span>');if(!blank(inj.note))st.push('<span class="sub" style="white-space:normal">'+esc(inj.note)+'</span>');
   if(num(p.avail)!==null&&p.avail<1)st.push('<span class="flag bad">availability '+Math.round(p.avail*100)+'%</span>');
   if(!blank(p.statusKw))st.push('<span class="sub">news says: '+esc(p.statusKw)+'</span>');
+  if(p.inj&&p.inj.liveExit)st.push('<span class="sub" style="color:var(--bad);font-weight:600">left his game (from the news, '+esc(p.inj.liveExit.title)+') — this week capped at points so far until a report says he returned or the official designation lands</span>');
   if(st.length)h+='<div style="margin-top:8px;white-space:normal;line-height:1.6">'+st.join(' · ')+'</div>';
   h+='</section>';
   h+='<section><h2>Profile</h2>'+playerRadar(d,p)+'</section>';
@@ -1914,7 +1915,7 @@ function playerRadar(d,p){
     {label:'Form',v:pctRank(p.form&&p.form.avg3,peers.map(x=>x.form&&x.form.avg3)),txt:f1(p.form&&p.form.avg3)},
     {label:'Usage',v:p.pos==='QB'?(num(p.form&&p.form.snap)||0):pctRank(p.form&&p.form.tgt,peers.map(x=>x.form&&x.form.tgt)),txt:p.pos==='QB'?pct(p.form&&p.form.snap):pct(p.form&&p.form.tgt)},
     {label:'History',v:pctRank(p.histUsed,peers.map(x=>x.histUsed)),txt:num(p.histUsed)?f1(p.histUsed):'—'},
-    {label:'Health',v:num(p.avail)===null?1:p.avail,txt:num(p.avail)===null?'':Math.round(p.avail*100)+'%'}];
+    {label:'Health',v:num(p.avail)===null?1:p.avail,txt:(num(p.avail)===null?'':Math.round(p.avail*100)+'%')+((p.inj&&p.inj.liveExit)?' · left game':'')}];
   return svgRadar(ax)+'<div class="sub" style="text-align:center;white-space:normal">percentile among the '+peers.length+' '+esc(p.pos)+'s worth starting in a 12-team league, not every '+esc(p.pos)+' alive (outer edge = best)</div><div class="sub" style="text-align:center;white-space:normal;margin-top:4px">tap to explain: '+[gl('week','this week'),gl('value','value'),gl('ros','ROS'),gl('experts','experts'),gl('form','form'),gl('usage','usage'),gl('history','history'),gl('health','health')].join(' · ')+'</div>';
 }
 function teamRadar(d,pw){
