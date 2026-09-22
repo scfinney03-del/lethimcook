@@ -572,7 +572,7 @@ function renderHome(d){
 
   const tr=SHOW?[]:(d.trades||[]).filter(x=>!blank(x.get));
   if(tr.length){
-    h+='<section><h2>Trades</h2><div class="sub" style="margin-bottom:6px"><a class="pl" href="#tradecalc" style="font-weight:700">Trade calculator</a> - build and grade any offer</div>'+tr.slice(0,6).map((x,i)=>{const ok=num(x.theirGain)>=-0.3;
+    h+='<section><h2>Trades</h2><div class="sub" style="margin-bottom:6px"><a class="pl" href="#tradecalc" style="font-weight:700">Trade calculator</a> - build and grade any offer · <a class="pl" href="#compare" style="font-weight:700">Player calculator</a> - two players, one verdict</div>'+tr.slice(0,6).map((x,i)=>{const ok=num(x.theirGain)>=-0.3;
       return '<div class="row" style="padding:8px 0"><div class="main" style="white-space:normal"><div class="name">'+(i+1)+'. '+mg(x.partner)+' <small style="color:var(--mute)">'+teamLink(x.teamName)+'</small></div>'
         +'<div style="margin:2px 0">Give <b>'+String(x.give).split(" + ").map(pl).join(" + ")+'</b> · get <b>'+String(x.get).split(" + ").map(pl).join(" + ")+'</b></div>'
         +'<div class="sub" style="white-space:normal">You <b style="color:var(--good)">+'+f1(x.myGain)+'/wk</b> (lineup +'+f1(x.lineupGain)+') · them <b style="color:'+(num(x.theirGain)>=0?'var(--good)':'var(--bad)')+'">'+(num(x.theirGain)>=0?'+':'')+f1(x.theirGain)+'</b>'+(num(x.myWeek)!==null&&Math.abs(x.myWeek)>=1?' · this week '+(x.myWeek>0?'+':'')+f1(x.myWeek):'')+(blank(x.h2h)?'':' · you play them wk '+esc(x.h2h))+'</div>'
@@ -751,7 +751,7 @@ function managerSection(d,pw){
 const SORTS={value:["Value /wk",p=>p.value],proj:["This week",p=>p.proj],ros:["ROS /wk",p=>p.ros&&p.ros.cons],cons:["Consensus",p=>p.cons],avg3:["Last 3 wks",p=>p.form&&p.form.avg3],last:["Last week",p=>p.form&&p.form.last],adds:["Adds 24h",p=>p.adds],ecr:["Expert rank",p=>p.ecr?-p.ecr.rank:null],snap:["Snap %",p=>p.form&&p.form.snap],buzz:["Buzz",p=>p.buzz]};
 function renderPlayers(d){
   const f=state.filters; const teams=d.teams||[];
-  let h='<section style="padding:9px 14px"><a class="pl" href="#tradecalc" style="font-weight:700">Trade calculator</a> <span class="sub">build and grade any offer</span><br><a class="pl" href="#colleges" style="font-weight:700">Colleges · alumni tracker</a> <span class="sub">which schools are producing the players in this pool</span></section>';
+  let h='<section style="padding:9px 14px"><a class="pl" href="#tradecalc" style="font-weight:700">Trade calculator</a> <span class="sub">build and grade any offer</span><br><a class="pl" href="#compare" style="font-weight:700">Player calculator</a> <span class="sub">any two players side by side, with a verdict</span><br><a class="pl" href="#colleges" style="font-weight:700">Colleges · alumni tracker</a> <span class="sub">which schools are producing the players in this pool</span></section>';
   h+='<section><div class="filters">';
   h+='<select id="f-pos">'+["ALL","QB","RB","WR","TE","K","DST"].map(p=>'<option value="'+p+'"'+(f.pos===p?' selected':'')+'>'+(p==="ALL"?"All positions":p)+'</option>').join("")+'</select>';
   h+='<select id="f-owner"><option value="ALL"'+(f.owner==="ALL"?' selected':'')+'>Everyone</option><option value="FA"'+(f.owner==="FA"?' selected':'')+'>Free agents</option>'+teams.map(t=>'<option value="'+esc(t.team)+'"'+(String(f.owner)===String(t.team)?' selected':'')+'>'+esc(t.name)+'</option>').join("")+'</select>';
@@ -788,6 +788,7 @@ function renderPlayer(d,name){
   h+='<div style="display:flex;gap:10px;align-items:center;margin-top:8px">'+face(p.sid,p.team,p.pos).replace('class="logo face"','class="logo face" style="width:64px;height:64px;flex-basis:64px"')+'<div><div style="font-size:19px;font-weight:700">'+esc(p.name)+'</div><div class="sub" style="white-space:normal">'+esc(p.pos)+' · '+tl(p.team)+(p.bye?' · bye wk '+p.bye:'')+' · '+(num(p.owner)?'<a href="#team/'+esc(p.owner)+'">'+esc(p.ownerName)+'</a>'+(p.slot?' ('+esc(p.slot)+')':''):'<span class="flag good">Free agent</span>')+'</div></div></div>';
   const st=[];if(!blank(inj.status))st.push('<span class="flag'+(/out|ir|pup|sus/i.test(inj.status)?' bad':'')+'" style="font-weight:600">'+esc(inj.status)+(blank(inj.part)?'':' – '+esc(inj.part))+'</span>');if(!blank(inj.report)&&inj.report!==inj.status)st.push('<span class="flag">report: '+esc(inj.report)+'</span>');if(!blank(inj.practice))st.push('<span class="flag">'+esc(inj.practice)+'</span>');if(!blank(inj.note))st.push('<span class="sub" style="white-space:normal">'+esc(inj.note)+'</span>');
   if(num(p.avail)!==null&&p.avail<1)st.push('<span class="flag bad">availability '+Math.round(p.avail*100)+'%</span>');
+  st.push('<span class="sub"><a href="#" class="pl" data-pcvs="'+esc(p.name)+'">vs another player</a>'+(PC.a&&PC.a!==p.name?' <small>(A is '+esc(PC.a)+')</small>':'')+'</span>');
   if(!blank(p.statusKw))st.push('<span class="sub">news says: '+esc(p.statusKw)+'</span>');
   if(p.alerts&&p.alerts.length)st.push(alertLine(p));
   if(num(p.health)!==null)st.push('<span class="sub">health '+Math.round(p.health*100)+'% = this week '+Math.round((num(p.avail)===null?1:p.avail)*100)+'% × on the field '+Math.round((num(p.durHist)||0)*100)+'% ('+esc(p.durSrc||'history')+')</span>');
@@ -1598,6 +1599,7 @@ const GLOSS={
  form:['Form','His average PPR points over his last 3 games. It answers "what is he doing lately", which projections are slow to catch. Weighted more heavily the more games he has played this season.'],
  usage:['Usage','How much of his offense he touches — target share for pass catchers, snap share for quarterbacks. Usage is stickier week to week than points, so a big usage number with small points often means points are coming.'],
  history:['History','His own points per game in 2025, or his career average if 2025 was short. It keeps a hot three weeks from running away with the number.'],
+ playercalc:['Player calculator','Two players side by side on every number the engine holds: value per week, this week, rest of season, form, usage, health, the crowd, schedule and expert rank. Bars are scaled to the larger of the two so the eye can read the gap. The verdict is by value per week: 1.5 or more either way is a real difference, less is a wash. When A is yours and B is free it checks the drop too: whether losing A leaves you short at his position, whether B shares a bye with a player of yours at that position, and whether the crowd is already on him.'],
  alerts:['Player alerts','Two feeds you already pull, shown on every player: Sleeper trending drops and adds over the last 24 hours (500 or more to show), and ESPN\'s rostered share with its change over the week and how often he is started. Adds minus drops is one crowd signal in his value (up to the adds weight either way, on a log scale); the rostered share is shown but not weighted, because counting the crowd twice would stack.'],
  health:['Health','Two things multiplied: the chance he plays this week (injury designation and the latest news: Out, IR or PUP is 0%, doubtful 35%, questionable 85%, a live exit 25%, clean 100%) times how often he has actually been on the field over his career (injury history; a rookie gets his position\'s typical rate). Nobody reads 100. Only the first half multiplies his weekly projection; the second already sits in his season value, so nothing is counted twice.'],
  experts:['Expert rank','FantasyPros consensus rank across all their experts, plus how much those experts disagree. A wide spread means nobody knows, which is itself worth knowing.'],
@@ -2020,6 +2022,7 @@ function crumbFill(d,v){
   else if(v==='settings')trail=P('Settings');
   else if(v==='colleges')trail=A('Players','#players')+sep+P('Colleges');
   else if(v==='tradecalc')trail=P('Trade calculator');
+  else if(v==='compare')trail=P('Player calculator');
   else if(v==='college'){deep=true;trail=A('Colleges',up('#colleges'))+sep+P(state.college);}
   else if(v==='team'){deep=true;const t=(d.power||[]).find(x=>String(x.team)===String(state.team))||{};
     trail=A('League',up('#league'))+sep+P((t.manager||'Team')+(t.name?' · '+t.name:''));}
@@ -2348,6 +2351,69 @@ function tcPopup(d,o){
   m.querySelectorAll('[data-gl]').forEach(g=>g.addEventListener('click',e=>{e.preventDefault();glShow(g.dataset.gl)}));
   m.querySelectorAll('a.pl').forEach(a=>a.addEventListener('click',close));
 }
+// ---------------- PLAYER CALCULATOR: any two players, side by side, with a verdict ----------------
+let PC={a:'',b:''};try{PC=Object.assign(PC,JSON.parse(localStorage.getItem('lhc_pc')||'{}'))}catch(e){}
+function savePC(){try{localStorage.setItem('lhc_pc',JSON.stringify(PC))}catch(e){}}
+function pcNum(p,path){let v=p;for(const k of path.split('.')){if(v==null)return null;v=v[k]}return num(v)}
+function pcNext3(p){const n=(p&&p.next3)||[];if(!n.length)return null;return n.reduce((a,x)=>a+(num(x.allowed)||0),0)/n.length}
+function renderCompare(d){
+  if(SHOW)return '<section><div class="empty">Hidden in show mode.</div></section>';
+  const all=(d.players||[]).slice().sort((a,b)=>(num(b.value)||0)-(num(a.value)||0));
+  const A=PC.a?findPlayer(PC.a):null,B=PC.b?findPlayer(PC.b):null;
+  const dl='<datalist id="pcnames">'+all.map(p=>'<option value="'+esc(p.name)+'">'+esc(p.pos+' · '+p.team+(num(p.owner)?' · '+p.ownerName:' · free'))+'</option>').join('')+'</datalist>';
+  let h='<section><h2>'+gl('playercalc','Player calculator')+'</h2><div class="sub" style="white-space:normal">Any two players, every number the engine has on each, and a verdict. Type a name, or tap <b>vs</b> on a player page. <a class="pl" href="#tradecalc">Trade calculator</a> for whole offers.</div>'
+    +'<div class="filters" style="margin-top:8px"><input id="pca" list="pcnames" placeholder="Player A (yours)" value="'+esc(PC.a)+'" autocomplete="off"><input id="pcb" list="pcnames" placeholder="Player B" value="'+esc(PC.b)+'" autocomplete="off"><button class="more" id="pcgo" style="grid-column:1/3;margin:0">Compare</button></div>'+dl+'</section>';
+  if(!A||!B){if(PC.a&&!A)h+='<section><div class="empty">No player called "'+esc(PC.a)+'" in the pool.</div></section>';if(PC.b&&!B)h+='<section><div class="empty">No player called "'+esc(PC.b)+'" in the pool.</div></section>';return h;}
+  const rows=[
+    ['Value / week','value',1,'the engine\'s per-week worth: rest of season pulled toward form and history, scaled by usage, health and the crowd'],
+    ['This week','proj',1,'this week\'s projection after availability and conditions'],
+    ['Rest of season / wk','rosWk',1,'consensus rest-of-season, per week'],
+    ['Last 3 (ppg)','form.avg3',1,'points per game over his last three'],
+    ['Season (ppg)','form.season',1,''],
+    ['Last game','form.last',1,''],
+    ['Trend','form.trend',1,'last game against his average'],
+    ['Snap share','form.snap',100,'share of his team\'s snaps'],
+    ['Target share','form.tgt',100,'share of his team\'s targets'],
+    ['Touches / game','form.touches',1,''],
+    ['Health','health',100,'chance he plays this week × how often he has been on the field'],
+    ['Rostered %','rostered',1,'share of ESPN leagues holding him'],
+    ['Adds (24h)','adds',1,'Sleeper trending adds'],
+    ['Drops (24h)','drops',1,'Sleeper trending drops'],
+    ['Next 3, pts allowed','__next3',1,'what his next three opponents give up to his position (higher is easier)'],
+    ['Experts rank','posRank',1,'FantasyPros consensus rank at his position (lower is better)']];
+  const val=(p,k)=>k==='__next3'?pcNext3(p):pcNum(p,k);
+  const fmt=(v,k,scale)=>v===null?'—':(scale===100?Math.round(v*100)+'%':(k==='adds'||k==='drops'||k==='posRank'||k==='rostered'?Math.round(v).toLocaleString():f1(v)));
+  const head=(p,cls)=>'<div class="'+cls+'" style="padding:8px 10px"><div style="display:flex;gap:8px;align-items:center">'+face(p.sid,p.team,p.pos)+'<div><div class="name">'+pl(p.name)+'</div><div class="sub" style="white-space:normal">'+esc(p.pos)+' · '+tl(p.team)+(p.bye?' · bye '+p.bye:'')+' · '+(num(p.owner)?esc(p.ownerName)+(isMine(p.ownerName)?' (you)':''):'<span class="flag good">free agent</span>')+'</div></div></div>'+(p.alerts&&p.alerts.length?'<div class="sub" style="margin-top:4px">'+alertLine(p)+'</div>':'')+'</div>';
+  h+='<section><div class="split" style="display:grid;grid-template-columns:1fr 1fr;gap:0">'+head(A,'sideA')+head(B,'sideB')+'</div>';
+  h+='<div style="margin-top:8px">';
+  rows.forEach(r=>{const [lbl,k,scale,why]=r;const a=val(A,k),b=val(B,k);if(a===null&&b===null)return;
+    const lowerBetter=(k==='posRank'||k==='drops');const mx=Math.max(Math.abs(a||0),Math.abs(b||0))||1;
+    const aw=a===null?0:Math.round(100*Math.abs(a)/mx),bw=b===null?0:Math.round(100*Math.abs(b)/mx);
+    let win=0;if(a!==null&&b!==null&&a!==b)win=lowerBetter?(a<b?1:2):(a>b?1:2);
+    h+='<div style="padding:6px 0;border-top:1px solid var(--line)"><div class="sub" style="display:flex;justify-content:space-between"><b style="color:'+(win===1?'var(--me)':'var(--ink)')+'">'+fmt(a,k,scale)+'</b><span'+(why?' class="gl" title="'+esc(why)+'"':'')+'>'+esc(lbl)+'</span><b style="color:'+(win===2?'var(--them)':'var(--ink)')+'">'+fmt(b,k,scale)+'</b></div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:3px"><div class="t" style="transform:scaleX(-1)"><i style="width:'+aw+'%;background:var(--me)"></i></div><div class="t"><i style="width:'+bw+'%;background:var(--them)"></i></div></div></div>';
+  });
+  h+='</div>';
+  // verdict
+  const tid=myTeamId(d);const mineA=String(A.owner)===String(tid),mineB=String(B.owner)===String(tid);
+  const dv=(num(B.value)||0)-(num(A.value)||0),dw=(num(B.proj)||0)-(num(A.proj)||0),dr=(num(B.rosWk)||0)-(num(A.rosWk)||0);
+  const mine=rosterOf(d,tid);const cnt=pos=>mine.filter(r=>r.pos===pos&&(num(r.value)||0)>=6).length;const needN={QB:1,RB:2,WR:2,TE:1};
+  let v='';const bits=[];
+  bits.push('Value '+(dv>=0?'+':'')+f1(dv)+'/wk for B, this week '+(dw>=0?'+':'')+f1(dw)+((num(A.rosWk)!==null||num(B.rosWk)!==null)?', rest of season '+(dr>=0?'+':'')+f1(dr)+'/wk':'')+'.');
+  if(mineA&&!num(B.owner)){
+    const hole=A.pos!==B.pos&&needN[A.pos]&&cnt(A.pos)-1<needN[A.pos];
+    const byeClash=B.bye&&mine.some(r=>r.pos===B.pos&&String(r.bye)===String(B.bye)&&(num(r.value)||0)>=8);
+    if(dv>=1.5&&!hole)v='Add '+B.name+', drop '+A.name+'.';else if(dv>=1.5&&hole)v='Better player, but dropping '+A.name+' leaves you short at '+A.pos+' - drop someone else for him.';else if(dv>-1.5)v='A wash - only move if you need the position.';else v='Keep '+A.name+'.';
+    if(hole)bits.push('Dropping '+A.name+' leaves '+(cnt(A.pos)-1)+' '+A.pos+(cnt(A.pos)-1===1?'':'s')+' of value; you start '+needN[A.pos]+'.');
+    if(byeClash)bits.push(B.name+' shares a bye ('+B.bye+') with another '+B.pos+' of yours.');
+    if(num(B.adds)>=20000)bits.push('The crowd is on him ('+Math.round(num(B.adds)).toLocaleString()+' adds) - if he is on waivers, expect competition.');
+  } else if(mineA&&num(B.owner)){v='B is on '+esc(B.ownerName)+' - open the <a class="pl" href="#tradecalc">trade calculator</a> to price him.';}
+  else if(!mineA&&mineB){v='You own B. '+(dv<=-1.5?'Keep him over A.':(dv>=1.5?'A is the better player - see if he is free.':'A wash.'));}
+  else v=(Math.abs(dv)<1.5?'A wash by value.':(dv>0?B.name+' is the better player by '+f1(Math.abs(dv))+'/wk.':A.name+' is the better player by '+f1(Math.abs(dv))+'/wk.'));
+  h+='<div style="margin-top:10px;padding:10px;border-radius:10px;background:var(--chip)"><div style="font-weight:700;font-size:15px">'+v+'</div><div class="sub" style="white-space:normal;margin-top:4px">'+bits.map(esc0=>esc0).join(' ')+'</div></div>';
+  h+='<div class="opt" style="margin-top:8px"><button data-pcswap="1">Swap sides</button><button data-pcclear="1">Clear</button></div></section>';
+  return h;
+}
 function renderTradeCalc(d){
   if(SHOW)return '<section><div class="empty">Hidden in show mode.</div></section>';
   const tid=myTeamId(d);const teams=(d.teams||[]).filter(t=>String(t.team)!==String(tid));
@@ -2452,6 +2518,7 @@ function render(){
   else if(v==="settings")h=renderSettings(d);
   else if(v==="colleges")h=renderColleges(d);
   else if(v==="tradecalc")h=renderTradeCalc(d);
+  else if(v==="compare")h=renderCompare(d);
   else if(v==="college")h=renderCollege(d,state.college);
   else if(v==="injuries")h=renderInjuries(d);
   else if(v==="news")h=renderNews(d);
@@ -2490,6 +2557,11 @@ function render(){
     logEvent({kind:k==='idecl'?'declined-by-me':k,mgr:pt.manager||'',give:TC.give.join('+'),get:TC.get.join('+'),asked:TC.asked,gainMe:f1(R.gainMe),gainThem:f1(R.gainThem),desp:R.desperation,note:'wk'+(d2.week||'')});
     b.textContent='Recorded ✓';setTimeout(render,700)}));
   document.querySelectorAll('[data-tcclear]').forEach(b=>b.addEventListener('click',()=>{TC.give=[];TC.get=[];saveTC();render()}));
+  const pcgo=$('#pcgo');if(pcgo)pcgo.addEventListener('click',()=>{PC.a=($('#pca').value||'').trim();PC.b=($('#pcb').value||'').trim();savePC();render()});
+  ['#pca','#pcb'].forEach(id=>{const el=$(id);if(el)el.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();pcgo&&pcgo.click()}})});
+  document.querySelectorAll('[data-pcswap]').forEach(b=>b.addEventListener('click',()=>{const t=PC.a;PC.a=PC.b;PC.b=t;savePC();render()}));
+  document.querySelectorAll('[data-pcclear]').forEach(b=>b.addEventListener('click',()=>{PC.a='';PC.b='';savePC();render()}));
+  document.querySelectorAll('[data-pcvs]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();const n=b.dataset.pcvs;if(!PC.a||PC.a===n)PC.a=n;else PC.b=n;savePC();location.hash='#compare'}));
   document.querySelectorAll("[data-college]").forEach(el=>el.addEventListener("click",e=>{if(e.target.closest('a'))return;location.hash="#college/"+encodeURIComponent(el.dataset.college)}));
   document.querySelectorAll("[data-csort]").forEach(b=>b.addEventListener("click",()=>{state.csort=b.dataset.csort;render()}));
   document.querySelectorAll("[data-cpos]").forEach(b=>b.addEventListener("click",()=>{state.cpos=b.dataset.cpos;render()}));
