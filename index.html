@@ -303,7 +303,7 @@ body.big .wchip{font-size:17px;padding:8px 14px}
 <div class="stick"><nav class="nav"><a href="#home" data-v="home">Home</a><a href="#matchups" data-v="matchups">Matchups</a><a href="#league" data-v="league">League</a><a href="#players" data-v="players">Players</a><a href="#games" data-v="games">Games</a><a href="#injuries" data-v="injuries">Injuries</a><a href="#news" data-v="news">News</a><a href="#tradecalc" data-v="tradecalc">Trade</a></nav><div class="crumb" id="crumb"></div></div>
 <div class="search"><input id="gs" type="search" placeholder="Search players, teams, managers" autocomplete="off"><div id="gsr"></div></div>
 <div id="app"><section><div class="empty">Waiting for the first refresh…</div></section></div>
-<footer>Updates every 5 minutes while the laptop is on. Pull down to reload the page.</footer>
+<footer>Updates every 3 minutes from the server. Pull down to reload the page.</footer>
 <script>
 (function(){
 const $=(s)=>document.querySelector(s);
@@ -675,9 +675,9 @@ function healthBanner(d){
   let h=healthBanner(d);
     const la=num(d.listenerAge); const lOn=la!==null&&la>=0&&la<180;
     let chk=""; if(d.checkedIso){const cm=Math.round((Date.now()-new Date(d.checkedIso).getTime())/60000);chk=esc(d.checked||"")+(cm<1?" (just now)":" ("+cm+" min ago)");}
-    h+='<section><h2>Laptop</h2><div style="margin:2px 0 6px"><span class="badge'+(d.paused?' off':'')+'">'+(d.paused?'PAUSED':'RUNNING')+'</span>'+(d.engine?' <span class="pill">'+esc(d.engine)+' engine · '+esc(d.runSec)+'s</span>':'')+'</div>'
+    h+='<section><h2>'+(d.host==='server'?'Server':'Laptop')+'</h2><div style="margin:2px 0 6px"><span class="badge'+(d.paused?' off':'')+'">'+(d.paused?'PAUSED':'RUNNING')+'</span>'+(d.engine?' <span class="pill">'+esc(d.engine)+' engine · '+esc(d.runSec)+'s</span>':'')+'</div>'
       +'<div class="sub" style="white-space:normal">Last check '+(chk||esc(d.updated||""))+' · last data '+esc(d.updated||"")+'<br><span class="dot'+(lOn?'':' off')+'"></span>Buttons '+(lOn?'online':(la===null||la<0?'unknown':'offline'))+(blank(d.asof)?'':'<br>'+esc(d.asof))+'</div>'
-      +(CMDKEY?'<div class="ctl">'+(d.paused?'<button class="start" data-cmd="resume">Resume refresh</button>':'<button class="stop" data-cmd="pause">Pause refresh</button>')+'<button class="go" data-cmd="refresh">Refresh now</button><button class="go" data-cmd="pull">Pull everything</button><button data-cmd="ping">Ping laptop</button><button onclick="location.reload()">Reload page</button></div><div class="ctlmsg" id="ctlmsg"></div><div class="sub" style="white-space:normal;margin-top:4px">Refresh now = recompute from what is already downloaded (about a minute). Pull everything = re-download every projection source and the news feed first (3-5 min).</div><div class="sub" style="margin-top:6px"><a href="#" id="cmdclear" style="color:var(--mute)">forget command key on this phone</a></div>':'<div class="filters" style="margin-top:6px"><input id="cmdkey" type="password" placeholder="Command key (unlocks the buttons on this phone)" style="grid-column:1/3"><button class="more" id="cmdsave" style="grid-column:1/3;margin:0">Unlock buttons</button></div>')+'</section>';
+      +(CMDKEY?'<div class="ctl">'+(d.paused?'<button class="start" data-cmd="resume">Resume refresh</button>':'<button class="stop" data-cmd="pause">Pause refresh</button>')+'<button class="go" data-cmd="refresh">Refresh now</button><button class="go" data-cmd="pull">Pull everything</button><button data-cmd="ping">Ping server</button><button onclick="location.reload()">Reload page</button></div><div class="ctlmsg" id="ctlmsg"></div><div class="sub" style="white-space:normal;margin-top:4px">Refresh now = recompute from what is already downloaded (about a minute). Pull everything = re-download every projection source and the news feed first (3-5 min).</div><div class="sub" style="margin-top:6px"><a href="#" id="cmdclear" style="color:var(--mute)">forget command key on this phone</a></div>':'<div class="filters" style="margin-top:6px"><input id="cmdkey" type="password" placeholder="Command key (unlocks the buttons on this phone)" style="grid-column:1/3"><button class="more" id="cmdsave" style="grid-column:1/3;margin:0">Unlock buttons</button></div>')+'</section>';
     return h;
 }
 
@@ -1597,7 +1597,7 @@ const GLOSS={
  lifts:['What moved his value','Value starts as a blend of rest-of-season projections, recent form and his own history, then this week\'s consensus with the environment on it. These are the multipliers applied after that: durability from his injury record, the 72-hour news signal, the crowd (trending adds), the expert tilt (where 100+ ranked experts put him against our own rank, weighted by how much they agree), and draft capital for rookies with no sample. Each is capped so it nudges rather than decides.'],
  counter:['Counter offer','Built only when the offer on the table is not already a clear yes. What they need is read first from their own offer (the positions they asked for), then from their roster (empty or thin spots) and their rest-of-season lineup. A counter must fill at least one of those, be better for you than for them all-in, leave you no empty slot, and sit inside what they would accept given who asked, their desperation and the fit. Top three shown, one per player you would get.'],
  teamstats:['Team stats','This team against the league: projected points this week, rest-of-season power (best lineup by value, every remaining week), bench value, points for and against, each with the league average and the team\'s rank among the 12. Green bars are top four, red bottom four.'],
- tradecalc:['Trade calculator','Pick who you are trading with, who asked, and tick the players on each side. Roster value is the best starting nine by value plus 30% of the bench, for both teams before and after. The grade leans on your roster-value change, adds rest of season and this week, takes off for injury risk, for any position the trade leaves empty, and for what the other side gains weighted by how big a threat they are (roster strength, standing, and how many more times you play them). A trade that helps them more than you is never recommended, whatever else it does. "Would they accept" compares their loss against how much rope they have: the side that asked wants it more, and desperation adds rope - a losing record, a skid, hurt starters, thin positions (especially ones you are offering), frantic waiver activity, and anything they have said in the chat. High desperation with an easy yes means ask for more.'],
+ tradecalc:['Trade calculator','Pick who you are trading with, who asked, and tick the players on each side. Roster value is the best starting nine by value plus 30% of the bench, for both teams before and after. The grade leans on your roster-value change, adds rest of season and this week, takes off for injury risk, for any position the trade leaves empty, and for what the other side gains weighted by how big a threat they are (roster strength, standing, and how many more times you play them). A trade that helps them more than you is never recommended, whatever else it does. "Would they accept" compares their loss against how much rope they have: the side that asked wants it more, and desperation adds rope - a losing record, a skid, hurt starters, thin positions (especially ones you are offering), frantic waiver activity, and anything they have said in the chat. High desperation with an easy yes means ask for more. The rope is deliberately short (asking earns 1.5 a week, desperation up to 2, fit 0.4 a point, 3 in total at most) and a trade they lose value on never reads above 85%: people judge the players in front of them, not the sum.'],
  tenure:['Coach tenure','Seasons with the team, his rank among the 32 (head coaches by win% with the team; coordinators by what their unit scored or allowed last full season), and a survival model: head coaches leave at about one in five a year, less with a winning record, playoff games and a long run, more with a losing record or a bad current season. Coordinators leave both ways - fired when the unit is bad, hired away when it is great. Expected seasons left is one over that yearly chance, capped at seven.'],
  wxtol:['Weather tolerance','His scoring in windy (15+ mph), wet and cold (35F or under) games against his calm-day average, using the real weather at every kickoff since 2024. When this week\'s forecast matches one of those, the weather adjustment uses his own rate, trusted in proportion to how many games back it up, instead of a one-size-fits-all cut for his position.'],
  alumni:['Alumni tracker','Every player in the pool grouped by the college he came from. A school\'s total is the sum of its players\' value per week, so it rewards schools that keep sending starters, not just bodies. Draft capital is the average of where its men were picked (100% = first overall).'],
@@ -2189,7 +2189,9 @@ function tcEval(d,mine,theirs,give,get,asked){
   // what the other side will put up with: the asker wants it more, and desperation adds rope
   // fit moves the rope too: a piece that starts for them, or fills a hole, is worth more to them than
   // the value line says; a bench-only piece is worth less
-  R.tol=(asked==='them'?-2.0:(asked==='me'?-0.5:-1.0))-2.5*(R.desperation/100)-0.5*R.fitThem-R.ropeAdj;
+  // calibrated down: managers judge the players, not the sum, so the rope is shorter than it looks -
+  // asking earns 1.5, desperation up to 2.0, fit 0.4 a point, and the whole rope stops at 3.0 a week
+  R.tol=Math.max(-3.0,(asked==='them'?-1.5:(asked==='me'?-0.5:-1.0))-2.0*(R.desperation/100)-0.4*R.fitThem-R.ropeAdj);
   // what the value line misses about how people actually answer: giving up their crown jewels (top
   // two by value) and sending out more starters than they get back both feel worse than the maths
   const theirsSorted=theirs.slice().sort((a,b)=>(num(b.value)||0)-(num(a.value)||0));const jewels=theirsSorted.slice(0,2).map(r=>r.player);
@@ -2197,7 +2199,10 @@ function tcEval(d,mine,theirs,give,get,asked){
   const nineT0b=bestNine(theirs,'value').used;R.startersOut=ge.filter(r=>nineT0b[r.player]).length;R.startersIn=(R.startsForThem||[]).length;
   R.feel=-0.6*R.jewels.length-0.4*Math.max(0,R.startersOut-R.startersIn);
   R.margin=R.gainThem-R.tol+R.feel;
-  R.acceptP=1/(1+Math.exp(-R.margin/0.7));
+  // a wider curve, so 'probably' and 'certainly' are different answers; and a trade they lose value on
+  // is never a lock - it caps at 85% however much rope they have
+  R.acceptP=1/(1+Math.exp(-R.margin/1.2));
+  if(R.gainThem<0)R.acceptP=Math.min(R.acceptP,0.85);
   R.accept=R.acceptP>=0.5;
   // starters who leave and enter your best nine
   R.out=Object.keys(R.nineOld).filter(n=>!R.nineNew[n]),R.in=Object.keys(R.nineNew).filter(n=>!R.nineOld[n]);
@@ -2352,10 +2357,10 @@ function renderTradeCalc(d){
   // verdict
   h+=tcVerdictHtml(d,R,pt,mine,TC.give,TC.asked);
   if(R.gi.length||R.ge.length){
-    h+='<div class="sub" style="font-weight:600;margin-top:10px">Record this offer</div><div class="sub" style="white-space:normal">Every one you record teaches the model how '+esc(pt.manager||'they')+' actually trades. It goes to the laptop on its own (needs the buttons key, set on Home under the laptop panel).</div>'
+    h+='<div class="sub" style="font-weight:600;margin-top:10px">Record this offer</div><div class="sub" style="white-space:normal">Every one you record teaches the model how '+esc(pt.manager||'they')+' actually trades. It goes to the server on its own (needs the buttons key, set on Home under the machine panel).</div>'
       +'<div class="opt">'+[['received',(pt.manager||'They')+' offered this'],['sent','I sent this'],['accepted','They accepted'],['declined','They declined'],['idecl','I declined']].map(x=>'<button data-tcrec="'+x[0]+'">'+esc(x[1])+'</button>').join('')+'</div>'
       +(function(){const mine2=TLOG.filter(ev=>ev.mgr===(pt.manager||'')&&/received|sent|accepted|declined|idecl/.test(ev.kind)).slice(-5).reverse();return mine2.length?'<div class="sub" style="white-space:normal">Recorded: '+mine2.map(ev=>esc(ev.kind)+' '+esc((ev.give||'')+' for '+(ev.get||''))+(ev.sent?'':' <i>(not on the laptop yet)</i>')).join(' · ')+'</div>':''})()
-      +(CMDKEY?'':'<div class="sub" style="white-space:normal;color:var(--warn)">Buttons key not set - events stay on this phone until it is (Home, laptop panel, Unlock buttons).</div>');
+      +(CMDKEY?'':'<div class="sub" style="white-space:normal;color:var(--warn)">Buttons key not set - events stay on this phone until it is (Home, machine panel, Unlock buttons).</div>');
   }
   h+='<div class="opt" style="margin-top:8px"><button data-tcclear="1">Clear</button></div></section>';
   if((R.gi.length||R.ge.length)&&R.verdict!=='Do it'){
@@ -2518,7 +2523,7 @@ function send(cmd,topic,btn){
   const m=$("#ctlmsg"); if(m)m.textContent="Sending…";
   flash(btn,'sending','Sending…');
   fetch("https://ntfy.sh/"+topic,{method:"POST",body:cmd}).then(r=>{
-    if(m)m.textContent=r.ok?"Sent. The laptop replies to your phone in a few seconds.":"Couldn't send ("+r.status+").";
+    if(m)m.textContent=r.ok?"Sent. The server replies to your phone in a few seconds.":"Couldn't send ("+r.status+").";
     flash(btn,r.ok?'sent':'failed',r.ok?'Sent ✓':'Failed',2600);
   }).catch(()=>{if(m)m.textContent="Couldn't send — no connection.";flash(btn,'failed','No connection',2600);});
 }
