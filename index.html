@@ -2631,8 +2631,12 @@ function runOnServer(){
   const cmd=(ta.value||"").trim();if(!cmd){if(msg)msg.textContent="Type a command first.";return}
   const id=Date.now().toString(36)+Math.random().toString(36).slice(2,5);const sentAt=Math.floor(Date.now()/1000)-2;
   if(msg)msg.textContent="Sending…";if(out){out.style.display="block";out.textContent="$ "+cmd+"\n";}
-  fetch("https://ntfy.sh/"+CMDKEY,{method:"POST",body:"sh|"+DEVPINH+"|"+id+"|"+b64utf8(cmd)}).then(r=>{
-    if(!r.ok){if(msg)msg.textContent="Couldn't send ("+r.status+").";return}
+  // ntfy takes 4 KB a message, so a long command goes as numbered pieces the listener stitches back together
+  const b64=b64utf8(cmd);const CH=3000;const parts=[];for(let i=0;i<b64.length;i+=CH)parts.push(b64.slice(i,i+CH));
+  const sendAll=parts.length===1?fetch("https://ntfy.sh/"+CMDKEY,{method:"POST",body:"sh|"+DEVPINH+"|"+id+"|"+b64})
+    :parts.reduce((pr,chunk,i)=>pr.then(r=>{if(r&&!r.ok)return r;if(msg)msg.textContent="Sending piece "+(i+1)+" of "+parts.length+"…";return fetch("https://ntfy.sh/"+CMDKEY,{method:"POST",body:"shp|"+DEVPINH+"|"+id+"|"+(i+1)+"|"+parts.length+"|"+chunk})}),Promise.resolve(null));
+  sendAll.then(r=>{
+    if(!r||!r.ok){if(msg)msg.textContent="Couldn't send ("+(r?r.status:'?')+").";return}
     if(msg)msg.textContent="Sent — waiting for the server…";
     let tries=0;const poll=()=>{tries++;
       fetch("https://ntfy.sh/"+PHONE_TOPIC+"/json?poll=1&since="+sentAt).then(r=>r.text()).then(t=>{
