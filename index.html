@@ -781,6 +781,7 @@ function renderPlayer(d,name){
   const st=[];if(!blank(inj.status))st.push('<span class="flag'+(/out|ir|pup|sus/i.test(inj.status)?' bad':'')+'" style="font-weight:600">'+esc(inj.status)+(blank(inj.part)?'':' – '+esc(inj.part))+'</span>');if(!blank(inj.report)&&inj.report!==inj.status)st.push('<span class="flag">report: '+esc(inj.report)+'</span>');if(!blank(inj.practice))st.push('<span class="flag">'+esc(inj.practice)+'</span>');if(!blank(inj.note))st.push('<span class="sub" style="white-space:normal">'+esc(inj.note)+'</span>');
   if(num(p.avail)!==null&&p.avail<1)st.push('<span class="flag bad">availability '+Math.round(p.avail*100)+'%</span>');
   if(!blank(p.statusKw))st.push('<span class="sub">news says: '+esc(p.statusKw)+'</span>');
+  if(num(p.health)!==null)st.push('<span class="sub">health '+Math.round(p.health*100)+'% = this week '+Math.round((num(p.avail)===null?1:p.avail)*100)+'% × on the field '+Math.round((num(p.durHist)||0)*100)+'% ('+esc(p.durSrc||'history')+')</span>');
   if(p.inj&&p.inj.liveExit)st.push('<span class="sub" style="color:var(--bad);font-weight:600">left his game (from the news, '+esc(p.inj.liveExit.title)+') — this week capped at points so far until a report says he returned or the official designation lands</span>');
   if(st.length)h+='<div style="margin-top:8px;white-space:normal;line-height:1.6">'+st.join(' · ')+'</div>';
   h+='</section>';
@@ -1588,7 +1589,7 @@ const GLOSS={
  form:['Form','His average PPR points over his last 3 games. It answers "what is he doing lately", which projections are slow to catch. Weighted more heavily the more games he has played this season.'],
  usage:['Usage','How much of his offense he touches — target share for pass catchers, snap share for quarterbacks. Usage is stickier week to week than points, so a big usage number with small points often means points are coming.'],
  history:['History','His own points per game in 2025, or his career average if 2025 was short. It keeps a hot three weeks from running away with the number.'],
- health:['Health','Chance he actually plays and finishes, from his injury designation and the latest news. Out, IR or PUP is 0%, doubtful 35%, questionable 85%, healthy 100%. This multiplies his weekly projection.'],
+ health:['Health','Two things multiplied: the chance he plays this week (injury designation and the latest news: Out, IR or PUP is 0%, doubtful 35%, questionable 85%, a live exit 25%, clean 100%) times how often he has actually been on the field over his career (injury history; a rookie gets his position\'s typical rate). Nobody reads 100. Only the first half multiplies his weekly projection; the second already sits in his season value, so nothing is counted twice.'],
  experts:['Expert rank','FantasyPros consensus rank across all their experts, plus how much those experts disagree. A wide spread means nobody knows, which is itself worth knowing.'],
  next3:['Next 3','How friendly his next three defenses are to his position, as a multiplier. 1.0 is average, 1.2 means those defenses give up 20% more than normal to his position, 0.8 means they are tough.'],
  buzz:['Buzz','Net tone of the last 72 hours of news about him, from our keyword list. Negative is bad news piling up, positive is good news. It is a nudge, not a projection.'],
@@ -1915,7 +1916,7 @@ function playerRadar(d,p){
     {label:'Form',v:pctRank(p.form&&p.form.avg3,peers.map(x=>x.form&&x.form.avg3)),txt:f1(p.form&&p.form.avg3)},
     {label:'Usage',v:p.pos==='QB'?(num(p.form&&p.form.snap)||0):pctRank(p.form&&p.form.tgt,peers.map(x=>x.form&&x.form.tgt)),txt:p.pos==='QB'?pct(p.form&&p.form.snap):pct(p.form&&p.form.tgt)},
     {label:'History',v:pctRank(p.histUsed,peers.map(x=>x.histUsed)),txt:num(p.histUsed)?f1(p.histUsed):'—'},
-    {label:'Health',v:num(p.avail)===null?1:p.avail,txt:(num(p.avail)===null?'':Math.round(p.avail*100)+'%')+((p.inj&&p.inj.liveExit)?' · left game':'')}];
+    {label:'Health',v:num(p.health)!==null?p.health:(num(p.avail)===null?1:p.avail),txt:(num(p.health)!==null?Math.round(p.health*100)+'%':(num(p.avail)===null?'':Math.round(p.avail*100)+'%'))+((p.inj&&p.inj.liveExit)?' · left game':'')}];
   return svgRadar(ax)+'<div class="sub" style="text-align:center;white-space:normal">percentile among the '+peers.length+' '+esc(p.pos)+'s worth starting in a 12-team league, not every '+esc(p.pos)+' alive (outer edge = best)</div><div class="sub" style="text-align:center;white-space:normal;margin-top:4px">tap to explain: '+[gl('week','this week'),gl('value','value'),gl('ros','ROS'),gl('experts','experts'),gl('form','form'),gl('usage','usage'),gl('history','history'),gl('health','health')].join(' · ')+'</div>';
 }
 function teamRadar(d,pw){
