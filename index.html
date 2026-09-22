@@ -205,18 +205,20 @@ body.big .tcp{font-size:17px;padding:9px 2px}body.big .tcp input{width:24px;heig
 /* no white between the sides: the whole row is painted, left half yours, right half theirs */
 .vs{background:linear-gradient(90deg,var(--meT) 0 50%,var(--thT) 50% 100%)}
 .vs .me,.vs .them{background:transparent;border-radius:0;padding:4px 4px 4px 6px}.vs .them{padding:4px 6px 4px 4px}
-.vs .me{border-left:3px solid var(--me)}.vs .them{border-right:3px solid var(--them)}
+/* the tinted halves carry the split; no edge bars that read as data */
+.vs .me,.vs .them{border:0}
 .vs+.vs{border-top:2px solid var(--card)}
 body{--meT:color-mix(in srgb,var(--me) 13%,var(--card));--thT:color-mix(in srgb,var(--them) 16%,var(--card))}
 body.big{--meT:color-mix(in srgb,var(--me) 22%,var(--card));--thT:color-mix(in srgb,var(--them) 26%,var(--card))}
 .split{background:linear-gradient(90deg,var(--meT) 0 50%,var(--thT) 50% 100%);border-radius:10px;margin:0 -6px;padding:0 6px}
 .split .sideA,.split .sideB{background:transparent;border-radius:0}
 .pair .t.r i{background:var(--them)}
-.sideA,.sideB{padding:8px 10px;border-radius:10px;background:color-mix(in srgb,var(--me) 13%,var(--card));border-left:3px solid var(--me)}
-.sideB{background:color-mix(in srgb,var(--them) 16%,var(--card));border-left:0;border-right:3px solid var(--them)}
-.score .lbl.meL,.score .num.meL{background:color-mix(in srgb,var(--me) 13%,var(--card));color:var(--ink)}.score .lbl.thL,.score .num.thL{background:color-mix(in srgb,var(--them) 16%,var(--card));color:var(--ink)}
-.score .lbl.meL,.score .lbl.thL{padding:3px 7px;border-radius:7px 0 0 7px;border-left:3px solid var(--me)}.score .lbl.thL{border-left-color:var(--them)}
-.score .num.meL,.score .num.thL{padding:3px 8px;border-radius:0 7px 7px 0}
+.sideA,.sideB{padding:8px 10px;border-radius:10px;background:color-mix(in srgb,var(--me) 13%,var(--card))}
+.sideB{background:color-mix(in srgb,var(--them) 16%,var(--card))}
+/* the score labels are text, not bars: the side shows in the colour of the name, the only bars are the data bars */
+.score .lbl.meL,.score .num.meL{background:transparent;color:var(--me);font-weight:700}.score .lbl.thL,.score .num.thL{background:transparent;color:var(--them);font-weight:700}
+.score .lbl.meL,.score .lbl.thL{padding:3px 0;border:0}
+.score .num.meL,.score .num.thL{padding:3px 0 3px 8px;color:var(--ink)}
 .vs .me a.pl,.vs .them a.pl{color:inherit}
 .wrow.lead .tr i{background:var(--me)}.wrow.lead .pc{color:var(--me)}
 .wp .mine{background:var(--me)}
