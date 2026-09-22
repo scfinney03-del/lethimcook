@@ -298,6 +298,7 @@ body.big .gl-t{font-size:22px}body.big .gl-b{font-size:19px}
 .wchip{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:14px;padding:5px 11px;font:inherit;font-size:13px;cursor:pointer}
 .wchip.on{background:var(--acc);color:#fff;border-color:var(--acc);font-weight:700}
 body.big .wchip{font-size:17px;padding:8px 14px}
+td,th{overflow-wrap:normal;word-break:keep-all;hyphens:none}
 </style>
 </head>
 <body>
@@ -417,6 +418,8 @@ function alertLine(p){
   let a=(p&&p.alerts)||[];if(typeof a==='string')a=[a];if(!Array.isArray(a)||!a.length)return '';
   return '<span style="white-space:normal">'+a.map(t=>{const bad=/^Dropped/.test(t)||/\(-\d+% this week\)/.test(t);const good=/^Added/.test(t)||/\(\+\d+% this week\)/.test(t);return '<span class="flag'+(bad?' bad':(good?' good':''))+'" style="margin:2px 4px 0 0;display:inline-block">'+esc(t)+'</span>'}).join('')+'</span>';
 }
+// claim timing from the engine: free agent vs on waivers, when it clears, where you sit on the list
+function claimLine(c){if(!c||!c.advice)return '';const good=c.status==='free'||!(c.aheadWant&&c.aheadWant.length);return '<br><span class="sub" style="white-space:normal"><b style="color:'+(good?'var(--good)':'var(--warn)')+'">'+(c.status==='free'?'Claim now':'Waivers')+'</b> · '+esc(c.advice)+'</span>';}
 function clockText(d){
   if(!d||!d.nextIso)return '';
   const n=new Date(d.nextIso),now=new Date(),ms=n-now;
@@ -440,7 +443,10 @@ function stamp(d){
 
 // ---------------- CHARTS (inline SVG, bars + one scatter) ----------------
 function svgBars(o){ // o: {labels:[], series:[{vals:[],cls:'',name:''}], line:{v,label}, h}
-  const W=360,H=o.h||150,L=30,B=22,T=10,R=6;const n=o.labels.length;if(!n)return '';
+  // labels that will not fit under their bars are drawn at an angle in full instead of being cut
+  const n=o.labels.length;if(!n)return '';
+  const gw0=(360-30-6)/n,wide0=Math.max.apply(null,o.labels.map(l=>String(l).length*5.6+6).concat([1]));const rot=wide0>gw0;
+  const W=360,H=(o.h||150)+(rot?26:0),L=30,B=rot?48:22,T=10,R=6;
   const all=[].concat.apply([],o.series.map(s=>s.vals.map(v=>num(v)||0))).concat(o.line?[num(o.line.v)||0]:[]);
   // negative values used to be clamped to zero, which drew an empty chart for anything that only
   // goes down (the adjustment percentages, for one). Keep a real zero line and let bars hang below it.
@@ -465,7 +471,8 @@ function svgBars(o){ // o: {labels:[], series:[{vals:[],cls:'',name:''}], line:{
   // when labels are too wide, shorten them before hiding any: every bar keeps a name while at
   // least four letters fit; only past that do we fall back to labelling every other bar
   const fitC=Math.floor((gw-4)/5.6),cut=(stepB>1&&fitC>=4);
-  o.labels.forEach((l,i)=>{if(stepB>1&&!cut&&i%stepB)return;let t=String(l);if(cut&&t.length>fitC)t=t.slice(0,fitC-1)+'.';h+='<text x="'+(L+i*gw+gw/2)+'" y="'+(H-6)+'" font-size="9" text-anchor="middle" fill="var(--mute)">'+esc(t)+'</text>'});
+  if(rot){o.labels.forEach((l,i)=>{const x=L+i*gw+gw/2,y=H-B+12;h+='<text transform="rotate(-38 '+x+' '+y+')" x="'+x+'" y="'+y+'" font-size="9" text-anchor="end" fill="var(--mute)">'+esc(String(l).slice(0,14))+'</text>'});}
+  else o.labels.forEach((l,i)=>{if(stepB>1&&!cut&&i%stepB)return;let t=String(l);if(cut&&t.length>fitC)t=t.slice(0,fitC-1)+'.';h+='<text x="'+(L+i*gw+gw/2)+'" y="'+(H-6)+'" font-size="9" text-anchor="middle" fill="var(--mute)">'+esc(t)+'</text>'});
   h+='</svg>';
   if(o.legend)h+='<div class="sub" style="white-space:normal">'+o.legend.map(x=>'<span class="lg '+x[0]+'"></span>'+esc(x[1])).join(' &nbsp; ')+'</div>';
   return h;
@@ -616,7 +623,7 @@ function renderHome(d){
   if(wv.length){
     h+='<section><h2>Waiver watch</h2><table><tr><th style="width:30px">#</th><th>Player</th><th class="n" style="width:44px">Wk</th></tr>';
     h+=wv.slice(0,8).map(w=>{const st=blank(w.status)?'':'<span class="flag'+(/out|ir/i.test(w.status)?' bad':'')+'">'+esc(w.status)+'</span> · ';
-      return '<tr><td>'+esc(w.pri)+'</td><td><div style="display:flex;gap:8px;align-items:center">'+logo(w.team)+'<div style="min-width:0"><b>'+pl(w.player)+'</b><br><span class="sub">'+st+esc([w.pos,w.team].filter(x=>!blank(x)).join(' · '))+(num(w.season)===null?'':' · season '+Math.round(num(w.season)))+(blank(w.next3)?'':' · next '+esc(w.next3))+'</span>'+(blank(w.wantedBy)?'':'<br><span class="flag bad">wanted by '+esc(w.wantedBy)+'</span>')+(blank(w.why)?'':'<br><span class="sub" style="white-space:normal">'+esc(w.why)+'</span>')+'</div></div></td><td class="n">'+f1(w.wk)+'</td></tr>'}).join("");
+      return '<tr><td>'+esc(w.pri)+'</td><td><div style="display:flex;gap:8px;align-items:center">'+logo(w.team)+'<div style="min-width:0"><b>'+pl(w.player)+'</b><br><span class="sub">'+st+esc([w.pos,w.team].filter(x=>!blank(x)).join(' · '))+(num(w.season)===null?'':' · season '+Math.round(num(w.season)))+(blank(w.next3)?'':' · next '+esc(w.next3))+'</span>'+(blank(w.wantedBy)?'':'<br><span class="flag bad">wanted by '+esc(w.wantedBy)+'</span>')+(blank(w.why)?'':'<br><span class="sub" style="white-space:normal">'+esc(w.why)+'</span>')+claimLine(w.claim)+'</div></div></td><td class="n">'+f1(w.wk)+'</td></tr>'}).join("");
     h+='</table></section>';
   }
 
@@ -791,6 +798,7 @@ function renderPlayer(d,name){
   st.push('<span class="sub"><a href="#" class="pl" data-pcvs="'+esc(p.name)+'">vs another player</a>'+(PC.a&&PC.a!==p.name?' <small>(A is '+esc(PC.a)+')</small>':'')+'</span>');
   if(!blank(p.statusKw))st.push('<span class="sub">news says: '+esc(p.statusKw)+'</span>');
   if(p.alerts&&p.alerts.length)st.push(alertLine(p));
+  if(p.claim&&p.claim.advice)st.push(claimLine(p.claim).replace(/^<br>/,''));
   if(num(p.health)!==null)st.push('<span class="sub">health '+Math.round(p.health*100)+'% = this week '+Math.round((num(p.avail)===null?1:p.avail)*100)+'% × on the field '+Math.round((num(p.durHist)||0)*100)+'% ('+esc(p.durSrc||'history')+')</span>');
   if(p.inj&&p.inj.liveExit)st.push('<span class="sub" style="color:var(--bad);font-weight:600">left his game (from the news, '+esc(p.inj.liveExit.title)+') — this week capped at points so far until a report says he returned or the official designation lands</span>');
   if(st.length)h+='<div style="margin-top:8px;white-space:normal;line-height:1.6">'+st.join(' · ')+'</div>';
@@ -1599,6 +1607,7 @@ const GLOSS={
  form:['Form','His average PPR points over his last 3 games. It answers "what is he doing lately", which projections are slow to catch. Weighted more heavily the more games he has played this season.'],
  usage:['Usage','How much of his offense he touches — target share for pass catchers, snap share for quarterbacks. Usage is stickier week to week than points, so a big usage number with small points often means points are coming.'],
  history:['History','His own points per game in 2025, or his career average if 2025 was short. It keeps a hot three weeks from running away with the number.'],
+ claim:['When to claim','Yahoo rules for this league: a continual rolling list (winning a claim drops you to the bottom), two-day waivers on anyone dropped, and everyone who has played goes on waivers until Tuesday night\'s processing. A free agent is first come, first served: claim now. A player on waivers goes to the highest team on the list that claims him, so the app checks who sits above you and whether he is on their likely-move list, and weighs the gain against the spot you would give up.'],
  playercalc:['Player calculator','Two players side by side on every number the engine holds: value per week, this week, rest of season, form, usage, health, the crowd, schedule and expert rank. Bars are scaled to the larger of the two so the eye can read the gap. The verdict is by value per week: 1.5 or more either way is a real difference, less is a wash. When A is yours and B is free it checks the drop too: whether losing A leaves you short at his position, whether B shares a bye with a player of yours at that position, and whether the crowd is already on him.'],
  alerts:['Player alerts','Two feeds you already pull, shown on every player: Sleeper trending drops and adds over the last 24 hours (500 or more to show), and ESPN\'s rostered share with its change over the week and how often he is started. Adds minus drops is one crowd signal in his value (up to the adds weight either way, on a log scale); the rostered share is shown but not weighted, because counting the crowd twice would stack.'],
  health:['Health','Two things multiplied: the chance he plays this week (injury designation and the latest news: Out, IR or PUP is 0%, doubtful 35%, questionable 85%, a live exit 25%, clean 100%) times how often he has actually been on the field over his career (injury history; a rookie gets his position\'s typical rate). Nobody reads 100. Only the first half multiplies his weekly projection; the second already sits in his season value, so nothing is counted twice.'],
@@ -1774,13 +1783,13 @@ function renderDev(d){
     h+='<section><h2>Source weights</h2><table><tr><th>Source</th><th class="n">Weight</th><th class="n">Share</th><th class="n">'+gl('mae','MAE')+'</th><th class="n">'+gl('bias','Bias')+'</th><th class="n">n</th></tr>'
       +src.slice().sort((a,b)=>(num(b.weight)||0)-(num(a.weight)||0)).map(x=>{const sh=Math.round(100*(num(x.weight)||0)/src.reduce((a,b)=>a+(num(b.weight)||0),0));
       return '<tr><td>'+esc(x.source)+'</td><td class="n">'+f1(x.weight)+'</td><td class="n pct">'+sh+'%</td><td class="n">'+(num(x.mae)!==null?f1(x.mae):'<span class="sub">—</span>')+'</td><td class="n">'+(num(x.bias)!==null?(num(x.bias)>0?'+':'')+f1(x.bias):'<span class="sub">—</span>')+'</td><td class="n">'+(num(x.samples)||0)+'</td></tr>'}).join('')+'</table>'
-      +svgBars({labels:src.map(x=>String(x.source).slice(0,4)),series:[{vals:src.map(x=>num(x.weight)),cls:'me'}],h:120})+'<div class="sub" style="white-space:normal">Weights start from priors and move toward whoever is actually accurate once three weeks are scored. MAE = average miss in points, bias = over (+) or under (−) projecting.</div></section>';}
+      +svgBars({labels:src.map(x=>String(x.source)),series:[{vals:src.map(x=>num(x.weight)),cls:'me'}],h:120})+'<div class="sub" style="white-space:normal">Weights start from priors and move toward whoever is actually accurate once three weeks are scored. MAE = average miss in points, bias = over (+) or under (−) projecting.</div></section>';}
   h+='<section><h2>Our own accuracy</h2>';
   const mine=ov.find(x=>x.source==='LetHimCook');
   if(ov.length){
     h+='<div class="sub" style="white-space:normal">Every week our own projection is logged alongside the others and scored against what actually happened (PPR). Lower is better.</div>';
-    h+=svgBars({labels:ov.map(x=>x.source==='LetHimCook'?'US':String(x.source).slice(0,4)),series:[{vals:ov.map(x=>num(x.mae)),cls:'me',clsAt:ov.map(x=>num(x.mae)===Math.min.apply(null,ov.map(y=>num(y.mae)))?'good':(num(x.mae)===Math.max.apply(null,ov.map(y=>num(y.mae)))?'bad':''))}],h:130,legend:[['good','most accurate'],['bad','least accurate']]})
-      +'<table><tr><th>Source</th><th class="n">'+gl('mae','MAE')+'</th><th class="n">'+gl('bias','Bias')+'</th><th class="n">Players scored</th></tr>'+ov.map(x=>'<tr'+(x.source==='LetHimCook'?' style="font-weight:700"':'')+'><td>'+(x.source==='LetHimCook'?'Let Him Cook (us)':esc(x.source))+'</td><td class="n">'+f1(x.mae)+'</td><td class="n">'+(num(x.bias)>0?'+':'')+f1(x.bias)+'</td><td class="n">'+x.n+'</td></tr>').join('')+'</table>';
+    h+=svgBars({labels:ov.map(x=>x.source==='LetHimCook'?'Us':String(x.source)),series:[{vals:ov.map(x=>num(x.mae)),cls:'me',clsAt:ov.map(x=>num(x.mae)===Math.min.apply(null,ov.map(y=>num(y.mae)))?'good':(num(x.mae)===Math.max.apply(null,ov.map(y=>num(y.mae)))?'bad':''))}],h:130,legend:[['good','most accurate'],['bad','least accurate']]})
+      +'<table><tr><th>Source</th><th class="n">'+gl('mae','MAE')+'</th><th class="n">'+gl('bias','Bias')+'</th><th class="n">Scored</th></tr>'+ov.map(x=>'<tr'+(x.source==='LetHimCook'?' style="font-weight:700"':'')+'><td>'+(x.source==='LetHimCook'?'Let Him Cook (us)':esc(x.source))+'</td><td class="n">'+f1(x.mae)+'</td><td class="n">'+(num(x.bias)>0?'+':'')+f1(x.bias)+'</td><td class="n">'+x.n+'</td></tr>').join('')+'</table>';
     if(mine){const rank=ov.findIndex(x=>x.source==='LetHimCook')+1;h+='<div class="sub" style="white-space:normal;margin-top:6px"><b>We rank '+rank+' of '+ov.length+'</b> on average miss.</div>';}
     const byW={};wk.forEach(x=>{(byW[x.source]=byW[x.source]||[]).push(x)});
     const weeks=[...new Set(wk.map(x=>x.week))].sort((a,b)=>a-b);
@@ -2391,9 +2400,16 @@ function renderCompare(d){
     const aw=a===null?0:Math.round(100*Math.abs(a)/mx),bw=b===null?0:Math.round(100*Math.abs(b)/mx);
     let win=0;if(a!==null&&b!==null&&a!==b)win=lowerBetter?(a<b?1:2):(a>b?1:2);
     h+='<div style="padding:6px 0;border-top:1px solid var(--line)"><div class="sub" style="display:flex;justify-content:space-between"><b style="color:'+(win===1?'var(--me)':'var(--ink)')+'">'+fmt(a,k,scale)+'</b><span'+(why?' class="gl" title="'+esc(why)+'"':'')+'>'+esc(lbl)+'</span><b style="color:'+(win===2?'var(--them)':'var(--ink)')+'">'+fmt(b,k,scale)+'</b></div>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:3px"><div class="t" style="transform:scaleX(-1)"><i style="width:'+aw+'%;background:var(--me)"></i></div><div class="t"><i style="width:'+bw+'%;background:var(--them)"></i></div></div></div>';
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px"><div style="height:9px;border-radius:5px;background:var(--bar);overflow:hidden;display:flex;justify-content:flex-end"><i style="display:block;height:100%;width:'+aw+'%;background:var(--me);border-radius:5px 0 0 5px"></i></div><div style="height:9px;border-radius:5px;background:var(--bar);overflow:hidden"><i style="display:block;height:100%;width:'+bw+'%;background:var(--them);border-radius:0 5px 5px 0"></i></div></div></div>';
   });
   h+='</div>';
+  // charts: points by week, and the two usage numbers that drive value
+  const wkA={},wkB={};(A.log||[]).forEach(g=>{wkA[g.week]=num(g.ppr)});(B.log||[]).forEach(g=>{wkB[g.week]=num(g.ppr)});
+  const wks=Array.from(new Set(Object.keys(wkA).concat(Object.keys(wkB)).map(Number))).sort((x,y)=>x-y);
+  if(wks.length){h+='<div class="sub" style="font-weight:600;margin-top:10px">Points by week</div>'+svgBars({labels:wks.map(w=>'Wk '+w),series:[{vals:wks.map(w=>wkA[w]===undefined?null:wkA[w]),cls:'me',name:A.name},{vals:wks.map(w=>wkB[w]===undefined?null:wkB[w]),cls:'them',name:B.name}],h:150,legend:[['me',shortName(A.name)],['them',shortName(B.name)]]});}
+  const snA=(A.log||[]).map(g=>num(g.snap)),snB=(B.log||[]).map(g=>num(g.snap));
+  if(wks.length&&(snA.some(x=>x!==null)||snB.some(x=>x!==null))){const sA={},sB={};(A.log||[]).forEach(g=>{sA[g.week]=num(g.snap)===null?null:Math.round(100*g.snap)});(B.log||[]).forEach(g=>{sB[g.week]=num(g.snap)===null?null:Math.round(100*g.snap)});
+    h+='<div class="sub" style="font-weight:600;margin-top:10px">Snap share by week (%)</div>'+svgBars({labels:wks.map(w=>'Wk '+w),series:[{vals:wks.map(w=>sA[w]===undefined?null:sA[w]),cls:'me'},{vals:wks.map(w=>sB[w]===undefined?null:sB[w]),cls:'them'}],h:130});}
   // verdict
   const tid=myTeamId(d);const mineA=String(A.owner)===String(tid),mineB=String(B.owner)===String(tid);
   const dv=(num(B.value)||0)-(num(A.value)||0),dw=(num(B.proj)||0)-(num(A.proj)||0),dr=(num(B.rosWk)||0)-(num(A.rosWk)||0);
@@ -2407,6 +2423,7 @@ function renderCompare(d){
     if(hole)bits.push('Dropping '+A.name+' leaves '+(cnt(A.pos)-1)+' '+A.pos+(cnt(A.pos)-1===1?'':'s')+' of value; you start '+needN[A.pos]+'.');
     if(byeClash)bits.push(B.name+' shares a bye ('+B.bye+') with another '+B.pos+' of yours.');
     if(num(B.adds)>=20000)bits.push('The crowd is on him ('+Math.round(num(B.adds)).toLocaleString()+' adds) - if he is on waivers, expect competition.');
+    if(B.claim&&B.claim.advice)bits.push('<b>When:</b> '+esc(B.claim.advice));
   } else if(mineA&&num(B.owner)){v='B is on '+esc(B.ownerName)+' - open the <a class="pl" href="#tradecalc">trade calculator</a> to price him.';}
   else if(!mineA&&mineB){v='You own B. '+(dv<=-1.5?'Keep him over A.':(dv>=1.5?'A is the better player - see if he is free.':'A wash.'));}
   else v=(Math.abs(dv)<1.5?'A wash by value.':(dv>0?B.name+' is the better player by '+f1(Math.abs(dv))+'/wk.':A.name+' is the better player by '+f1(Math.abs(dv))+'/wk.'));
@@ -2481,9 +2498,13 @@ function teamStats(d,pw){
 }
 function renderSettings(d){
   const t=THEMES.find(x=>x.id===LOOK.theme)||THEMES[0];
+  let wpv='';try{wpv=localStorage.getItem('lhc_wpri')||''}catch(e){}
+  const anyP=(d.players||[]).find(p=>p.waiverList&&p.waiverList.length);const srvList=anyP?anyP.waiverList:[];
   let big=false;try{big=localStorage.getItem('lhc_big')==='1'}catch(e){}
   const sw=th=>{const c=isDark()?th.dark:th.light;return '<span class="sw"><i style="background:'+c.me+'"></i><i style="background:'+c.them+'"></i></span>'};
-  let h='<section><h2>Team colours</h2><div class="sub" style="white-space:normal">First swatch is you, second is the other side. Used on every score bar, chart and matchup row.</div><div class="opt">'
+  let h='<section><h2>Waiver order</h2><div class="sub" style="white-space:normal">The league\'s waiver priority list, top to bottom, one manager per line (Yahoo: League &rarr; Transactions &rarr; Waiver priority). Enter it once; the engine rolls it forward every time a claim goes through, and uses it to say whether a claim will win and whether it is worth your spot.'+(srvList.length?'<br><b>Engine has:</b> '+srvList.map((m,i)=>(i+1)+'. '+esc(m)).join(' · '):'<br><b style="color:var(--warn)">Engine has no list yet.</b>')+'</div>'
+    +'<textarea id="wpri" rows="6" style="width:100%;box-sizing:border-box;margin-top:8px;font-size:14px;background:var(--card2,var(--card));color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px" placeholder="Morgan\nEllie\n...">'+esc(wpv)+'</textarea><div class="ctl" style="margin-top:6px"><button class="go" id="wprisave"'+(CMDKEY?'':' disabled')+'>Send to engine</button></div><div class="sub" id="wprimsg"></div>'+(CMDKEY?'':'<div class="sub" style="color:var(--warn)">Needs the buttons key (Home, machine panel).</div>')+'</section>';
+  h+='<section><h2>Team colours</h2><div class="sub" style="white-space:normal">First swatch is you, second is the other side. Used on every score bar, chart and matchup row.</div><div class="opt">'
     +THEMES.map(x=>'<button data-look="theme|'+x.id+'" class="'+(x.id===LOOK.theme?'on':'')+'">'+sw(x)+esc(x.name)+'</button>').join('')+'</div>'
     +'<div class="sub" style="font-weight:600">Preview</div>'
     +'<div class="score"><div class="lbl meL">You</div><div class="num meL">127.5</div><div class="bar"><i style="width:100%"></i></div><div class="lbl thL">'+esc((d.matchup&&d.matchup.opp)||'Them')+'</div><div class="num thL">107.4</div><div class="bar them"><i style="width:84%"></i></div></div>'
@@ -2533,6 +2554,7 @@ function render(){
   const cc=$("#cmdclear");if(cc)cc.addEventListener("click",e=>{e.preventDefault();CMDKEY='';try{localStorage.removeItem('lhc_cmd')}catch(e){}render()});
   const ps2=$('#pinsave');if(ps2)ps2.addEventListener('click',()=>{const val=($('#pinin').value||'').trim().toUpperCase();PIN=val;try{localStorage.setItem('lhc_pin',val)}catch(e){}render()});
   const sr=$('#shrun');if(sr)sr.addEventListener('click',()=>runOnServer());
+  const ws=$('#wprisave');if(ws)ws.addEventListener('click',()=>{const raw=($('#wpri').value||'');const names=raw.split(/\n|,/).map(x=>x.trim()).filter(x=>x);if(names.length<2){$('#wprimsg').textContent='Need at least two names.';return}try{localStorage.setItem('lhc_wpri',raw)}catch(e){}logEvent({kind:'waiverpri',mgr:'',give:'',get:'',asked:'',gainMe:'',gainThem:'',desp:'',note:names.join('+')});$('#wprimsg').textContent='Sent - the engine picks it up on its next run (about 3 minutes).';});
   const po=$('#pinout');if(po)po.addEventListener('click',e=>{e.preventDefault();PIN='';try{localStorage.removeItem('lhc_pin')}catch(e){}render()});
   const db=$('#devbtn');if(db){db.classList.toggle('on',v==='dev'||v==='settings');}
   document.querySelectorAll('[data-want]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();
@@ -2610,7 +2632,7 @@ function openOffersHtml(mgr){
   return '<div class="sub" style="white-space:normal;margin-top:6px"><b>Open:</b> '+o.map(ev=>esc((ev.give||'')+' for '+(ev.get||''))+' <span class="flag'+(ev.kind==='approval'?' good':'')+'">'+lbl[ev.kind]+'</span> <small>'+ageText(ev.ts)+'</small>').join(' · ')+'</div>';
 }
 function logEvent(ev){ev.id=ev.id||(Date.now().toString(36)+Math.random().toString(36).slice(2,6));ev.ts=ev.ts||new Date().toISOString();ev.sent=false;TLOG.push(ev);saveTLOG();flushTLOG();return ev}
-function evLine(ev){const c=x=>String(x==null?'':x).replace(/[|"]/g,'').slice(0,80);return ['log',ev.id,c(ev.kind),c(ev.mgr),c(ev.give),c(ev.get),c(ev.asked),c(ev.gainMe),c(ev.gainThem),c(ev.desp),c(ev.note)].join('|')}
+function evLine(ev){const c=(x,n)=>String(x==null?'':x).replace(/[|"]/g,'').slice(0,n||80);return ['log',ev.id,c(ev.kind),c(ev.mgr),c(ev.give),c(ev.get),c(ev.asked),c(ev.gainMe),c(ev.gainThem),c(ev.desp),c(ev.note,300)].join('|')}
 function flushTLOG(){if(!CMDKEY)return;const acked=new Set((D&&D.tradeLogIds)||[]);
   TLOG.filter(ev=>!acked.has(ev.id)&&(!ev.sent||(Date.now()-new Date(ev.sentAt||0).getTime())>600000)).slice(0,20).forEach(ev=>{
     fetch("https://ntfy.sh/"+CMDKEY,{method:"POST",body:evLine(ev)}).then(r=>{if(r.ok){ev.sent=true;ev.sentAt=new Date().toISOString();saveTLOG()}}).catch(()=>{})});}
