@@ -407,7 +407,13 @@ function playerRow(p){
   if(!blank(p.plan))fb+='<br><span class="flag'+(/IR|Out|drop/i.test(p.plan)?' bad':'')+'" style="font-weight:600">Plan: '+esc(p.plan)+'</span>';
   if(!blank(p.handcuff))fb+=(fb?' · ':'')+'handcuff <b>'+pl(p.handcuff)+'</b>'+(blank(p.hcStatus)?'':' <span class="'+(/^free/i.test(p.hcStatus)?'form up':'form dn')+'">'+esc(p.hcStatus)+'</span>');
   const kick=(p.kickoff&&String(p.game||"").indexOf(String(p.kickoff))<0)?p.kickoff:"";
-  return '<div class="row"><div class="slot">'+esc(p.slot)+'</div>'+face(p.sid,p.team,p.pos)+'<div class="main"><div class="name">'+pl(p.player)+'</div><div class="sub">'+statusPill(p.status,kick)+posChip(p.pos)+' '+tl(p.team)+(blank(p.game)?'':' · '+esc(p.game))+(p.forecast?' '+wxIcon(p.forecast):'')+(fl?'<br>'+fl:'')+(fb?'<br><span style="white-space:normal">'+fb+'</span>':'')+'</div></div><div class="pts">'+pts+'</div></div>';
+  const al=alertLine(p);
+  return '<div class="row"><div class="slot">'+esc(p.slot)+'</div>'+face(p.sid,p.team,p.pos)+'<div class="main"><div class="name">'+pl(p.player)+'</div><div class="sub">'+statusPill(p.status,kick)+posChip(p.pos)+' '+tl(p.team)+(blank(p.game)?'':' · '+esc(p.game))+(p.forecast?' '+wxIcon(p.forecast):'')+(fl?'<br>'+fl:'')+(fb?'<br><span style="white-space:normal">'+fb+'</span>':'')+(al?'<br>'+al:'')+'</div></div><div class="pts">'+pts+'</div></div>';
+}
+// player alerts: what the crowd is doing with him (drops and adds over 24h) and his rostered share
+function alertLine(p){
+  let a=(p&&p.alerts)||[];if(typeof a==='string')a=[a];if(!Array.isArray(a)||!a.length)return '';
+  return '<span style="white-space:normal">'+a.map(t=>{const bad=/^Dropped/.test(t)||/\(-\d+% this week\)/.test(t);const good=/^Added/.test(t)||/\(\+\d+% this week\)/.test(t);return '<span class="flag'+(bad?' bad':(good?' good':''))+'" style="margin:2px 4px 0 0;display:inline-block">'+esc(t)+'</span>'}).join('')+'</span>';
 }
 function clockText(d){
   if(!d||!d.nextIso)return '';
@@ -781,6 +787,7 @@ function renderPlayer(d,name){
   const st=[];if(!blank(inj.status))st.push('<span class="flag'+(/out|ir|pup|sus/i.test(inj.status)?' bad':'')+'" style="font-weight:600">'+esc(inj.status)+(blank(inj.part)?'':' – '+esc(inj.part))+'</span>');if(!blank(inj.report)&&inj.report!==inj.status)st.push('<span class="flag">report: '+esc(inj.report)+'</span>');if(!blank(inj.practice))st.push('<span class="flag">'+esc(inj.practice)+'</span>');if(!blank(inj.note))st.push('<span class="sub" style="white-space:normal">'+esc(inj.note)+'</span>');
   if(num(p.avail)!==null&&p.avail<1)st.push('<span class="flag bad">availability '+Math.round(p.avail*100)+'%</span>');
   if(!blank(p.statusKw))st.push('<span class="sub">news says: '+esc(p.statusKw)+'</span>');
+  if(p.alerts&&p.alerts.length)st.push(alertLine(p));
   if(num(p.health)!==null)st.push('<span class="sub">health '+Math.round(p.health*100)+'% = this week '+Math.round((num(p.avail)===null?1:p.avail)*100)+'% × on the field '+Math.round((num(p.durHist)||0)*100)+'% ('+esc(p.durSrc||'history')+')</span>');
   if(p.inj&&p.inj.liveExit)st.push('<span class="sub" style="color:var(--bad);font-weight:600">left his game (from the news, '+esc(p.inj.liveExit.title)+') — this week capped at points so far until a report says he returned or the official designation lands</span>');
   if(st.length)h+='<div style="margin-top:8px;white-space:normal;line-height:1.6">'+st.join(' · ')+'</div>';
@@ -1589,6 +1596,7 @@ const GLOSS={
  form:['Form','His average PPR points over his last 3 games. It answers "what is he doing lately", which projections are slow to catch. Weighted more heavily the more games he has played this season.'],
  usage:['Usage','How much of his offense he touches — target share for pass catchers, snap share for quarterbacks. Usage is stickier week to week than points, so a big usage number with small points often means points are coming.'],
  history:['History','His own points per game in 2025, or his career average if 2025 was short. It keeps a hot three weeks from running away with the number.'],
+ alerts:['Player alerts','Two feeds you already pull, shown on every player: Sleeper trending drops and adds over the last 24 hours (500 or more to show), and ESPN\'s rostered share with its change over the week and how often he is started. Adds minus drops is one crowd signal in his value (up to the adds weight either way, on a log scale); the rostered share is shown but not weighted, because counting the crowd twice would stack.'],
  health:['Health','Two things multiplied: the chance he plays this week (injury designation and the latest news: Out, IR or PUP is 0%, doubtful 35%, questionable 85%, a live exit 25%, clean 100%) times how often he has actually been on the field over his career (injury history; a rookie gets his position\'s typical rate). Nobody reads 100. Only the first half multiplies his weekly projection; the second already sits in his season value, so nothing is counted twice.'],
  experts:['Expert rank','FantasyPros consensus rank across all their experts, plus how much those experts disagree. A wide spread means nobody knows, which is itself worth knowing.'],
  next3:['Next 3','How friendly his next three defenses are to his position, as a multiplier. 1.0 is average, 1.2 means those defenses give up 20% more than normal to his position, 0.8 means they are tough.'],
