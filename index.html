@@ -2368,8 +2368,9 @@ function renderTradeCalc(d){
   h+=tcVerdictHtml(d,R,pt,mine,TC.give,TC.asked);
   if(R.gi.length||R.ge.length){
     h+='<div class="sub" style="font-weight:600;margin-top:10px">Record this offer</div><div class="sub" style="white-space:normal">Every one you record teaches the model how '+esc(pt.manager||'they')+' actually trades. It goes to the server on its own (needs the buttons key, set on Home under the machine panel).</div>'
-      +'<div class="opt">'+[['received',(pt.manager||'They')+' offered this'],['sent','I sent this'],['accepted','They accepted'],['declined','They declined'],['idecl','I declined']].map(x=>'<button data-tcrec="'+x[0]+'">'+esc(x[1])+'</button>').join('')+'</div>'
-      +(function(){const mine2=TLOG.filter(ev=>ev.mgr===(pt.manager||'')&&/received|sent|accepted|declined|idecl/.test(ev.kind)).slice(-5).reverse();return mine2.length?'<div class="sub" style="white-space:normal">Recorded: '+mine2.map(ev=>esc(ev.kind)+' '+esc((ev.give||'')+' for '+(ev.get||''))+(ev.sent?'':' <i>(not on the laptop yet)</i>')).join(' · ')+'</div>':''})()
+      +'<div class="opt">'+[['received',(pt.manager||'They')+' offered this'],['sent','I sent this'],['countered','I countered'],['pending','Pending acceptance'],['approval','Pending approval'],['accepted','They accepted'],['declined','They declined'],['idecl','I declined']].map(x=>'<button data-tcrec="'+x[0]+'">'+esc(x[1])+'</button>').join('')+'</div>'
+      +openOffersHtml(pt.manager||'')
+      +(function(){const mine2=TLOG.filter(ev=>ev.mgr===(pt.manager||'')&&/received|sent|countered|pending|approval|accepted|declined|idecl/.test(ev.kind)).slice(-5).reverse();return mine2.length?'<div class="sub" style="white-space:normal">Recorded: '+mine2.map(ev=>esc(ev.kind)+' '+esc((ev.give||'')+' for '+(ev.get||''))+(ev.sent?'':' <i>(not on the laptop yet)</i>')).join(' · ')+'</div>':''})()
       +(CMDKEY?'':'<div class="sub" style="white-space:normal;color:var(--warn)">Buttons key not set - events stay on this phone until it is (Home, machine panel, Unlock buttons).</div>');
   }
   h+='<div class="opt" style="margin-top:8px"><button data-tcclear="1">Clear</button></div></section>';
@@ -2524,6 +2525,18 @@ function flash(btn,cls,txt,ms){if(!btn)return;const old=btn.dataset.lbl||btn.tex
 // next load, so a laptop that was asleep still gets it.
 let TLOG=[];try{TLOG=JSON.parse(localStorage.getItem('lhc_tlog')||'[]')}catch(e){}
 function saveTLOG(){try{localStorage.setItem('lhc_tlog',JSON.stringify(TLOG.slice(-300)))}catch(e){}}
+// Open offers: the last thing recorded for a give/get pair with a manager, if it is still waiting
+// (sent, pending acceptance, pending league approval). Closed by accepted, declined, I declined or countered.
+function openOffers(mgr){
+  const byKey={};TLOG.filter(ev=>!mgr||ev.mgr===mgr).forEach(ev=>{const k=ev.mgr+'|'+(ev.give||'')+'|'+(ev.get||'');byKey[k]=ev});
+  return Object.values(byKey).filter(ev=>/^(sent|pending|approval)$/.test(ev.kind)).sort((a,b)=>String(b.ts).localeCompare(String(a.ts)));
+}
+function ageText(ts){const ms=Date.now()-new Date(ts).getTime();if(!(ms>=0))return '';const h=ms/3600000;if(h<1)return Math.round(ms/60000)+' min ago';if(h<48)return Math.round(h)+' h ago';return Math.round(h/24)+' d ago';}
+function openOffersHtml(mgr){
+  const o=openOffers(mgr);if(!o.length)return '';
+  const lbl={sent:'sent, no answer yet',pending:'pending their acceptance',approval:'accepted, pending league approval'};
+  return '<div class="sub" style="white-space:normal;margin-top:6px"><b>Open:</b> '+o.map(ev=>esc((ev.give||'')+' for '+(ev.get||''))+' <span class="flag'+(ev.kind==='approval'?' good':'')+'">'+lbl[ev.kind]+'</span> <small>'+ageText(ev.ts)+'</small>').join(' · ')+'</div>';
+}
 function logEvent(ev){ev.id=ev.id||(Date.now().toString(36)+Math.random().toString(36).slice(2,6));ev.ts=ev.ts||new Date().toISOString();ev.sent=false;TLOG.push(ev);saveTLOG();flushTLOG();return ev}
 function evLine(ev){const c=x=>String(x==null?'':x).replace(/[|"]/g,'').slice(0,80);return ['log',ev.id,c(ev.kind),c(ev.mgr),c(ev.give),c(ev.get),c(ev.asked),c(ev.gainMe),c(ev.gainThem),c(ev.desp),c(ev.note)].join('|')}
 function flushTLOG(){if(!CMDKEY)return;const acked=new Set((D&&D.tradeLogIds)||[]);
