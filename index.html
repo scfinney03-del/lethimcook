@@ -2554,6 +2554,7 @@ function render(){
   const cc=$("#cmdclear");if(cc)cc.addEventListener("click",e=>{e.preventDefault();CMDKEY='';try{localStorage.removeItem('lhc_cmd')}catch(e){}render()});
   const ps2=$('#pinsave');if(ps2)ps2.addEventListener('click',()=>{const val=($('#pinin').value||'').trim().toUpperCase();PIN=val;try{localStorage.setItem('lhc_pin',val)}catch(e){}render()});
   const sr=$('#shrun');if(sr)sr.addEventListener('click',()=>runOnServer());
+  shRestore();
   const ws=$('#wprisave');if(ws)ws.addEventListener('click',()=>{const raw=($('#wpri').value||'');const names=raw.split(/\n|,/).map(x=>x.trim()).filter(x=>x);if(names.length<2){$('#wprimsg').textContent='Need at least two names.';return}try{localStorage.setItem('lhc_wpri',raw)}catch(e){}logEvent({kind:'waiverpri',mgr:'',give:'',get:'',asked:'',gainMe:'',gainThem:'',desp:'',note:names.join('+')});$('#wprimsg').textContent='Sent - the engine picks it up on its next run (about 3 minutes).';});
   const po=$('#pinout');if(po)po.addEventListener('click',e=>{e.preventDefault();PIN='';try{localStorage.removeItem('lhc_pin')}catch(e){}render()});
   const db=$('#devbtn');if(db){db.classList.toggle('on',v==='dev'||v==='settings');}
@@ -2635,40 +2636,34 @@ function logEvent(ev){ev.id=ev.id||(Date.now().toString(36)+Math.random().toStri
 function evLine(ev){const c=(x,n)=>String(x==null?'':x).replace(/[|"]/g,'').slice(0,n||80);return ['log',ev.id,c(ev.kind),c(ev.mgr),c(ev.give),c(ev.get),c(ev.asked),c(ev.gainMe),c(ev.gainThem),c(ev.desp),c(ev.note,300)].join('|')}
 function flushTLOG(){if(!CMDKEY)return;const acked=new Set((D&&D.tradeLogIds)||[]);
   TLOG.filter(ev=>!acked.has(ev.id)&&(!ev.sent||(Date.now()-new Date(ev.sentAt||0).getTime())>600000)).slice(0,20).forEach(ev=>{
-    fetch("https://ntfy.sh/"+CMDKEY,{method:"POST",body:evLine(ev)}).then(r=>{if(r.ok){ev.sent=true;ev.sentAt=new Date().toISOString();saveTLOG()}}).catch(()=>{})});}
+    fetch(API+"/event",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CMDKEY,line:evLine(ev)})}).then(r=>{if(r.ok){ev.sent=true;ev.sentAt=new Date().toISOString();saveTLOG()}}).catch(()=>{})});}
 function send(cmd,topic,btn){
   const m=$("#ctlmsg"); if(m)m.textContent="Sending…";
   flash(btn,'sending','Sending…');
-  fetch("https://ntfy.sh/"+topic,{method:"POST",body:cmd}).then(r=>{
-    if(m)m.textContent=r.ok?"Sent. The server replies to your phone in a few seconds.":"Couldn't send ("+r.status+").";
+  fetch(API+"/control",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:topic,cmd:cmd})}).then(r=>r.text().then(t=>({ok:r.ok,status:r.status,t}))).then(r=>{
+    if(m)m.textContent=r.ok?r.t:"Couldn't send ("+r.status+": "+r.t+").";
     flash(btn,r.ok?'sent':'failed',r.ok?'Sent ✓':'Failed',2600);
   }).catch(()=>{if(m)m.textContent="Couldn't send — no connection.";flash(btn,'failed','No connection',2600);});
 }
 // Server console: "sh|<pin hash>|<id>|<base64 command>" goes down the command channel; the listener runs it
 // and answers on the phone channel with the title "console <id>", which this polls for (about 2.5 minutes max).
-const PHONE_TOPIC="lethimcook-7k3q9v2m";
+const API="https://157-230-82-39.sslip.io"; // the server's own HTTPS door (Caddy + server/api.py); the buttons key is its password
 function b64utf8(s){return btoa(unescape(encodeURIComponent(s)))}
+// the console survives the 3-minute re-render: command, status and answer live here and are put back after every render
+const SH={cmd:'',msg:'',out:''};
+function shSet(k,v){SH[k]=v;const el=$(k==='msg'?'#shmsg':'#shout');if(el){el.textContent=v;if(k==='out')el.style.display=v?'block':'none'}}
+function shRestore(){const ta=$('#shin');if(ta){if(SH.cmd&&!ta.value)ta.value=SH.cmd;ta.addEventListener('input',()=>{SH.cmd=ta.value})}shSet('msg',SH.msg);shSet('out',SH.out)}
 function runOnServer(){
-  const ta=$("#shin"),msg=$("#shmsg"),out=$("#shout");if(!ta||!CMDKEY)return;
-  const cmd=(ta.value||"").trim();if(!cmd){if(msg)msg.textContent="Type a command first.";return}
-  const id=Date.now().toString(36)+Math.random().toString(36).slice(2,5);const sentAt=Math.floor(Date.now()/1000)-2;
-  if(msg)msg.textContent="Sending…";if(out){out.style.display="block";out.textContent="$ "+cmd+"\n";}
-  // ntfy takes 4 KB a message, so a long command goes as numbered pieces the listener stitches back together
-  const b64=b64utf8(cmd);const CH=3000;const parts=[];for(let i=0;i<b64.length;i+=CH)parts.push(b64.slice(i,i+CH));
-  const sendAll=parts.length===1?fetch("https://ntfy.sh/"+CMDKEY,{method:"POST",body:"sh|"+DEVPINH+"|"+id+"|"+b64})
-    :parts.reduce((pr,chunk,i)=>pr.then(r=>{if(r&&!r.ok)return r;if(msg)msg.textContent="Sending piece "+(i+1)+" of "+parts.length+"…";return fetch("https://ntfy.sh/"+CMDKEY,{method:"POST",body:"shp|"+DEVPINH+"|"+id+"|"+(i+1)+"|"+parts.length+"|"+chunk})}),Promise.resolve(null));
-  sendAll.then(r=>{
-    if(!r||!r.ok){if(msg)msg.textContent="Couldn't send ("+(r?r.status:'?')+").";return}
-    if(msg)msg.textContent="Sent — waiting for the server…";
-    let tries=0;const poll=()=>{tries++;
-      fetch("https://ntfy.sh/"+PHONE_TOPIC+"/json?poll=1&since="+sentAt).then(r=>r.text()).then(t=>{
-        let hit=null;t.split("\n").forEach(ln=>{if(!ln.trim())return;try{const o=JSON.parse(ln);if(o.event==="message"&&o.title==="console "+id)hit=o}catch(e){}});
-        if(hit){if(out)out.textContent="$ "+cmd+"\n"+hit.message;if(msg)msg.textContent="Done "+new Date(hit.time*1000).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})+".";}
-        else if(tries<50){if(msg)msg.textContent="Waiting for the server… ("+(tries*3)+"s)";setTimeout(poll,3000)}
-        else if(msg)msg.textContent="No answer in 2.5 minutes. The listener may be restarting; try again in a minute.";
-      }).catch(()=>{if(tries<50)setTimeout(poll,3000)});};
-    setTimeout(poll,2500);
-  }).catch(()=>{if(msg)msg.textContent="Couldn't send — no connection.";});
+  const ta=$("#shin");if(!ta||!CMDKEY)return;
+  const cmd=(ta.value||"").trim();if(!cmd){shSet('msg',"Type a command first.");return}
+  SH.cmd=cmd;const t0=Date.now();
+  shSet('msg',"Running on the server…");shSet('out',"$ "+cmd+"\n");
+  const tick=setInterval(()=>shSet('msg',"Running on the server… ("+Math.round((Date.now()-t0)/1000)+"s)"),1000);
+  fetch(API+"/cmd",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CMDKEY,pin:DEVPINH,cmd:cmd})}).then(r=>r.text().then(t=>({ok:r.ok,status:r.status,t}))).then(r=>{
+    clearInterval(tick);
+    if(!r.ok){shSet('msg',"Server said "+r.status+": "+r.t);return}
+    shSet('out',"$ "+cmd+"\n"+r.t);shSet('msg',"Done "+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})+" in "+Math.round((Date.now()-t0)/1000)+"s. (Stays here until you run something else.)");
+  }).catch(()=>{clearInterval(tick);shSet('msg',"Couldn't reach the server — no connection, or it is restarting.");});
 }
 // The page is served by GitHub Pages, which rebuilds the site after every publish - usually a
 // minute, sometimes ten when their queue is busy. The raw file on GitHub itself skips that build
