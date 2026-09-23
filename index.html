@@ -546,7 +546,9 @@ function renderHome(d){
   const ucl=b=>{const s=num(b.score)||0;return s>=85?'u1':(s>=40?'u2':'u3')};
   if(push.length)h+=push.map(b=>'<div class="act '+ucl(b)+'"><div class="when'+(/now/i.test(b.when)?' now':'')+'"><span class="dot"></span>'+esc(b.when)+(num(b.score)!==null?' · '+Math.round(num(b.score)):'')+'</div><div class="text">'+linkNames(b.text)+'</div>'+(blank(b.where)?'':'<div class="where">'+esc(b.where)+'</div>')+'</div>').join("");
   else h+='<div class="empty">Nothing needs a move right now.</div>';
-  if(rest.length)h+='<details><summary>'+rest.length+' more on the board</summary>'+rest.map(b=>'<div class="act '+ucl(b)+'"><div class="when"><span class="dot"></span>'+esc(b.when)+'</div><div class="text">'+linkNames(b.text)+'</div></div>').join("")+'</details>';
+  const BS={score:['Score',b=>b.score],when:['When',b=>b.when],text:['A to Z',b=>b.text]};const cats=['ALL'].concat(Array.from(new Set(rest.concat(push).map(b=>b.where).filter(x=>!blank(x)))));
+  const restL=lbApply('board',{sort:'score',dir:'desc',f:'ALL'},rest,{sorts:BS,text:b=>(b.text||'')+' '+(b.where||''),extraFn:(b,f)=>b.where===f});
+  if(rest.length)h+='<details><summary>'+rest.length+' more on the board</summary>'+lbBar('board',{sort:'score',dir:'desc',f:'ALL'},{sorts:BS,extra:cats.map(c=>[c==='ALL'?'All kinds':c,c]),q:true})+restL.map(b=>'<div class="act '+ucl(b)+'"><div class="when"><span class="dot"></span>'+esc(b.when)+'</div><div class="text">'+linkNames(b.text)+'</div></div>').join("")+'</details>';
   h+='</section>';
   }
 
@@ -621,10 +623,12 @@ function renderHome(d){
 
   const wv=SHOW?[]:(d.waivers||[]).filter(w=>!blank(w.player)&&!/^(gone|taken|rostered)/i.test(String(w.inLeague||"")));
   if(wv.length){
-    h+='<section><h2>Waiver watch</h2><table><tr><th style="width:30px">#</th><th>Player</th><th class="n" style="width:44px">Wk</th></tr>';
-    h+=wv.slice(0,8).map(w=>{const st=blank(w.status)?'':'<span class="flag'+(/out|ir/i.test(w.status)?' bad':'')+'">'+esc(w.status)+'</span> · ';
+    const WS={pri:['Engine order',w=>-(num(w.pri)||99)],wk:['This week',w=>w.wk],season:['Rest of season',w=>w.season],adds:['Adds (24h)',w=>w.adds],name:['Name',w=>w.player]};
+    const wvl=lbApply('wv',{sort:'pri',dir:'desc',pos:'ALL'},wv,{sorts:WS,pos:true,posOf:w=>w.pos==='DEF'?'DST':w.pos,text:w=>w.player+' '+(w.team||'')+' '+(w.why||'')});
+    h+='<section><h2>Waiver watch</h2>'+lbBar('wv',{sort:'pri',dir:'desc',pos:'ALL'},{sorts:WS,pos:true,q:'Search name, team or reason'})+'<div style="max-height:70vh;overflow:auto"><table><tr><th style="width:30px">#</th><th>Player</th><th class="n" style="width:44px">Wk</th></tr>';
+    h+=wvl.map(w=>{const st=blank(w.status)?'':'<span class="flag'+(/out|ir/i.test(w.status)?' bad':'')+'">'+esc(w.status)+'</span> · ';
       return '<tr><td>'+esc(w.pri)+'</td><td><div style="display:flex;gap:8px;align-items:center">'+logo(w.team)+'<div style="min-width:0"><b>'+pl(w.player)+'</b><br><span class="sub">'+st+esc([w.pos,w.team].filter(x=>!blank(x)).join(' · '))+(num(w.season)===null?'':' · season '+Math.round(num(w.season)))+(blank(w.next3)?'':' · next '+esc(w.next3))+'</span>'+(blank(w.wantedBy)?'':'<br><span class="flag bad">wanted by '+esc(w.wantedBy)+'</span>')+(blank(w.why)?'':'<br><span class="sub" style="white-space:normal">'+esc(w.why)+'</span>')+claimLine(w.claim)+'</div></div></td><td class="n">'+f1(w.wk)+'</td></tr>'}).join("");
-    h+='</table></section>';
+    h+='</table></div></section>';
   }
 
   const ir=SHOW?[]:(d.ir||[]).filter(x=>!blank(x.player)), sr=SHOW?[]:(d.streamers||[]).filter(x=>!blank(x.best));
@@ -722,7 +726,9 @@ function renderTeam(d,t){
   h+=kv([['This week (starters)',f1(pw.week)+' <small style="color:var(--mute)">rank '+esc(pw.rankNow)+'</small>'],['ROS power',f1(pw.ros)+' <small style="color:var(--mute)">rank '+esc(pw.rankRos)+'</small>'],['Bench value',f1(pw.bench)],['Best player',pl(pw.best)],['Weakest starter',pl(pw.weakest)],['Plays you',blank(pw.playsMe)||pw.playsMe==='-'?'':'week '+esc(pw.playsMe)]]);
   h+='</section><section><h2>Team profile</h2>'+teamRadar(d,pw)+'</section>';
   h+=managerSection(d,pw);
-  h+='<section><h2>Roster</h2><table><tr><th style="width:38px">Slot</th><th>Player</th><th class="n" style="width:44px">Wk</th><th class="n" style="width:44px">Value</th><th class="n" style="width:44px">ROS</th><th style="width:34px"></th></tr>';
+  const RS={slot:['Lineup order',p=>-((order[p.slot]??9)*1000)+(num(p.value)||0)],value:['Value /wk',p=>p.value],week:['This week',p=>p.week],ros:['ROS /wk',p=>p.ros],pos:['Position',p=>p.pos],name:['Name',p=>p.player]};
+  ros.splice(0,ros.length,...lbApply('team',{sort:'slot',dir:'desc',pos:'ALL'},ros,{sorts:RS,pos:true,posOf:p=>p.pos==='DEF'?'DST':p.pos,text:p=>p.player+' '+(p.nfl||'')}));
+  h+='<section><h2>Roster</h2>'+lbBar('team',{sort:'slot',dir:'desc',pos:'ALL'},{sorts:RS,pos:true,q:true})+'<table><tr><th style="width:38px">Slot</th><th>Player</th><th class="n" style="width:44px">Wk</th><th class="n" style="width:44px">Value</th><th class="n" style="width:44px">ROS</th><th style="width:34px"></th></tr>';
   state.ctx=ros.map(p=>cleanName(p.player));state.ctxName=pw.name;
   h+=ros.map(p=>{const x=P(p.player);const g=x.game||{};
     return '<tr><td style="color:var(--mute)">'+esc(p.slot)+'</td><td style="white-space:normal"><div style="display:flex;gap:8px;align-items:center">'+face(p.sid,p.nfl,p.pos)+'<div style="min-width:0">'+pl(p.player)+'<br><span class="sub">'+(g.status?gamePill(g.status)+' ':'')+esc(p.pos)+' · '+tl(p.nfl)+(g.opp?' · '+(g.ha==='Home'?'v ':'@ ')+tl(g.opp):'')+(p.bye?' · bye '+esc(p.bye):'')+(x.inj&&!blank(x.inj.status)?' · <span class="flag'+(/out|ir/i.test(x.inj.status)?' bad':'')+'">'+esc(x.inj.status)+'</span>':'')+'</span></div></div></td><td class="n">'+(num(g.live)!==null&&/progress|final/i.test(g.status||'')?'<b>'+f1(g.live)+'</b>':f1(p.week))+'</td><td class="n">'+f1(p.value)+'</td><td class="n">'+f1(p.ros)+'</td><td>'+(CMDKEY?'<button class="aa" data-rp="'+esc(p.player)+'" title="Replace" style="margin:0;padding:4px 7px">&#8644;</button>':'')+'</td></tr>'}).join("");
@@ -733,9 +739,11 @@ function renderTeam(d,t){
   if(RP.team!==null&&String(RP.team)===String(t)&&RP.player){
     const q=replaceQueue(d,t,ros,RP.player),th=threatOf(d,t);
     h+='<section><h2>Replace '+esc(RP.player)+'</h2><div class="sub" style="white-space:normal">The most likely pickups for that spot, rated by what the move does to '+esc(pw.manager)+"'s roster"+(isMine(pw.name)?'':' and whether it hurts you')+'. Tap the one that happened and the engine files it.</div>'
-      +(q.length?q.map(c=>{const g=c.gain,hurt=!isMine(pw.name)&&g>=1&&th.score>0;return '<div class="row" style="padding:8px 0"><div class="main" style="min-width:0"><div class="name">'+pl(c.p.name)+' <small class="sub">'+esc(c.p.pos)+' · '+tl(c.p.team)+(c.hot?' · <span class="flag good">hot</span>':'')+'</small></div>'
+      +lbBar('rp',{sort:'likely',dir:'desc',pos:'ALL'},{sorts:{likely:['Most likely',c=>c.likely],value:['Value',c=>c.p.value],gain:['Roster gain',c=>c.gain],adds:['Adds (24h)',c=>c.p.adds],name:['Name',c=>c.p.name]},pos:['ALL'].concat(Array.from(new Set(q.map(c=>c.p.pos)))),q:'Search name or NFL team'})
+      +'<div style="max-height:60vh;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:0 8px">'
+      +(q.length?lbApply('rp',{sort:'likely',dir:'desc',pos:'ALL'},q,{sorts:{likely:['',c=>c.likely],value:['',c=>c.p.value],gain:['',c=>c.gain],adds:['',c=>c.p.adds],name:['',c=>c.p.name]},pos:true,posOf:c=>c.p.pos,text:c=>c.p.name+' '+(c.p.team||'')}).map(c=>{const g=c.gain,hurt=!isMine(pw.name)&&g>=1&&th.score>0;return '<div class="row" style="padding:8px 0"><div class="main" style="min-width:0"><div class="name">'+pl(c.p.name)+' <small class="sub">'+esc(c.p.pos)+' · '+tl(c.p.team)+(c.hot?' · <span class="flag good">hot</span>':'')+'</small></div>'
         +'<div class="sub" style="white-space:normal">value '+f1(c.p.value)+'/wk · roster '+(g>=0?'+':'')+f1(g)+'/wk'+(hurt?' · <span class="flag bad">helps a threat ('+esc(th.why)+')</span>':(isMine(pw.name)?'':(g>=1?' · fine for you':'')))+'</div></div>'
-        +'<div style="flex:0 0 auto"><button class="aa" data-rpgo="'+esc(c.p.name)+'" style="margin:0">This happened</button></div></div>'}).join(''):'<div class="sub">No free agent the engine rates at that position.</div>')
+        +'<div style="flex:0 0 auto"><button class="aa" data-rpgo="'+esc(c.p.name)+'" style="margin:0">This happened</button></div></div>'}).join(''):'<div class="sub">No free agent the engine rates at that position.</div>')+'</div>'
       +'<div class="ctl" style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:6px"><button data-rpgo="" style="margin:0">Dropped, nobody added</button><button data-rpcancel="1" style="margin:0">Cancel</button></div>'+(RP.msg?'<div class="sub" style="margin-top:6px">'+esc(RP.msg)+'</div>':'')+'</section>';
   } else if(RP.msg&&String(RP.team)===String(t)){h+='<section><div class="sub">'+esc(RP.msg)+'</div></section>';}
   h+='<section><h2>Fix this roster</h2><div class="sub" style="white-space:normal">Yahoo is not feeding rosters right now, so tell the engine here when '+esc(pw.manager)+' adds or drops someone. Pick a player to drop, type one to add, or both for a swap. It lands on the next run (about 3 minutes) and stays until the real Yahoo pull is back.</div>'
@@ -2189,16 +2197,34 @@ let LT={a:null,b:null,ga:[],gb:[]};try{LT=Object.assign(LT,JSON.parse(localStora
 function saveLT(){try{localStorage.setItem('lhc_lt',JSON.stringify(LT))}catch(e){}}
 let RP={team:null,player:'',msg:''};
 // how much a rival matters to your season: rest-of-season rank and whether he still plays you
-function threatOf(d,t){const pw=(d.power||[]).find(x=>String(x.team)===String(t))||{};const rr=num(pw.rankRos),pm=num(pw.playsMe)||0;let sc=0;if(rr!==null&&rr<=3)sc+=2;else if(rr!==null&&rr<=5)sc+=1;if(pm>0)sc+=1;
-  const why=[];if(rr!==null&&rr<=5)why.push('#'+Math.round(rr)+' rest-of-season');if(pm>0)why.push('plays you '+pm+' more time'+(pm>1?'s':''));return {score:sc,rank:rr,playsMe:pm,name:pw.manager||pw.name||'',why:why.join(', ')}}
+function threatOf(d,t){const pw=(d.power||[]).find(x=>String(x.team)===String(t))||{};const rr=num(pw.rankRos),pm=num(pw.playsMeN)||0,pw1=num(pw.playsMe);let sc=0;if(rr!==null&&rr<=3)sc+=2;else if(rr!==null&&rr<=5)sc+=1;if(pm>0)sc+=1;
+  const why=[];if(rr!==null&&rr<=5)why.push('#'+Math.round(rr)+' rest-of-season');if(pm>0)why.push('plays you '+(pm>1?pm+' more times':'in week '+Math.round(pw1)));return {score:sc,rank:rr,playsMe:pm,name:pw.manager||pw.name||'',why:why.join(', ')}}
 // the most likely pickups for a roster spot: same position first, then flex-eligible, ranked by value with a nod to the crowd
 function replaceQueue(d,t,rows,player){const me=rows.find(r=>r.player===player);if(!me)return [];const pos=me.pos==='DEF'?'DST':me.pos;
   const free=(d.players||[]).filter(p=>!num(p.owner)&&(num(p.value)||0)>0);
   const before=teamValue(rows),without=rows.filter(r=>r.player!==player);
   const score=p=>(num(p.value)||0)+Math.min(2,Math.log10(1+(num(p.adds)||0))*0.5);
-  const same=free.filter(p=>(p.pos==='DEF'?'DST':p.pos)===pos).sort((a,b)=>score(b)-score(a)).slice(0,5);
-  const flex=(['RB','WR','TE'].indexOf(pos)>=0)?free.filter(p=>['RB','WR','TE'].indexOf(p.pos)>=0&&p.pos!==pos).sort((a,b)=>score(b)-score(a)).slice(0,2):[];
-  return same.concat(flex).map(p=>{const after=teamValue(without.concat([asRow(p)]));return {p:p,gain:after-before,hot:(num(p.adds)||0)>=5000}});}
+  const same=free.filter(p=>(p.pos==='DEF'?'DST':p.pos)===pos).sort((a,b)=>score(b)-score(a));
+  const flex=(['RB','WR','TE'].indexOf(pos)>=0)?free.filter(p=>['RB','WR','TE'].indexOf(p.pos)>=0&&p.pos!==pos).sort((a,b)=>score(b)-score(a)):[];
+  return same.concat(flex).map(p=>{const after=teamValue(without.concat([asRow(p)]));return {p:p,gain:after-before,hot:(num(p.adds)||0)>=5000,likely:score(p),same:(p.pos==='DEF'?'DST':p.pos)===pos}});}
+// ---------- list bars: one sort + filter strip that any list can wear (state kept per list) ----------
+let LB={};try{LB=JSON.parse(localStorage.getItem('lhc_lb')||'{}')}catch(e){}
+function lbGet(id,def){return Object.assign({},def||{},LB[id]||{})}
+function lbBar(id,def,o){const st=lbGet(id,def);let h='<div class="filters">';
+  if(o.sorts)h+='<select data-lb="'+id+'|sort">'+Object.keys(o.sorts).map(k=>'<option value="'+k+'"'+(st.sort===k?' selected':'')+'>'+esc(o.sorts[k][0])+'</option>').join('')+'</select><select data-lb="'+id+'|dir"><option value="desc"'+(st.dir!=='asc'?' selected':'')+'>High to low</option><option value="asc"'+(st.dir==='asc'?' selected':'')+'>Low to high</option></select>';
+  if(o.pos)h+='<select data-lb="'+id+'|pos">'+(o.pos===true?['ALL','QB','RB','WR','TE','K','DST']:o.pos).map(p=>'<option value="'+p+'"'+(st.pos===p?' selected':'')+'>'+(p==='ALL'?'All positions':p)+'</option>').join('')+'</select>';
+  if(o.extra)h+='<select data-lb="'+id+'|f">'+o.extra.map(x=>'<option value="'+esc(x[1])+'"'+(st.f===x[1]?' selected':'')+'>'+esc(x[0])+'</option>').join('')+'</select>';
+  if(o.q)h+='<input type="search" data-lb="'+id+'|q" placeholder="'+esc(o.q===true?'Search (enter)':o.q)+'" value="'+esc(st.q||'')+'">';
+  return h+'</div>';}
+function lbApply(id,def,list,o){const st=lbGet(id,def);let l=list.slice();
+  if(o.pos&&st.pos&&st.pos!=='ALL')l=l.filter(x=>(o.posOf?o.posOf(x):x.pos)===st.pos);
+  if(st.q&&o.text){const q=String(st.q).toLowerCase();l=l.filter(x=>o.text(x).toLowerCase().indexOf(q)>=0)}
+  if(o.extraFn&&st.f&&st.f!=='ALL')l=l.filter(x=>o.extraFn(x,st.f));
+  if(o.sorts&&o.sorts[st.sort]){const fn=o.sorts[st.sort][1];const key=x=>{const v=fn(x);const n=num(v);return n===null?(v==null?-1e9:String(v)):n};
+    l.sort((a,b)=>{const va=key(a),vb=key(b);const c=(typeof va==='string'||typeof vb==='string')?String(va).localeCompare(String(vb)):va-vb;return st.dir==='asc'?c:-c})}
+  return l;}
+function lbWire(){document.querySelectorAll('[data-lb]').forEach(el=>el.addEventListener('change',()=>{const [id,k]=el.dataset.lb.split('|');LB[id]=Object.assign({},LB[id]||{},{[k]:el.value});try{localStorage.setItem('lhc_lb',JSON.stringify(LB))}catch(e){}render()}));}
+
 function leagueTradeSection(d){
   const teams=(d.teams||[]).slice();if(teams.length<2)return '';
   const tid=myTeamId(d);
@@ -2209,10 +2235,12 @@ function leagueTradeSection(d){
   const nm=t=>t.manager||t.name||'';
   const pick=(side,cur)=>'<div class="opt">'+teams.map(t=>'<button data-lt'+side+'="'+esc(t.team)+'" class="'+(String(t.team)===String(cur)?'on':'')+'">'+esc(nm(t))+'</button>').join('')+'</div>';
   const sortR=rows=>rows.slice().sort((a,b)=>(num(b.value)||0)-(num(a.value)||0));
+  const lq=(lbGet('lt',{}).q||'').toLowerCase();const fq=rows=>lq?rows.filter(r=>(r.player+' '+r.pos).toLowerCase().indexOf(lq)>=0||(LT.ga.indexOf(r.player)>=0)||(LT.gb.indexOf(r.player)>=0)):rows;
   const prow=(r,side)=>{const on=(side==='a'?LT.ga:LT.gb).indexOf(r.player)>=0;return '<label class="tcp'+(on?' on':'')+'"><input type="checkbox" data-lt="'+side+'|'+esc(r.player)+'"'+(on?' checked':'')+'><span class="tcm"><span class="fn">'+esc(r.player)+'</span><small class="sub">'+esc(r.pos)+' · '+f1(r.value)+'/wk</small></span></label>'};
   let h='<section><h2>'+gl('leaguetrade','League trade check')+'</h2><div class="sub" style="white-space:normal">Any two teams. Pick who gives what and it grades both sides, then reads it from your seat: fair or lopsided, who wins, and whether the winner is someone in your way.</div>';
   h+='<div class="sub" style="font-weight:600;margin-top:8px">Team A</div>'+pick('a',LT.a)+'<div class="sub" style="font-weight:600">Team B</div>'+pick('b',LT.b);
-  h+='<section class="split" style="padding:10px 6px"><div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px"><div class="sideA" style="min-width:0"><div class="sub" style="font-weight:700;color:var(--me)">'+esc(nm(ta))+' gives</div>'+sortR(A).map(r=>prow(r,'a')).join('')+'</div><div class="sideB" style="min-width:0"><div class="sub" style="font-weight:700;color:var(--them);text-align:right">'+esc(nm(tb))+' gives</div>'+sortR(B).map(r=>prow(r,'b')).join('')+'</div></div></section>';
+  h+=lbBar('lt',{},{q:'Search either roster (enter)'});
+  h+='<section class="split" style="padding:10px 6px"><div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px"><div class="sideA" style="min-width:0"><div class="sub" style="font-weight:700;color:var(--me)">'+esc(nm(ta))+' gives</div>'+fq(sortR(A)).map(r=>prow(r,'a')).join('')+'</div><div class="sideB" style="min-width:0"><div class="sub" style="font-weight:700;color:var(--them);text-align:right">'+esc(nm(tb))+' gives</div>'+fq(sortR(B)).map(r=>prow(r,'b')).join('')+'</div></div></section>';
   if(LT.ga.length||LT.gb.length){
     const R=tcEval(d,A,B,LT.ga,LT.gb,'none');
     const gA=R.gainMe,gB=R.gainThem,lop=gA-gB,win=lop>=0?ta:tb,lose=lop>=0?tb:ta,wg=Math.max(gA,gB),lg=Math.min(gA,gB),mag=Math.abs(lop);
@@ -2624,6 +2652,7 @@ function render(){
   const ps2=$('#pinsave');if(ps2)ps2.addEventListener('click',()=>{const val=($('#pinin').value||'').trim().toUpperCase();PIN=val;try{localStorage.setItem('lhc_pin',val)}catch(e){}render()});
   const sr=$('#shrun');if(sr)sr.addEventListener('click',()=>runOnServer());
   shRestore();
+  lbWire();
   const sp=$('#shpaste');if(sp)sp.addEventListener('click',()=>{if(!navigator.clipboard||!navigator.clipboard.readText){shSet('msg','This browser will not hand over the clipboard - long-press the box and paste.');return}navigator.clipboard.readText().then(t=>{const ta=$('#shin');if(ta){ta.value=t;SH.cmd=t;shSet('msg','Pasted '+t.length+' characters - tap Run on server.')}}).catch(()=>shSet('msg','Clipboard blocked - long-press the box and paste.'))});
   const sc=$('#shclear');if(sc)sc.addEventListener('click',()=>{const ta=$('#shin');if(ta)ta.value='';SH.cmd='';shSet('msg','');shSet('out','')});
   const scp=$('#shcopy');if(scp)scp.addEventListener('click',()=>{const t=SH.out||'';if(!t){shSet('msg','Nothing to copy yet.');return}const done=()=>shSet('msg','Copied '+t.length+' characters.');if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(done).catch(()=>{const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');done()}catch(e){shSet('msg','Copy blocked - long-press the answer to select it.')}document.body.removeChild(ta)})}else{const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');done()}catch(e){shSet('msg','Copy blocked - long-press the answer to select it.')}document.body.removeChild(ta)}});
