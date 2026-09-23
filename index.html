@@ -2674,9 +2674,12 @@ function fetchJ(u){return fetch(u,{cache:"no-store"}).then(r=>{if(!r.ok)throw 0;
 function load(){
   const local=fetchJ("data.json?v="+Date.now());
   const raw=RAW_URL?fetchJ(RAW_URL+"?v="+Date.now()).catch(()=>null):Promise.resolve(null);
-  Promise.all([local.catch(()=>null),raw]).then(([a,b])=>{
+  // the server's own door serves the data the moment the engine writes it (no GitHub lag, and not public); newest copy wins
+  const door=(CMDKEY&&typeof API!=="undefined")?fetchJ(API+"/data.json?key="+encodeURIComponent(CMDKEY)+"&v="+Date.now()).catch(()=>null):Promise.resolve(null);
+  Promise.all([local.catch(()=>null),raw,door]).then(([a,b,c])=>{
     const t=x=>x&&x.updatedIso?new Date(x.updatedIso).getTime():(x?0:-1);
     let d=a;if(b&&t(b)>t(a)){d=b;d.viaRaw=true}
+    if(c&&t(c)>=t(d)){d=c;d.viaDoor=true}
     if(!d)throw 0;return d}).then(d=>{D=d;try{localStorage.setItem("lhc",JSON.stringify(d))}catch(e){}if(LIVE.stats&&LIVE.at&&(Date.now()-LIVE.at.getTime())<180000)applyLive();render();liveTick(true);try{flushTLOG()}catch(e){}})
   .catch(()=>{try{const c=localStorage.getItem("lhc");if(c&&!D){D=JSON.parse(c);render();$("#stamp").textContent+=" · offline copy"}else if(!D){$("#stamp").textContent="no data yet"}}catch(e){$("#stamp").textContent="no data yet"}});
 }
