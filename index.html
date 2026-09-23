@@ -720,6 +720,7 @@ function renderTeam(d,t){
   const pw=(d.power||[]).find(x=>String(x.team)===String(t)); if(!pw)return '<section><div class="empty">Team not found.</div></section>';
   const ros=(d.league||[]).filter(p=>String(p.team)===String(t));
   const order={QB:0,RB:1,WR:2,TE:3,"W/R/T":4,K:5,DEF:6,BN:7,IR:8};
+  const want={QB:1,RB:2,WR:2,TE:1,'W/R/T':1,K:1,DEF:1};Object.keys(want).forEach(sl=>{const have=ros.filter(p=>p.slot===sl).length;for(let i=have;i<want[sl];i++)ros.push({player:'',slot:sl,pos:'',empty:true,value:0,week:0,ros:0})});
   ros.sort((a,b)=>(order[a.slot]??9)-(order[b.slot]??9)||(num(b.value)||0)-(num(a.value)||0));
   const P=n=>findPlayer(n)||{};
   let h='<section><a class="back" href="#league">← League</a><h2 style="margin-top:8px'+(isMine(pw.name)?';color:var(--good)':'')+'">'+esc(pw.name)+'</h2><div class="sub" style="white-space:normal">'+'<b>'+esc(pw.manager)+'</b> · '+esc(pw.record)+(pw.streak?' · '+esc(pw.streak):'')+' · PF '+Math.round(num(pw.pf)||0)+(num(pw.pa)!==null?' / PA '+Math.round(pw.pa):'')+' · standing #'+esc(pw.standing)+'</div>';
@@ -730,7 +731,7 @@ function renderTeam(d,t){
   ros.splice(0,ros.length,...lbApply('team',{sort:'slot',dir:'desc',pos:'ALL'},ros,{sorts:RS,pos:true,posOf:p=>p.pos==='DEF'?'DST':p.pos,text:p=>p.player+' '+(p.nfl||'')}));
   h+='<section><h2>Roster</h2>'+lbBar('team',{sort:'slot',dir:'desc',pos:'ALL'},{sorts:RS,pos:true,q:true})+'<table><tr><th style="width:38px">Slot</th><th>Player</th><th class="n" style="width:44px">Wk</th><th class="n" style="width:44px">Value</th><th class="n" style="width:44px">ROS</th><th style="width:34px"></th></tr>';
   state.ctx=ros.map(p=>cleanName(p.player));state.ctxName=pw.name;
-  h+=ros.map(p=>{const x=P(p.player);const g=x.game||{};
+  h+=ros.map(p=>{if(p.empty)return '<tr><td style="color:var(--mute)">'+esc(p.slot)+'</td><td colspan="5" style="color:var(--warn)">&mdash; empty slot &mdash;</td></tr>';const x=P(p.player);const g=x.game||{};
     return '<tr><td style="color:var(--mute)">'+esc(p.slot)+'</td><td style="white-space:normal"><div style="display:flex;gap:8px;align-items:center">'+face(p.sid,p.nfl,p.pos)+'<div style="min-width:0">'+pl(p.player)+'<br><span class="sub">'+(g.status?gamePill(g.status)+' ':'')+esc(p.pos)+' · '+tl(p.nfl)+(g.opp?' · '+(g.ha==='Home'?'v ':'@ ')+tl(g.opp):'')+(p.bye?' · bye '+esc(p.bye):'')+(x.inj&&!blank(x.inj.status)?' · <span class="flag'+(/out|ir/i.test(x.inj.status)?' bad':'')+'">'+esc(x.inj.status)+'</span>':'')+'</span></div></div></td><td class="n">'+(num(g.live)!==null&&/progress|final/i.test(g.status||'')?'<b>'+f1(g.live)+'</b>':f1(p.week))+'</td><td class="n">'+f1(p.value)+'</td><td class="n">'+f1(p.ros)+'</td><td>'+(CMDKEY?'<button class="aa" data-rp="'+esc(p.player)+'" title="Replace" style="margin:0;padding:4px 7px">&#8644;</button>':'')+'</td></tr>'}).join("");
   h+='</table><div class="sub" style="margin-top:6px;white-space:normal">Wk = this week (live once his game starts) · Value = blended value per week · ROS = rest-of-season consensus per week.</div></section>';
   // manual roster fixes: the stand-in while the Yahoo pull is down. One move = drop and/or add; the engine applies it on its next run
