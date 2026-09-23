@@ -798,6 +798,7 @@ function renderPlayer(d,name){
   st.push('<span class="sub"><a href="#" class="pl" data-pcvs="'+esc(p.name)+'">vs another player</a>'+(PC.a&&PC.a!==p.name?' <small>(A is '+esc(PC.a)+')</small>':'')+'</span>');
   if(!blank(p.statusKw))st.push('<span class="sub">news says: '+esc(p.statusKw)+'</span>');
   if(p.alerts&&p.alerts.length)st.push(alertLine(p));
+  if(p.qbNote)st.push('<span class="flag bad">QB: '+esc(p.qbNote)+'</span>');
   if(p.claim&&p.claim.advice)st.push(claimLine(p.claim).replace(/^<br>/,''));
   if(num(p.health)!==null)st.push('<span class="sub">health '+Math.round(p.health*100)+'% = this week '+Math.round((num(p.avail)===null?1:p.avail)*100)+'% × on the field '+Math.round((num(p.durHist)||0)*100)+'% ('+esc(p.durSrc||'history')+')</span>');
   if(p.inj&&p.inj.liveExit)st.push('<span class="sub" style="color:var(--bad);font-weight:600">left his game (from the news, '+esc(p.inj.liveExit.title)+') — this week capped at points so far until a report says he returned or the official designation lands</span>');
@@ -2415,6 +2416,7 @@ function renderCompare(d){
   const dv=(num(B.value)||0)-(num(A.value)||0),dw=(num(B.proj)||0)-(num(A.proj)||0),dr=(num(B.rosWk)||0)-(num(A.rosWk)||0);
   const mine=rosterOf(d,tid);const cnt=pos=>mine.filter(r=>r.pos===pos&&(num(r.value)||0)>=6).length;const needN={QB:1,RB:2,WR:2,TE:1};
   let v='';const bits=[];
+  [A,B].forEach(P=>{if(P&&P.qbNote)bits.push('<b>'+esc(shortName(P.name))+' - QB:</b> '+esc(P.qbNote)+' (this week scaled; rest-of-season value by how long he is expected out).')});
   bits.push('Value '+(dv>=0?'+':'')+f1(dv)+'/wk for B, this week '+(dw>=0?'+':'')+f1(dw)+((num(A.rosWk)!==null||num(B.rosWk)!==null)?', rest of season '+(dr>=0?'+':'')+f1(dr)+'/wk':'')+'.');
   if(mineA&&!num(B.owner)){
     const hole=A.pos!==B.pos&&needN[A.pos]&&cnt(A.pos)-1<needN[A.pos];
