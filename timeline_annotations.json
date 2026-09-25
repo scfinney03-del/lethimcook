@@ -1,0 +1,6 @@
+{
+  "_schema": {
+    "description": "Optional dated annotations displayed independently of player performance. Keys are player display names.",
+    "event": {"date":"YYYY-MM-DD","type":"string","title":"string","note":"string","source":"optional URL"}
+  }
+}
