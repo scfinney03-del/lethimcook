@@ -4,76 +4,15 @@
     "profile": {"faith":"string","denomination":"string","basis":"string","source":"optional URL"},
     "event": {"date":"YYYY-MM-DD","type":"string","title":"string","note":"string","source":"optional URL"}
   },
-  "Baker Mayfield": {
-    "profile": {
-      "faith": "Christian",
-      "denomination": "Unknown",
-      "basis": "Publicly discusses his Christian faith and relationship with Jesus; no denomination established by the sources currently in the dataset.",
-      "source": "https://podcasts.apple.com/us/podcast/baker-mayfield-tampa-bay-buccaneers-qb-shares-his-jesus/id1214996827?i=1000700219544"
-    },
-    "events": [
-      {
-        "date": "2020-02-01",
-        "type": "faith milestone",
-        "title": "Mayfield later identifies 2020 PAO involvement as important in his Christian faith",
-        "note": "In a later Sports Spectrum interview, Mayfield said that joining Professional Athletes Outreach with his wife in February 2020 was an important point in the strengthening of his Christian faith. The date is month-level and uses the first day as a plotting anchor.",
-        "source": "https://www.christianpost.com/news/qb-baker-mayfield-on-his-career-revival-god-taught-me-a-lesson.html"
-      }
-    ]
-  },
-  "C.J. Stroud": {
-    "profile": {
-      "faith": "Christian",
-      "denomination": "Unknown",
-      "basis": "Stroud publicly describes himself as a follower of Christ and has repeatedly discussed his Christian faith. Available sources identify a Christian upbringing but do not establish a denomination.",
-      "source": "https://faithonthefieldshow.com/c-j-strouds-first-priority-is-to-preach-christ/"
-    },
-    "events": [
-      {
-        "date": "2023-04-27",
-        "type": "public testimony",
-        "title": "Stroud discusses finding Christ for himself in college",
-        "note": "In a pre-draft interview discussed by Faith on the Field, Stroud described growing up in church, falling away as a child, and coming to know Christ for himself in college.",
-        "source": "https://faithonthefieldshow.com/c-j-strouds-first-priority-is-to-preach-christ/"
-      },
-      {
-        "date": "2023-11-12",
-        "type": "public statement",
-        "title": "Stroud publicly credits prayer and God's grace after Cincinnati win",
-        "note": "After Houston's win at Cincinnati, Stroud discussed prayer, God's grace and mercy, and said his platform is about God's glory rather than himself.",
-        "source": "https://www.christianpost.com/news/nfl-star-cj-stroud-says-he-leans-on-prayer-god-amid-success.html"
-      }
-    ]
-  },
-  "TreVeyon Henderson": {
-    "profile": {
-      "faith": "Christian",
-      "denomination": "Unknown",
-      "basis": "Henderson publicly identifies his faith in Jesus Christ and has given Christian testimony; no denomination is established by the sources currently in the dataset.",
-      "source": "https://podcasts.apple.com/us/podcast/treveyon-henderson-new-england-patriots-running-back/id1214996827?i=1000769023905"
-    },
-    "events": [
-      {
-        "date": "2024-08-01",
-        "type": "public ministry",
-        "title": "Henderson participates in Ohio State campus faith event",
-        "note": "Henderson was among Ohio State players speaking at a large campus Christian gathering where more than 50 students were baptized. The source identifies the event as occurring in August; the first day is used as a plotting anchor.",
-        "source": "https://www.wosu.org/sports/2024-12-11/ohio-state-university-football-players-are-leading-a-religious-revival-on-campus"
-      },
-      {
-        "date": "2026-05-22",
-        "type": "public testimony",
-        "title": "Henderson discusses his testimony and identity in Jesus",
-        "note": "Sports Spectrum published a podcast episode in which Henderson discussed his Ohio State transformation, sharing his faith as an NFL player, his testimony, and identity in Jesus.",
-        "source": "https://podcasts.apple.com/us/podcast/treveyon-henderson-new-england-patriots-running-back/id1214996827?i=1000769023905"
-      },
-      {
-        "date": "2026-06-02",
-        "type": "public statement",
-        "title": "Henderson says he will continue publicly sharing his Christian faith",
-        "note": "Speaking to reporters, Henderson discussed criticism of his religious posts and said he intended to continue sharing his faith in Jesus.",
-        "source": "https://www.bostonglobe.com/2026/06/02/sports/treveyon-henderson-patriots-religious-beliefs/"
-      }
-    ]
-  }
+  "Baker Mayfield": {"profile":{"faith":"Christian","denomination":"Unknown","basis":"Publicly discusses his Christian faith and relationship with Jesus; no denomination established by the sources currently in the dataset.","source":"https://podcasts.apple.com/us/podcast/baker-mayfield-tampa-bay-buccaneers-qb-shares-his-jesus/id1214996827?i=1000700219544"},"events":[{"date":"2020-02-01","type":"faith milestone","title":"Mayfield later identifies 2020 PAO involvement as important in his Christian faith","note":"In a later interview, Mayfield identified joining Professional Athletes Outreach with his wife in February 2020 as important in strengthening his Christian faith.","source":"https://www.christianpost.com/news/qb-baker-mayfield-on-his-career-revival-god-taught-me-a-lesson.html"}]},
+  "C.J. Stroud": {"profile":{"faith":"Christian","denomination":"Unknown","basis":"Stroud publicly describes himself as a follower of Christ and has repeatedly discussed his Christian faith.","source":"https://faithonthefieldshow.com/c-j-strouds-first-priority-is-to-preach-christ/"},"events":[{"date":"2023-04-27","type":"public testimony","title":"Stroud discusses finding Christ for himself in college","note":"Stroud described growing up in church and coming to know Christ for himself in college.","source":"https://faithonthefieldshow.com/c-j-strouds-first-priority-is-to-preach-christ/"}]},
+  "TreVeyon Henderson": {"profile":{"faith":"Christian","denomination":"Unknown","basis":"Henderson publicly identifies his faith in Jesus Christ and has given Christian testimony.","source":"https://podcasts.apple.com/us/podcast/treveyon-henderson-new-england-patriots-running-back/id1214996827?i=1000769023905"},"events":[{"date":"2024-08-01","type":"public ministry","title":"Henderson participates in Ohio State campus faith event","note":"Henderson was among Ohio State players speaking at a large campus Christian gathering.","source":"https://www.wosu.org/sports/2024-12-11/ohio-state-university-football-players-are-leading-a-religious-revival-on-campus"}]},
+  "Jake Bates": {"profile":{"faith":"Christian","denomination":"Unknown","basis":"Bates publicly says his purpose is to spread the love of Jesus.","source":"https://www.cbsnews.com/detroit/news/lions-kicker-jake-bates-uses-platform-to-share-his-faith/"},"events":[]},
+  "Kirk Cousins": {"profile":{"faith":"Christian","denomination":"Unknown","basis":"Cousins has publicly professed his Christian faith throughout his college and NFL career.","source":"https://sports.yahoo.com/nfl-players-platform-share-faith-161732606.html"},"events":[]},
+  "Josh Rosen": {"profile":{"faith":"Agnostic","denomination":"None","basis":"Rosen discussed his Jewish upbringing and described himself as agnostic in a 2018 ESPN interview.","source":"https://www.espn.com/nfl/draft2018/story/_/id/23041561/josh-rosen-answers-nfl-critics-ucla-quarterback-tom-brady-ncaa-2018-draft"},"events":[]},
+  "Arian Foster": {"profile":{"faith":"Nonbeliever","denomination":"None","basis":"Foster publicly discussed his nonbelief in God in a 2015 ESPN profile.","source":"https://www.espn.com/nfl/story/_/id/13369076/houston-texans-arian-foster-goes-public-not-believing-god"},"events":[{"date":"2015-08-06","type":"public declaration","title":"Foster publicly discusses nonbelief","note":"ESPN published Foster's account of his decision to speak publicly about not believing in God.","source":"https://www.espn.com/nfl/story/_/id/13369076/houston-texans-arian-foster-goes-public-not-believing-god"}]},
+  "Husain Abdullah": {"profile":{"faith":"Muslim","denomination":"Unknown","basis":"Abdullah publicly identifies as Muslim and discussed practicing his faith during his NFL career.","source":"https://www.keranews.org/sports/2018-05-18/former-nfl-player-husain-abdullah-on-his-unconventional-career-living-out-his-faith"},"events":[]},
+  "Nate Ebner": {"profile":{"faith":"Jewish","denomination":"Unknown","basis":"Ebner publicly described being raised Jewish and said his Jewish background is important to him.","source":"https://www.giants.com/news/nate-ebner-olympics-rugby-free-agency-patriots-nfl-super-bowl"},"events":[]},
+  "Muhsin Muhammad": {"profile":{"faith":"Christian","denomination":"Unknown","basis":"Muhammad has publicly said he adopted Christianity while in college.","source":"https://www.charlotteobserver.com/sports/sports-legends/article287346670.html"},"events":[]},
+  "Kabeer Gbaja-Biamila": {"profile":{"faith":"Christian","denomination":"Unknown","basis":"Gbaja-Biamila said he was raised primarily Muslim and converted to Christianity during his rookie NFL season.","source":"https://www.si.com/nfl/2020/07/14/kabeer-gbaja-biamila-kgb-new-religious-movement-school-play-incident"},"events":[{"date":"2000-09-01","type":"faith transition","title":"Gbaja-Biamila converts to Christianity during rookie season","note":"Sports Illustrated reports that he was raised primarily Muslim and converted to Christianity during his rookie season in Green Bay; month is used as an approximate plotting anchor.","source":"https://www.si.com/nfl/2020/07/14/kabeer-gbaja-biamila-kgb-new-religious-movement-school-play-incident"}]}
 }
