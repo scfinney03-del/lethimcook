@@ -309,7 +309,7 @@ td,th{overflow-wrap:normal;word-break:keep-all;hyphens:none}
 <footer>Updates every 3 minutes from the server. Pull down to reload the page.<br>Fantasy data provided by <a href="https://football.fantasysports.yahoo.com/" target="_blank" rel="noopener">Yahoo Fantasy</a>.<br>Engine, models and app built with <a href="https://claude.ai" target="_blank" rel="noopener">Claude</a> by Anthropic.<br>Weather by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a> (CC BY 4.0) · Stats by <a href="https://github.com/nflverse" target="_blank" rel="noopener">nflverse</a> (CC BY 4.0) · Player data, projections and trends from <a href="https://sleeper.com/" target="_blank" rel="noopener">Sleeper</a> and <a href="https://www.espn.com/fantasy/" target="_blank" rel="noopener">ESPN</a> · News from <a href="https://www.rotowire.com/" target="_blank" rel="noopener">RotoWire</a> and <a href="https://sports.yahoo.com/nfl/" target="_blank" rel="noopener">Yahoo Sports</a> · Odds via <a href="https://the-odds-api.com/" target="_blank" rel="noopener">The Odds API</a> · College data by <a href="https://collegefootballdata.com/" target="_blank" rel="noopener">CollegeFootballData.com</a> · Coaching staffs from <a href="https://en.wikipedia.org/" target="_blank" rel="noopener">Wikipedia</a> (CC BY-SA).</footer>
 <script>
 // the engine stamps this page when it publishes it; if the live data names a newer page, fetch it fresh (GitHub Pages caches for 10 minutes)
-const PAGE_STAMP='20260926040641';
+const PAGE_STAMP='20260926041929';
 function pageCheck(d){try{if(!d||!d.pageStamp||PAGE_STAMP.indexOf('__')===0||d.pageStamp<=PAGE_STAMP)return;const k='lhc_pv_'+d.pageStamp;if(sessionStorage.getItem(k))return;sessionStorage.setItem(k,'1');const u=location.pathname+'?v='+d.pageStamp+location.hash;location.replace(u)}catch(e){}}
 (function(){
 const $=(s)=>document.querySelector(s);
@@ -825,6 +825,21 @@ function managerSection(d,pw){
 }
 // ---------------- PLAYERS ----------------
 const SORTS={value:["Value /wk",p=>p.value],proj:["This week",p=>p.proj],ros:["ROS /wk",p=>p.ros&&p.ros.cons],cons:["Consensus",p=>p.cons],avg3:["Last 3 wks",p=>p.form&&p.form.avg3],last:["Last week",p=>p.form&&p.form.last],adds:["Adds 24h",p=>p.adds],ecr:["Expert rank",p=>p.ecr?-p.ecr.rank:null],snap:["Snap %",p=>p.form&&p.form.snap],buzz:["Buzz",p=>p.buzz]};
+function renderDefender(d,name){
+  const nm=String(name||'').toLowerCase();const m=(d.defenders||[]).find(x=>String(x.name).toLowerCase()===nm);
+  if(!m)return '<section><div class="sub">No defender by that name in this season box scores yet.</div></section>';
+  const log=(m.log||[]).slice().sort((a,b)=>num(a.week)-num(b.week));const t=m.tot||{};const last=log.length?log[log.length-1]:null;
+  const snap=last&&num(last.snap)>0?Math.round(100*num(last.snap))+'% of snaps last game':'';const pres=l=>num(l.sack)+num(l.qbh)+num(l.tfl);
+  let h='<section style="padding:9px 14px"><a class="pl" href="'+(state.backTo||'#league')+'">&lsaquo; back</a></section>';
+  h+='<section><div class="name" style="font-size:20px">'+esc(m.name)+' <small style="color:var(--mute);font-weight:400">'+esc(m.pos||'')+' · '+esc(m.team||'')+'</small>'+(m.inj?' <span class="flag">'+esc(m.inj)+'</span>':'')+'</div>'
+   +'<div class="sub" style="white-space:normal">'+[snap,(num(m.rush)?'worth '+f1(m.rush)+' a game to the pass rush':''),(num(m.cover)?'worth '+f1(m.cover)+' a game in coverage':''),(num(t.impact)?'impact '+f1(t.impact)+' a game to this defence':'')].filter(x=>x).join(' · ')+'</div>'
+   +'<div class="sub" style="white-space:normal;margin-top:6px"><b>Season</b> ('+num(t.g)+' g): '+num(t.tkl)+' tackles · '+f1(num(t.sack))+' sacks · '+num(t.tfl)+' TFL · '+num(t.qbh)+' QB hits · '+num(t.pd)+' PBU · '+num(t.dint)+' INT · '+num(t.ff)+' FF'+(num(t.dtd)?' · '+num(t.dtd)+' TD':'')+'</div></section>';
+  if(log.length){const labels=log.map(l=>'Wk '+l.week+(l.opp?' '+l.opp:''));
+    h+='<section><h2>Week by week</h2>'+svgBars({labels:labels,series:[{vals:log.map(l=>num(l.tkl)),cls:'me',name:'tackles'},{vals:log.map(pres),cls:'them',name:'pressures'}],h:170,legend:[['me','tackles'],['them','sacks + TFL + QB hits']]})
+     +'<table><tr><th>Wk</th><th>Opp</th><th class="n">Snap</th><th class="n">Tkl</th><th class="n">Sack</th><th class="n">TFL</th><th class="n">QBH</th><th class="n">PBU</th><th class="n">INT</th><th class="n">FF</th></tr>'
+     +log.map(l=>'<tr><td>'+esc(l.week)+'</td><td>'+esc(l.opp||'')+'</td><td class="n">'+(num(l.snap)>0?Math.round(100*num(l.snap))+'%':'')+'</td><td class="n">'+num(l.tkl)+'</td><td class="n">'+f1(num(l.sack))+'</td><td class="n">'+num(l.tfl)+'</td><td class="n">'+num(l.qbh)+'</td><td class="n">'+num(l.pd)+'</td><td class="n">'+num(l.dint)+'</td><td class="n">'+num(l.ff)+'</td></tr>').join('')+'</table></section>';}
+  h+='<section><div class="sub" style="white-space:normal">From every defensive snap in the nflverse box scores. Pressures = sacks + tackles for loss + QB hits. Worth = how much this defence moves in fantasy scoring when he is out.</div></section>';
+  return h;}
 function renderPlayers(d){
   const f=state.filters; const teams=d.teams||[];
   let h='<section style="padding:9px 14px"><a class="pl" href="#tradecalc" style="font-weight:700">Trade calculator</a> <span class="sub">build and grade any offer</span><br><a class="pl" href="#compare" style="font-weight:700">Player calculator</a> <span class="sub">any two players side by side, with a verdict</span><br><a class="pl" href="#colleges" style="font-weight:700">Colleges · alumni tracker</a> <span class="sub">which schools are producing the players in this pool</span></section>';
@@ -1436,7 +1451,7 @@ function renderNfl(d,abbr){
 // ---------------- DEFENSIVE PERSONNEL ----------------
 function defRow(m,line){
   const out=!!m.out;
-  return '<div class="row" style="padding:5px 0"><div class="main"><div class="name" style="white-space:normal;overflow:visible'+(out?';color:var(--bad)':'')+'">'+esc(m.name)
+  return '<div class="row" style="padding:5px 0"><div class="main"><div class="name" style="white-space:normal;overflow:visible'+(out?';color:var(--bad)':'')+'"><a class="pl" href="#defender/'+encodeURIComponent(m.name)+'">'+esc(m.name)+'</a>'
     +' <small style="color:var(--mute);font-weight:400">'+esc(m.pos||'')+(num(m.snap)>0?' · '+Math.round(100*num(m.snap))+'% of snaps':'')+'</small>'
     +(out?' <span class="flag">'+esc(m.inj||'out')+'</span>':(m.inj?' <span class="flag">'+esc(m.inj)+'</span>':''))
     +'</div><div class="sub" style="white-space:normal">'+line+'</div></div></div>';
@@ -2138,6 +2153,7 @@ function route(){
   state.view=nv;
   if(state.view==="team")state.team=parts[1];
   if(state.view==="player")state.player=parts.slice(1).join("/");
+  if(state.view==="defender")state.player=parts.slice(1).join("/");
   if(state.view==="nfl")state.nfl2=parts[1];
   if(state.view==="college")state.college=parts.slice(1).join("/");
   if(state.view==="coach")state.coach=parts.slice(1).join("/");
@@ -2685,6 +2701,7 @@ function render(){
   else if(v==="team")h=renderTeam(d,state.team);
   else if(v==="players")h=renderPlayers(d);
   else if(v==="player")h=renderPlayer(d,state.player);
+  else if(v==="defender")h=renderDefender(d,state.player);
   else if(v==="games")h=renderGames(d);
   else if(v==="matchups")h=renderMatchups(d);
   else if(v==="matchup")h=renderMatchup(d,state.mwk,state.midx);
