@@ -309,7 +309,7 @@ td,th{overflow-wrap:normal;word-break:keep-all;hyphens:none}
 <footer>Updates every 3 minutes from the server. Pull down to reload the page.<br>Fantasy data provided by <a href="https://football.fantasysports.yahoo.com/" target="_blank" rel="noopener">Yahoo Fantasy</a>.<br>Engine, models and app built with <a href="https://claude.ai" target="_blank" rel="noopener">Claude</a> by Anthropic.<br>Weather by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a> (CC BY 4.0) · Stats by <a href="https://github.com/nflverse" target="_blank" rel="noopener">nflverse</a> (CC BY 4.0) · Player data, projections and trends from <a href="https://sleeper.com/" target="_blank" rel="noopener">Sleeper</a> and <a href="https://www.espn.com/fantasy/" target="_blank" rel="noopener">ESPN</a> · News from <a href="https://www.rotowire.com/" target="_blank" rel="noopener">RotoWire</a> and <a href="https://sports.yahoo.com/nfl/" target="_blank" rel="noopener">Yahoo Sports</a> · Odds via <a href="https://the-odds-api.com/" target="_blank" rel="noopener">The Odds API</a> · College data by <a href="https://collegefootballdata.com/" target="_blank" rel="noopener">CollegeFootballData.com</a> · Coaching staffs from <a href="https://en.wikipedia.org/" target="_blank" rel="noopener">Wikipedia</a> (CC BY-SA).</footer>
 <script>
 // the engine stamps this page when it publishes it; if the live data names a newer page, fetch it fresh (GitHub Pages caches for 10 minutes)
-const PAGE_STAMP='20260927000119';
+const PAGE_STAMP='20260927002455';
 function pageCheck(d){try{if(!d||!d.pageStamp||PAGE_STAMP.indexOf('__')===0||d.pageStamp<=PAGE_STAMP)return;const k='lhc_pv_'+d.pageStamp;if(sessionStorage.getItem(k))return;sessionStorage.setItem(k,'1');const u=location.pathname+'?v='+d.pageStamp+location.hash;location.replace(u)}catch(e){}}
 (function(){
 const $=(s)=>document.querySelector(s);
@@ -2394,6 +2394,10 @@ function tcEval(d,mine,theirs,give,get,asked){
   R.margin=R.gainThem-R.tol+R.feel;
   // a wider curve, so 'probably' and 'certainly' are different answers; and a trade they lose value on
   // is never a lock - it caps at 85% however much rope they have
+  // face value: people price what they hand over by the number next to the name, not by their bench weights.
+  // A bench QB is 10% of himself in the lineup maths and 100% of himself in the other manager's head.
+  const fv=r=>num((findPlayer(r.player)||{}).value)||0;R.faceGive=Math.round(10*ge.reduce((a,r)=>a+fv(r),0))/10;R.faceGet=Math.round(10*gi.reduce((a,r)=>a+fv(r),0))/10;R.faceGap=Math.round(10*(R.faceGet-R.faceGive))/10;
+  R.margin=R.margin+Math.min(0,R.faceGap+1.5)*0.7;
   R.acceptP=1/(1+Math.exp(-R.margin/1.2));
   if(R.gainThem<0)R.acceptP=Math.min(R.acceptP,0.85);
   R.accept=R.acceptP>=0.5;
@@ -2618,13 +2622,13 @@ function offerGrade(d,t,off){
   const one=n=>{try{return tcEval(d,mine,theirs,[],[n],'me')}catch(e){return null}};
   h+='<div class="sub" style="font-weight:600;margin-top:8px">One by one</div>';
   h+=off.map(n=>{const p=findPlayer(n)||{};const R=one(n)||{};const g=num(R.gainMe);return '<div class="row" style="padding:5px 0"><div class="main" style="white-space:normal"><div class="name">'+pl(n)+' <small class="sub">'+esc(p.pos||'')+' · '+f1(p.value)+'/wk</small></div><div class="sub" style="white-space:normal">'+(g===null?'':(g>=0?'+':'')+f1(g)+'/wk to your lineup · ')+esc(String(R.verdict||''))+'</div></div></div>'}).join('');
-  const pool=mine.filter(r=>r.player).slice().sort((a,b)=>(num(a.value)||0)-(num(b.value)||0)).slice(0,7).map(r=>r.player);
+  const pool=mine.filter(r=>r.player).slice().sort((a,b)=>(num(a.value)||0)-(num(b.value)||0)).slice(0,9).map(r=>r.player);
   const gives=[];pool.forEach((a,i)=>{gives.push([a]);pool.forEach((b,j)=>{if(j>i)gives.push([a,b])})});
   const asks=[];off.forEach((a,i)=>{asks.push([a]);off.forEach((b,j)=>{if(j>i){asks.push([a,b]);off.forEach((c,k)=>{if(k>j)asks.push([a,b,c])})}})});
   const deals=[];asks.forEach(get=>gives.forEach(g=>{let R;try{R=tcEval(d,mine,theirs,g,get,'me')}catch(e){return}const gm=num(R.gainMe)||0;deals.push({get:get,g:g,R:R,gm:gm,ok:!!R.accept&&gm>0})}));
   const yes=deals.filter(x=>x.ok).sort((a,b)=>b.gm-a.gm).slice(0,3);
   h+='<div class="sub" style="font-weight:600;margin-top:10px">Best deals from what '+esc(String((d.power||[]).find(x=>String(x.team)===String(t))?.manager||'they'))+' is shooting out</div>';
-  if(yes.length){h+=yes.map((x,n)=>'<div class="row" style="padding:5px 0"><div class="main" style="white-space:normal"><div class="name">'+(n+1)+'. Ask for <b>'+x.get.map(esc).join(' + ')+'</b> for <b>'+x.g.map(esc).join(' + ')+'</b></div><div class="sub" style="white-space:normal">+'+f1(x.gm)+'/wk for you · '+esc(String(x.R.verdict||''))+' · they would likely accept</div><div class="opt" style="margin-top:4px"><button data-tcfill="'+esc(t)+'|'+esc(x.get.join('|'))+'#'+esc(x.g.join('|'))+'">Open in the trade calculator</button></div></div></div>').join('');}
+  if(yes.length){h+=yes.map((x,n)=>'<div class="row" style="padding:5px 0"><div class="main" style="white-space:normal"><div class="name">'+(n+1)+'. Ask for <b>'+x.get.map(esc).join(' + ')+'</b> for <b>'+x.g.map(esc).join(' + ')+'</b></div><div class="sub" style="white-space:normal">+'+f1(x.gm)+'/wk for you · '+esc(String(x.R.verdict||''))+' · they would likely accept</div><div class="opt" style="margin-top:4px"><button data-tcfill="'+esc(t)+'|'+esc(x.get.join('|'))+'#'+esc(x.g.join('|'))+'">'+(location.hash.indexOf('tradecalc')>=0?'Use':'Open in the trade calculator')+'</button></div></div></div>').join('');}
   else{const nb=deals.slice().sort((a,b)=>b.gm-a.gm)[0];h+='<div class="sub" style="white-space:normal">Nothing here is both ahead for you and something they would take'+(nb?' - the closest is '+nb.get.map(esc).join(' + ')+' for '+nb.g.map(esc).join(' + ')+' ('+(nb.gm>=0?'+':'')+f1(nb.gm)+'/wk, they would likely say no)':'')+'.</div>';}
   return h;}
 function renderTradeCalc(d){
@@ -2638,6 +2642,7 @@ function renderTradeCalc(d){
   const sortR=rows=>rows.slice().sort((a,b)=>(num(b.value)||0)-(num(a.value)||0));
   const prow=(r,side)=>{const on=(side==='give'?TC.give:TC.get).indexOf(r.player)>=0;const p=findPlayer(r.player)||{};const st=(p.inj||{}).status;
     return '<label class="tcp'+(on?' on':'')+'"><input type="checkbox" data-tc="'+side+'|'+esc(r.player)+'"'+(on?' checked':'')+'><span class="tcm"><span class="fn">'+esc(r.player)+'</span><small class="sub">'+esc(r.pos)+(/^(BN|IR)/i.test(r.slot)?' · bench':' · starter')+(st&&!/^active$/i.test(st)?' · <span class="flag bad">'+esc(st)+'</span>':'')+'</small></span><b>'+f1(r.value)+'</b></label>'};
+  const shopMgr=pt.manager||pt.name;const shopped=((WANTS[shopMgr]||{}).offered||[]).filter(n=>theirs.some(r=>r.player===n));
   let h='<section><h2>'+gl('tradecalc','Trade calculator')+'</h2><div class="sub" style="white-space:normal">Build any offer and it grades itself: roster value for both sides, this week, rest of season, injuries, byes, timing, and whether they would say yes.</div>';
   h+='<div class="sub" style="font-weight:600;margin-top:8px">Trading with</div><div class="opt">'+teams.map(t=>'<button data-tcp="'+esc(t.team)+'" class="'+(String(t.team)===String(TC.partner)?'on':'')+'">'+esc(t.manager||t.name)+'</button>').join('')+'</div>';
   h+='<div class="sub" style="font-weight:600">Who asked?</div><div class="opt">'+[['them',(pt.manager||'They')+' asked me'],['me','I am asking'],['none','Just checking']].map(x=>'<button data-tca="'+x[0]+'" class="'+(TC.asked===x[0]?'on':'')+'">'+esc(x[1])+'</button>').join('')+'</div></section>';
@@ -2664,6 +2669,7 @@ function renderTradeCalc(d){
     h+='</section>';
   }
   h+=leagueTradeSection(d);
+  if(shopped.length){h='<section><h2>From what '+esc(shopMgr)+' is shooting out</h2><div class="sub" style="white-space:normal">Any one, two or three of the players they put up, against every one- or two-player package from your side. Ranked by what it does for you among the ones they would likely take. Tap Use to load one above and adjust.</div>'+offerGrade(d,TC.partner,shopped)+'</section>'+h;}/*SHOPSEC*/
   return h;
 }
 
@@ -2778,7 +2784,7 @@ function render(){
     saveWants();
     if(i<0){if(kind==='pos')logEvent({kind:'want',mgr:m,note:val});else logEvent({kind:'shopped',mgr:m,give:val});}
     render();}));
-  document.querySelectorAll('[data-tcfill]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();const [a,gv]=b.dataset.tcfill.split('#');const parts=a.split('|');TC.partner=parts[0];TC.get=parts.slice(1).filter(x=>x);TC.give=(gv||'').split('|').filter(x=>x);TC.asked='me';try{localStorage.setItem('lhc_tc',JSON.stringify(TC))}catch(e){}location.hash='#tradecalc'}));
+  document.querySelectorAll('[data-tcfill]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();const [a,gv]=b.dataset.tcfill.split('#');const parts=a.split('|');TC.partner=parts[0];TC.get=parts.slice(1).filter(x=>x);TC.give=(gv||'').split('|').filter(x=>x);TC.asked='them';try{localStorage.setItem('lhc_tc',JSON.stringify(TC))}catch(e){}location.hash='#tradecalc'}));
   document.querySelectorAll('[data-look]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();const [k,val]=b.dataset.look.split('|');
     if(k==='theme')LOOK.theme=val;else if(k==='scheme')LOOK.scheme=val;else if(k==='cb')LOOK.cb=!LOOK.cb;
     else if(k==='big'){const a=document.getElementById('aa');if(a)a.click();render();return}
