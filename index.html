@@ -309,7 +309,7 @@ td,th{overflow-wrap:normal;word-break:keep-all;hyphens:none}
 <footer>Updates every 3 minutes from the server. Pull down to reload the page.<br>Fantasy data provided by <a href="https://football.fantasysports.yahoo.com/" target="_blank" rel="noopener">Yahoo Fantasy</a>.<br>Engine, models and app built with <a href="https://claude.ai" target="_blank" rel="noopener">Claude</a> by Anthropic.<br>Weather by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a> (CC BY 4.0) · Stats by <a href="https://github.com/nflverse" target="_blank" rel="noopener">nflverse</a> (CC BY 4.0) · Player data, projections and trends from <a href="https://sleeper.com/" target="_blank" rel="noopener">Sleeper</a> and <a href="https://www.espn.com/fantasy/" target="_blank" rel="noopener">ESPN</a> · News from <a href="https://www.rotowire.com/" target="_blank" rel="noopener">RotoWire</a> and <a href="https://sports.yahoo.com/nfl/" target="_blank" rel="noopener">Yahoo Sports</a> · Odds via <a href="https://the-odds-api.com/" target="_blank" rel="noopener">The Odds API</a> · College data by <a href="https://collegefootballdata.com/" target="_blank" rel="noopener">CollegeFootballData.com</a> · Coaching staffs from <a href="https://en.wikipedia.org/" target="_blank" rel="noopener">Wikipedia</a> (CC BY-SA).</footer>
 <script>
 // the engine stamps this page when it publishes it; if the live data names a newer page, fetch it fresh (GitHub Pages caches for 10 minutes)
-const PAGE_STAMP='20260928011403';
+const PAGE_STAMP='20260928015727';
 function pageCheck(d){try{if(!d||!d.pageStamp||PAGE_STAMP.indexOf('__')===0||d.pageStamp<=PAGE_STAMP)return;const k='lhc_pv_'+d.pageStamp;if(sessionStorage.getItem(k))return;sessionStorage.setItem(k,'1');const u=location.pathname+'?v='+d.pageStamp+location.hash;location.replace(u)}catch(e){}}
 (function(){
 const $=(s)=>document.querySelector(s);
@@ -1642,7 +1642,7 @@ let WANTS={};try{WANTS=JSON.parse(localStorage.getItem('lhc_wants')||'{}')}catch
 function saveWants(){try{localStorage.setItem('lhc_wants',JSON.stringify(WANTS))}catch(e){}}
 function wantsOf(m){return WANTS[m]||{pos:[],offered:[]}}
 function myTeamId(d){const me=(d.power||[]).find(x=>isMine(x.name));return me?me.team:null;}
-function rosterOf(d,tid){return (d.league||[]).filter(r=>String(r.team)===String(tid)&&!/^IR/.test(r.slot||''));}
+function rosterOf0(d,tid){return (d.league||[]).filter(r=>String(r.team)===String(tid)&&!/^IR/.test(r.slot||''));}
 function bestNine(rows,key){
   const used={},out=[];
   SLOTS.forEach(s=>{let best=null;rows.forEach(p=>{if(used[p.player])return;if(s[1].indexOf(p.pos)<0)return;const v=num(p[key])||0;if(!best||v>(num(best[key])||0))best=p});
@@ -2699,6 +2699,39 @@ function renderCompare(d){
   return h;
 }
 const OGC={};
+let PEND=[];try{PEND=JSON.parse(localStorage.getItem('lhc_pending')||'[]')}catch(e){}
+function rosterOf(d,tid){let rows=rosterOf0(d,tid);PEND.forEach(t=>{const isA=String(t.a)===String(tid),isB=String(t.b)===String(tid);if(!isA&&!isB)return;const out=isA?t.ga:t.gb,inn=isA?t.gb:t.ga,from=isA?t.b:t.a;rows=rows.filter(r=>out.indexOf(r.player)<0);rosterOf0(d,from).filter(r=>inn.indexOf(r.player)>=0).forEach(r=>rows.push(Object.assign({},r,{team:tid,slot:'BN'})))});return rows}
+function tname(d,t){const p=(d.power||[]).find(x=>String(x.team)===String(t));return p?p.name:String(t)}
+function sgn(x){return (x>=0?'+':'')+(+x).toFixed(1)}
+function pendSave(){try{localStorage.setItem('lhc_pending',JSON.stringify(PEND))}catch(e){}render()}
+function pendAdd(){if(!LT.a||!LT.b||!(LT.ga.length||LT.gb.length))return;const dt=new Date(Date.now()+2*86400000);PEND.push({a:LT.a,b:LT.b,ga:LT.ga.slice(),gb:LT.gb.slice(),date:dt.toISOString().slice(0,10)});LT.ga=[];LT.gb=[];pendSave()}
+function pendDel(i){PEND.splice(i,1);pendSave()}
+function pendCard(d){let h='';if(LT.a&&LT.b&&(LT.ga.length||LT.gb.length))h+='<div class="card"><div class="sub" style="white-space:normal">Accepted in Yahoo? Log it and every page treats those players as already moved (2-day wait).</div><button type="button" onclick="pendAdd()" style="margin-top:8px;padding:10px 14px;border-radius:10px;border:0;background:var(--good);color:#fff;font-weight:700">Log as pending</button></div>';
+ if(PEND.length)h+='<div class="card"><div style="font-weight:700">Pending trades</div>'+PEND.map((t,i)=>'<div class="row" style="padding:6px 0"><div class="main" style="white-space:normal"><div class="name">'+esc(tname(d,t.a))+' gives '+t.ga.map(esc).join(' + ')+' · '+esc(tname(d,t.b))+' gives '+t.gb.map(esc).join(' + ')+'</div><div class="sub">processes '+esc(t.date)+' · remove once your next roster print shows it</div></div><button type="button" onclick="pendDel('+i+')" style="padding:6px 10px;border-radius:8px;border:1px solid var(--mute);background:transparent;color:inherit">Remove</button></div>').join('')+'</div>';return h}
+let SG={t:null,picks:[]};try{SG=Object.assign(SG,JSON.parse(localStorage.getItem('lhc_sg')||'{}'))}catch(e){}
+let SGC={};
+function sgSave(){try{localStorage.setItem('lhc_sg',JSON.stringify(SG))}catch(e){}render()}
+function sgTeam(v){SG.t=v;SG.picks=[];sgSave()}
+function sgList(d){return SG.t?rosterOf(d,SG.t).filter(r=>r.player).sort((x,y)=>(num(y.value)||0)-(num(x.value)||0)):[]}
+function sgTog(i){const r=sgList(D)[i];if(!r)return;const j=SG.picks.indexOf(r.player);if(j<0)SG.picks.push(r.player);else SG.picks.splice(j,1);sgSave()}
+function sgRun(d){const key=String(SG.t)+'|'+SG.picks.slice().sort().join('|')+'|'+String(d.updatedIso||d.asof||'')+'|'+PEND.length;if(SGC[key])return SGC[key];
+ const me=myTeamId(d),mine=rosterOf(d,me),theirs=rosterOf(d,SG.t),off=SG.picks;
+ const pool=mine.filter(r=>r.player).slice().sort((a,b)=>(num(a.value)||0)-(num(b.value)||0)).slice(0,9).map(r=>r.player);
+ const gives=[];pool.forEach((a,i)=>{gives.push([a]);pool.forEach((b,j)=>{if(j>i)gives.push([a,b])})});
+ const asks=[];for(let m=1;m<(1<<off.length);m++){const x=off.filter((_,i)=>m&(1<<i));if(x.length<=4)asks.push(x)}
+ const deals=[];asks.forEach(get=>gives.forEach(g=>{let R;try{R=tcEval(d,mine,theirs,g,get,'them')}catch(e){return}const gm=num(R.gainMe)||0;deals.push({get:get,g:g,R:R,gm:gm,mg:num(R.margin)||0,ok:!!R.accept&&gm>0})}));
+ const best={};deals.filter(x=>x.ok).forEach(x=>{const k=x.get.slice().sort().join('|');if(!best[k]||x.gm>best[k].gm)best[k]=x});
+ const out={ranked:Object.values(best).sort((a,b)=>b.gm-a.gm),asks:asks,deals:deals};SGC[key]=out;return out}
+function renderShotgun(d){const teams=(d.power||[]).filter(x=>!isMine(x.name)).sort((x,y)=>String(x.name).localeCompare(String(y.name)));
+ let h='<div class="card"><div style="font-weight:700;font-size:16px">Shotgun offer</div><div class="sub" style="white-space:normal">Someone tossed out several players for whatever, to whoever. Pick them, tap every player they put up, and every combination gets graded against your best gives.</div>';
+ h+='<div style="margin-top:10px"><select onchange="sgTeam(this.value)" style="max-width:100%;font-size:15px;padding:6px"><option value="">- who is shopping -</option>'+teams.map(t=>'<option value="'+esc(t.team)+'"'+(String(SG.t)===String(t.team)?' selected':'')+'>'+esc(t.manager||'')+' - '+esc(t.name)+'</option>').join('')+'</select></div>';
+ h+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">'+sgList(d).map((r,i)=>{const on=SG.picks.indexOf(r.player)>=0;return '<button type="button" onclick="sgTog('+i+')" style="padding:6px 10px;border-radius:999px;border:1px solid var(--mute);background:'+(on?'var(--good)':'transparent')+';color:'+(on?'#fff':'inherit')+';font-size:13px">'+esc(r.player)+' <small>'+esc(r.pos||'')+' '+(num(r.value)||0).toFixed(1)+'</small></button>'}).join('')+'</div>';
+ if(SG.t&&SG.picks.length){const S=sgRun(d);
+  h+='<div class="sub" style="font-weight:600;margin-top:12px">Every combination worth sending ('+S.ranked.length+' of '+S.asks.length+' work)</div>';
+  if(S.ranked.length)h+=S.ranked.slice(0,12).map((x,n)=>'<div class="row" style="padding:6px 0"><div class="main" style="white-space:normal"><div class="name">'+(n+1)+'. Ask for <b>'+x.get.map(esc).join(' + ')+'</b> for <b>'+x.g.map(esc).join(' + ')+'</b></div><div class="sub" style="white-space:normal">you '+sgn(x.gm)+'/wk · them '+sgn(num(x.R.gainThem)||0)+' · '+(x.mg<0.5?'<span style="color:#b8860b">barely takes it - easy for someone else to outbid</span>':x.mg<1.5?'they take it':'they like it - hard to outbid')+(x.R.dropMe?' · you must drop '+x.R.dropMe:'')+'</div></div></div>').join('');
+  else{const nb=S.deals.slice().sort((a,b)=>b.gm-a.gm)[0];h+='<div class="sub" style="white-space:normal">Nothing here is both ahead for you and something they would take'+(nb?' - closest is '+nb.get.map(esc).join(' + ')+' for '+nb.g.map(esc).join(' + ')+' ('+sgn(nb.gm)+'/wk for you)':'')+'.</div>'}
+  const dead=SG.picks.filter(n=>!S.ranked.some(x=>x.get.indexOf(n)>=0));if(dead.length)h+='<div class="sub" style="white-space:normal;margin-top:8px">Not worth chasing at any price you can pay: '+dead.map(esc).join(', ')+'.</div>';}
+ return h+'</div>'}
 function offerGrade(d,t,off){
   const key=String(t)+'|'+off.slice().sort().join('|')+'|'+String(d.updatedIso||d.asof||'')+'|'+String(location.hash.indexOf('tradecalc')>=0);
   if(OGC[key])return OGC[key];const out=offerGradeRun(d,t,off);OGC[key]=out;return out;}
@@ -2753,7 +2786,7 @@ function renderTradeCalc(d){
       +'<div class="sub" style="white-space:normal;margin-top:6px">Every counter fills at least one of their needs, is better for you than for them, and sits inside what they would accept. Tap Use to load it above.</div>';
     h+='</section>';
   }
-  h+=leagueTradeSection(d);
+  h+=leagueTradeSection(d)+pendCard(d)+'<div class="card"><b>Shotgun offer</b> - someone tossed out several players for whatever, to whoever? <a href="#shotgun">Grade every combination</a>.</div>';
   if(shopped.length){h='<section><h2>From what '+esc(shopMgr)+' is shooting out</h2><div class="sub" style="white-space:normal">Any one, two or three of the players they put up, against every one- or two-player package from your side. Ranked by what it does for you among the ones they would likely take. Tap Use to load one above and adjust.</div>'+offerGrade(d,TC.partner,shopped)+'</section>'+h;}/*SHOPSEC*/
   return h;
 }
@@ -2828,6 +2861,7 @@ function render(){
   else if(v==="dev")h=renderDev(d);
   else if(v==="settings")h=renderSettings(d);
   else if(v==="colleges")h=renderColleges(d);
+  else if(v==="shotgun")h=renderShotgun(d);
   else if(v==="tradecalc")h=renderTradeCalc(d);
   else if(v==="compare")h=renderCompare(d);
   else if(v==="college")h=renderCollege(d,state.college);
