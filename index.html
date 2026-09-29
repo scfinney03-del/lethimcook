@@ -310,7 +310,7 @@ html,body{overflow-x:hidden;max-width:100vw}pre,#shout,#cmdout{white-space:pre-w
 <footer>Updates every 3 minutes from the server. Pull down to reload the page.<br>Fantasy data provided by <a href="https://football.fantasysports.yahoo.com/" target="_blank" rel="noopener">Yahoo Fantasy</a>.<br>Engine, models and app built with <a href="https://claude.ai" target="_blank" rel="noopener">Claude</a> by Anthropic.<br>Weather by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a> (CC BY 4.0) · Stats by <a href="https://github.com/nflverse" target="_blank" rel="noopener">nflverse</a> (CC BY 4.0) · Player data, projections and trends from <a href="https://sleeper.com/" target="_blank" rel="noopener">Sleeper</a> and <a href="https://www.espn.com/fantasy/" target="_blank" rel="noopener">ESPN</a> · News from <a href="https://www.rotowire.com/" target="_blank" rel="noopener">RotoWire</a> and <a href="https://sports.yahoo.com/nfl/" target="_blank" rel="noopener">Yahoo Sports</a> · Odds via <a href="https://the-odds-api.com/" target="_blank" rel="noopener">The Odds API</a> · College data by <a href="https://collegefootballdata.com/" target="_blank" rel="noopener">CollegeFootballData.com</a> · Coaching staffs from <a href="https://en.wikipedia.org/" target="_blank" rel="noopener">Wikipedia</a> (CC BY-SA).</footer>
 <script>
 // the engine stamps this page when it publishes it; if the live data names a newer page, fetch it fresh (GitHub Pages caches for 10 minutes)
-const PAGE_STAMP='20260929002549';
+const PAGE_STAMP='20260929014755';
 function pageCheck(d){try{if(!d||!d.pageStamp||PAGE_STAMP.indexOf('__')===0||d.pageStamp<=PAGE_STAMP)return;const k='lhc_pv_'+d.pageStamp;if(sessionStorage.getItem(k))return;sessionStorage.setItem(k,'1');const u=location.pathname+'?v='+d.pageStamp+location.hash;location.replace(u)}catch(e){}}
 (function(){
 const $=(s)=>document.querySelector(s);
@@ -1501,10 +1501,14 @@ function PRO(t){const m=String((t&&t.manager)||t||'').toLowerCase().trim(),n=Str
 window.PRO=PRO;
 let TRC={};
 function busyNames(){const b=[];PEND.forEach(t=>{b.push.apply(b,(t.ga||[]).concat(t.gb||[]))});CLAIMS.forEach(c=>{b.push(c.add);if(c.drop)b.push(c.drop)});return b.filter(Boolean)}
-function sweetenAll(d,tr){const me=myTeamId(d),mine=rosterOf(d,me),busy=busyNames();return tr.filter(x=>!busy.some(n=>(' + '+String(x.give)+' + '+String(x.get)+' + ').indexOf(' + '+n+' + ')>=0)).map(x=>{if(!/sweetener/i.test(String(x.ask)+' '+String(x.timing)))return x;const key=[x.teamName,x.give,x.get,d.updatedIso||d.asof||'',PEND.length].join('|');if(TRC[key]!==undefined)return TRC[key];
+function dealOK(R){if(!R)return false;const g=num(R.gainMe)||0,t=num(R.gainThem)||0;return !!(R.accept&&g>0&&g>t)}
+function sweetenAll(d,tr){const me=myTeamId(d),mine=rosterOf(d,me),busy=busyNames();return tr.filter(x=>!busy.some(n=>(' + '+String(x.give)+' + '+String(x.get)+' + ').indexOf(' + '+n+' + ')>=0)).map(x=>{const key=[x.teamName,x.give,x.get,d.updatedIso||d.asof||'',PEND.length,CLAIMS.length].join('|');if(TRC[key]!==undefined)return TRC[key];
  const tp=(d.power||[]).find(p=>p.name===x.teamName);let out=null;
- if(tp){const theirs=rosterOf(d,tp.team),give=String(x.give).split(' + '),get=String(x.get).split(' + ');const cands=mine.filter(r=>r.player&&give.indexOf(r.player)<0&&busy.indexOf(r.player)<0).sort((a,b)=>(num(a.value)||0)-(num(b.value)||0)).slice(0,9);
-  for(const c of cands){let R;try{R=tcEval(d,mine,theirs,give.concat([c.player]),get,'me')}catch(e){continue}if(R&&R.accept&&(num(R.gainMe)||0)>0&&(num(R.gainMe)||0)>(num(R.gainThem)||0)){out=Object.assign({},x,{give:give.concat([c.player]).join(' + '),myGain:R.gainMe,lineupGain:R.gainMe,theirGain:R.gainThem,sweet:c.player,ask:'Sweetened with '+c.player+' - they would likely take it',timing:'Send now'});break}}}
+ if(tp){const theirs=rosterOf(d,tp.team),give=String(x.give).split(' + '),get=String(x.get).split(' + ');const fill=(gv,R,sw)=>Object.assign({},x,{give:gv.join(' + '),myGain:R.gainMe,lineupGain:R.gainMe,theirGain:R.gainThem,sweet:sw||'',bestIn:R.bestIn,ask:(sw?'Sweetened with '+sw+' - ':'')+'they would likely take it · best piece: '+R.bestIn+(R.bestSide==='get'?' (yours)':' (theirs)'),timing:'Send now'});
+  let R=null;try{R=tcEval(d,mine,theirs,give,get,'me')}catch(e){}
+  if(dealOK(R))out=fill(give,R,'');
+  else{const cands=mine.filter(r=>r.player&&give.indexOf(r.player)<0&&busy.indexOf(r.player)<0).sort((a,b)=>(num(a.value)||0)-(num(b.value)||0)).slice(0,9);
+   for(const c of cands){let R2;try{R2=tcEval(d,mine,theirs,give.concat([c.player]),get,'me')}catch(e){continue}if(dealOK(R2)){out=fill(give.concat([c.player]),R2,c.player);break}}}}
  TRC[key]=out;return out}).filter(Boolean)}
 function tapKey(a){try{a.style.transition='transform .08s';a.style.transform='scale(.94)';setTimeout(()=>{a.style.transform=''},120);if(navigator.vibrate)navigator.vibrate(15)}catch(e){}}
 function calcTiles(){return '<div style="display:flex;gap:10px;margin:6px 0 10px"><a href="#tradecalc" onclick="tapKey(this)" style="flex:1;text-align:center;text-decoration:none;color:inherit"><svg viewBox="0 0 120 150" width="96" height="120" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="112" height="142" rx="14" fill="#2b2f36"/><rect x="16" y="16" width="88" height="30" rx="5" fill="#cfe8d8"/><text x="98" y="39" font-size="20" font-family="monospace" text-anchor="end" fill="#1f3a2a">+1.6</text><rect x="16" y="58" width="18" height="16" rx="4" fill="#e5e7eb"/><rect x="39" y="58" width="18" height="16" rx="4" fill="#e5e7eb"/><rect x="62" y="58" width="18" height="16" rx="4" fill="#e5e7eb"/><rect x="85" y="58" width="18" height="16" rx="4" fill="#e5e7eb"/><rect x="16" y="80" width="18" height="16" rx="4" fill="#e5e7eb"/><rect x="39" y="80" width="18" height="16" rx="4" fill="#e5e7eb"/><rect x="62" y="80" width="18" height="16" rx="4" fill="#e5e7eb"/><rect x="85" y="80" width="18" height="16" rx="4" fill="#e5e7eb"/><rect x="16" y="102" width="18" height="16" rx="4" fill="#e5e7eb"/><rect x="39" y="102" width="18" height="16" rx="4" fill="#e5e7eb"/><rect x="62" y="102" width="18" height="16" rx="4" fill="#e5e7eb"/><rect x="85" y="102" width="18" height="16" rx="4" fill="#e5e7eb"/><rect x="16" y="124" width="18" height="16" rx="4" fill="#e5e7eb"/><rect x="39" y="124" width="18" height="16" rx="4" fill="#e5e7eb"/><rect x="62" y="124" width="18" height="16" rx="4" fill="#e5e7eb"/><rect x="85" y="124" width="18" height="16" rx="4" fill="#f59e0b"/></svg><div style="font-weight:800">Trade calculator</div><div class="sub">build and grade any offer</div></a><a href="#compare" onclick="tapKey(this)" style="flex:1;text-align:center;text-decoration:none;color:inherit"><svg viewBox="0 0 120 150" width="96" height="120" xmlns="http://www.w3.org/2000/svg"><rect x="56" y="30" width="8" height="96" fill="#6b7280"/><rect x="30" y="124" width="60" height="10" rx="4" fill="#6b7280"/><rect x="10" y="34" width="100" height="6" rx="3" fill="#6b7280"/><path d="M14 40 L4 78 L36 78 Z" fill="#2563eb"/><path d="M102 40 L80 86 L124 86 Z" fill="#16a34a"/><circle cx="60" cy="30" r="7" fill="#374151"/></svg><div style="font-weight:800">Player calculator</div><div class="sub">two players, one verdict</div></a></div>'}
@@ -1522,7 +1526,7 @@ window.sgFire=sgFire;window.confetti=confetti;window.toast=toast;function fxFire
 const FX=[{name:'fire',run:fxFire,wait:3900},{name:'confetti',run:()=>confetti(320,5000),wait:0}];
 function celebrate(msg){let i=0;try{i=(+localStorage.getItem('lhc_fx')||0)%FX.length}catch(e){}const fx=FX[i];try{fx.run()}catch(e){}try{localStorage.setItem('lhc_fx',String((i+1)%FX.length))}catch(e){}if(msg)setTimeout(()=>toast(msg,3200),fx.wait)}
 window.celebrate=celebrate;
-const PAGEV="Mon 8:25 PM";try{const pv=document.getElementById("pagev");if(pv&&PAGEV.indexOf("__")<0)pv.textContent="page "+PAGEV}catch(e){}
+const PAGEV="Mon 9:47 PM";try{const pv=document.getElementById("pagev");if(pv&&PAGEV.indexOf("__")<0)pv.textContent="page "+PAGEV}catch(e){}
 
 document.addEventListener('click',function(e){const a=e.target&&e.target.closest?e.target.closest('a[href]'):null;if(!a)return;const h=a.getAttribute('href')||'';if(!/^https?:/i.test(h))return;let host='';try{host=new URL(h).host}catch(x){}if(host===location.host)return;e.preventDefault();e.stopPropagation();if(confirm('Leave Let Him Cook and open '+(host||'this link')+'?'))window.open(h,'_blank','noopener')},true);
 
@@ -2471,9 +2475,17 @@ function leagueTradeSection(d){
   }
   h+='</section>';return h;
 }
+function fwdVal(p){if(!p)return null;const cur=num(D&&D.week)||0;const w=(p.weekly||[]).filter(x=>num(x.week)>cur&&num(x.proj)!==null).slice(0,5).map(x=>num(x.proj));const a=w.length?w.reduce((t,v)=>t+v,0)/w.length:null;const r=p.ros&&num(p.ros.cons)!==null?num(p.ros.cons):null;if(a!==null&&r!==null)return Math.round((0.5*a+0.5*r)*100)/100;if(a!==null)return a;if(r!==null)return r;return num(p.value)}
+function fwdRows(rows){return rows.map(r=>{const p=findPlayer(r.player);const v=p?fwdVal(p):null;return v===null?r:Object.assign({},r,{value:v})})}
+function faPool(d){const own=(d.league||[]).map(r=>r.player);return (d.players||[]).filter(p=>!num(p.owner)&&own.indexOf(p.name)<0&&p.pos&&String(p.inj&&p.inj.status||'')==='').map(p=>({player:p.name,pos:p.pos,team:p.team,slot:'BN',value:fwdVal(p)||0})).sort((a,b)=>b.value-a.value).slice(0,40)}
+function faBest(d,rows,n){const pool=faPool(d);const out=[];let cur=rows.slice();for(let k=0;k<n;k++){let best=null,bv=teamValue(cur);pool.forEach(p=>{if(cur.some(r=>r.player===p.player)||out.some(o=>o.player===p.player))return;const v=teamValue(cur.concat([p]));if(v>bv){bv=v;best=p}});if(!best)break;out.push(best);cur=cur.concat([best])}return out}
+function dropWorst(rows,n){let cur=rows.slice();const gone=[];for(let k=0;k<n;k++){const b=cur.filter(r=>!/^IR/.test(String(r.slot||'')));if(!b.length)break;const w=b.reduce((m,r)=>(num(r.value)||0)<(num(m.value)||0)?r:m,b[0]);gone.push(w.player);cur=cur.filter(r=>r!==w)}return {rows:cur,gone:gone}}
 function tcEval(d,mine,theirs,give,get,asked){
+  mine=fwdRows(mine);theirs=fwdRows(theirs);
   const gi=mine.filter(r=>give.indexOf(r.player)>=0),ge=theirs.filter(r=>get.indexOf(r.player)>=0);
-  const newMine=mine.filter(r=>give.indexOf(r.player)<0).concat(ge),newTheirs=theirs.filter(r=>get.indexOf(r.player)<0).concat(gi);
+  let newMine=mine.filter(r=>give.indexOf(r.player)<0).concat(ge),newTheirs=theirs.filter(r=>get.indexOf(r.player)<0).concat(gi);
+  let faMe=[],faThem=[],cutMe=[],cutThem=[];if(ge.length<gi.length){faMe=faBest(d,newMine,gi.length-ge.length);newMine=newMine.concat(faMe)}if(gi.length<ge.length){faThem=faBest(d,newTheirs,ge.length-gi.length);newTheirs=newTheirs.concat(faThem)}
+  if(ge.length>gi.length){const x=dropWorst(newMine,ge.length-gi.length);newMine=x.rows;cutMe=x.gone}if(gi.length>ge.length){const x=dropWorst(newTheirs,gi.length-ge.length);newTheirs=x.rows;cutThem=x.gone}
   const rv=rows=>teamValue(rows),wk=rows=>weekPts(rows),ros=rows=>bestNine(rows,'ros').pts;
   const injV=rows=>{let t=0;rows.forEach(r=>{const p=findPlayer(r.player);const a=p?num(p.avail):null;if(a!==null&&a<1)t+=(num(r.value)||0)*(1-a)});return t};
   const R={gi:gi,ge:ge,
@@ -2482,7 +2494,7 @@ function tcEval(d,mine,theirs,give,get,asked){
     meR:ros(mine),meR2:ros(newMine),thR:ros(theirs),thR2:ros(newTheirs),
     meInj:injV(newMine)-injV(mine),
     nineOld:bestNine(mine,'value').used,nineNew:bestNine(newMine,'value').used};
-  R.gainMe=R.meV2-R.meV;R.gainThem=R.thV2-R.thV;R.wkMe=R.meW2-R.meW;R.wkThem=R.thW2-R.thW;const dowET=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'})).getDay();if(dowET===0||dowET===1||dowET===2){R.wkMe=0;R.wkThem=0;R.wkNote='does not count - a trade accepted now processes after this week\'s games'}R.rosMe=R.meR2-R.meR;R.rosThem=R.thR2-R.thR;
+  R.gainMe=R.meV2-R.meV;R.gainThem=R.thV2-R.thV;R.wkMe=R.meW2-R.meW;R.wkThem=R.thW2-R.thW;R.faMe=faMe.map(p=>p.player);R.faThem=faThem.map(p=>p.player);R.cutMe=cutMe;R.cutThem=cutThem;{const all=gi.map(r=>({n:r.player,v:num(r.value)||0,side:'give'})).concat(ge.map(r=>({n:r.player,v:num(r.value)||0,side:'get'}))).sort((a,b)=>b.v-a.v);R.bestIn=all.length?all[0].n:'';R.bestSide=all.length?all[0].side:'';R.frag=!!(all.length&&all[0].side==='give'&&gi.length>ge.length);R.consol=!!(all.length&&all[0].side==='get'&&ge.length<gi.length);const prem=all.length?0.05*all[0].v:0;if(R.consol)R.gainMe+=prem;if(R.frag)R.gainThem+=prem;R.prem=prem}const dowET=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'})).getDay();if(dowET===0||dowET===1||dowET===2){R.wkMe=0;R.wkThem=0;R.wkNote='does not count - a trade accepted now processes after this week\'s games'}R.rosMe=R.meR2-R.meR;R.rosThem=R.thR2-R.thR;
   // roster size must stay legal: an uneven swap means a drop for the side that gains a body
   R.dropMe=Math.max(0,ge.length-gi.length);R.dropThem=Math.max(0,gi.length-ge.length);
   // desperation: how badly the other side needs a deal, read off their own situation - record and
@@ -2654,6 +2666,8 @@ function tcVerdictHtml(d,R,pt,mine,give,asked){
     const sg=v=>(v>=0?'+':'')+f1(v),col=v=>'color:'+(v>=0?'var(--good)':'var(--bad)');
     h+=kv([['Your roster value',f1(R.meV)+' → '+f1(R.meV2)+' <b style="'+col(R.gainMe)+'">'+sg(R.gainMe)+'/wk</b>'],
       ['Their roster value',f1(R.thV)+' → '+f1(R.thV2)+' <b style="'+col(R.gainThem)+'">'+sg(R.gainThem)+'/wk</b>'],
+      ['Best player in the deal',R.bestIn?'<b>'+esc(R.bestIn)+'</b> '+(R.bestSide==='get'?'<span style="color:var(--good)">comes to you</span>':'<span style="color:var(--bad)">goes to them</span>')+(R.consol?' - you consolidate (+'+f1(R.prem)+' roster-spot credit)':(R.frag?' - you are giving two for less than the best piece: <b>fragmenting</b> (they get the +'+f1(R.prem)+' credit)':'')):''],
+      ['Roster spots',(R.faMe&&R.faMe.length)?'your open spot filled by <b>'+R.faMe.map(esc).join(', ')+'</b> (best free agent, counted)':((R.cutMe&&R.cutMe.length)?'you must cut <b>'+R.cutMe.map(esc).join(', ')+'</b> (counted)':'no spot changes hands')+((R.faThem&&R.faThem.length)?' · their spot: '+R.faThem.map(esc).join(', '):'')+((R.cutThem&&R.cutThem.length)?' · they cut '+R.cutThem.map(esc).join(', '):'')],
       ['This week, your lineup',R.wkNote?'<span class="sub">'+R.wkNote+'</span>':'<b style="'+col(R.wkMe)+'">'+sg(R.wkMe)+'</b> pts'],
       ['Rest of season, your lineup','<b style="'+col(R.rosMe)+'">'+sg(R.rosMe)+'</b> per week'],
       ['Injury risk taken on',R.meInj>0.05?'<b style="color:var(--bad)">'+f1(R.meInj)+'/wk</b> of value sits on hurt players':'<span class="sub">none</span>'],
@@ -2778,7 +2792,7 @@ const OGC={};
 let PEND=[];try{PEND=JSON.parse(localStorage.getItem('lhc_pending')||'[]')}catch(e){}
 function rosterAfter(d,tid){let rows=rosterOf(d,tid);const me=myTeamId(d);if(String(tid)!==String(me))return rows;CLAIMS.forEach(c=>{if(c.drop)rows=rows.filter(r=>r.player!==c.drop);const p=findPlayer(c.add);if(p&&!rows.some(r=>r.player===c.add))rows.push({team:tid,player:c.add,pos:p.pos,value:p.value,slot:'BN'})});return rows}
 function rosterNow(d,tid){return rosterOf0(d,tid)}
-function bothWorlds(d,tid,give,get){const me=myTeamId(d);const out=[];[['now',rosterNow],['after',rosterAfter]].forEach(w=>{let R=null;try{R=tcEval(d,w[1](d,me),w[1](d,tid),give,get,'me')}catch(e){}out.push({world:w[0],R:R,ok:!!(R&&R.accept&&(num(R.gainMe)||0)>0&&(num(R.gainMe)||0)>(num(R.gainThem)||0))})});return out}
+function bothWorlds(d,tid,give,get){const me=myTeamId(d);const out=[];[['now',rosterNow],['after',rosterAfter]].forEach(w=>{let R=null;try{R=tcEval(d,w[1](d,me),w[1](d,tid),give,get,'me')}catch(e){}out.push({world:w[0],R:R,ok:dealOK(R)})});return out}
 function rosterOf(d,tid){let rows=rosterOf0(d,tid);PEND.filter(t=>t.status!=='sent').forEach(t=>{const isA=String(t.a)===String(tid),isB=String(t.b)===String(tid);if(!isA&&!isB)return;const out=isA?t.ga:t.gb,inn=isA?t.gb:t.ga,from=isA?t.b:t.a;rows=rows.filter(r=>out.indexOf(r.player)<0);rosterOf0(d,from).filter(r=>inn.indexOf(r.player)>=0).forEach(r=>rows.push(Object.assign({},r,{team:tid,slot:'BN'})))});return rows}
 function tname(d,t){const p=(d.power||[]).find(x=>String(x.team)===String(t));return p?p.name:String(t)}
 function sgn(x){return (x>=0?'+':'')+(+x).toFixed(1)}
@@ -2806,7 +2820,7 @@ function sgRun(d){const mode=SG.mode||'out';const key=mode+'|'+String(SG.t)+'|'+
  const me=myTeamId(d),mine=rosterOf(d,me),theirs=rosterOf(d,SG.t);let asks,gives;
  if(mode==='out'){const off=SG.picks;const pool=mine.filter(r=>r.player).slice().sort((a,b)=>(num(a.value)||0)-(num(b.value)||0)).slice(0,9).map(r=>r.player);gives=sgCombos(pool,2);asks=[];for(let m=1;m<(1<<off.length);m++){const x=off.filter((_,i)=>m&(1<<i));if(x.length<=4)asks.push(x)}}
  else{const want=SG.want||[];const sell=mine.filter(r=>r.player&&want.indexOf(String(r.pos))>=0).map(r=>r.player);gives=sgCombos(sell,2);const top=theirs.filter(r=>r.player).slice().sort((a,b)=>(num(b.value)||0)-(num(a.value)||0)).slice(0,10).map(r=>r.player);asks=sgCombos(top,2)}
- const deals=[];asks.forEach(get=>gives.forEach(g=>{let R;try{R=tcEval(d,mine,theirs,g,get,'them')}catch(e){return}const gm=num(R.gainMe)||0;deals.push({get:get,g:g,R:R,gm:gm,mg:num(R.margin)||0,ok:!!R.accept&&gm>0})}));
+ const deals=[];asks.forEach(get=>gives.forEach(g=>{let R;try{R=tcEval(d,mine,theirs,g,get,'them')}catch(e){return}const gm=num(R.gainMe)||0;deals.push({get:get,g:g,R:R,gm:gm,mg:num(R.margin)||0,ok:dealOK(R)})}));
  const best={};deals.filter(x=>x.ok).forEach(x=>{const k=mode==='out'?x.get.slice().sort().join('|'):x.g.slice().sort().join('|');if(!best[k]||x.gm>best[k].gm)best[k]=x});
  const out={ranked:Object.values(best).sort((a,b)=>b.gm-a.gm),asks:asks,deals:deals};SGC[key]=out;return out}
 function renderShotgun(d){const teams=(d.power||[]).filter(x=>!isMine(x.name)).sort((x,y)=>String(x.name).localeCompare(String(y.name)));const mode=SG.mode||'out';const POS=['QB','RB','WR','TE','K','DST'];
