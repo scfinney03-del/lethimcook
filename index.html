@@ -339,7 +339,7 @@ body.big .badge{font-size:16px}body.big .act .when{font-size:17px!important}
 <footer>Updates every 3 minutes from the server. Pull down to reload the page.<br>Fantasy data provided by <a href="https://football.fantasysports.yahoo.com/" target="_blank" rel="noopener">Yahoo Fantasy</a>.<br>Engine, models and app built with <a href="https://claude.ai" target="_blank" rel="noopener">Claude</a> by Anthropic.<br>Weather by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a> (CC BY 4.0) · Stats by <a href="https://github.com/nflverse" target="_blank" rel="noopener">nflverse</a> (CC BY 4.0) · Player data, projections and trends from <a href="https://sleeper.com/" target="_blank" rel="noopener">Sleeper</a> and <a href="https://www.espn.com/fantasy/" target="_blank" rel="noopener">ESPN</a> · News from <a href="https://www.rotowire.com/" target="_blank" rel="noopener">RotoWire</a> and <a href="https://sports.yahoo.com/nfl/" target="_blank" rel="noopener">Yahoo Sports</a> · Odds via <a href="https://the-odds-api.com/" target="_blank" rel="noopener">The Odds API</a> · College data by <a href="https://collegefootballdata.com/" target="_blank" rel="noopener">CollegeFootballData.com</a> · Coaching staffs from <a href="https://en.wikipedia.org/" target="_blank" rel="noopener">Wikipedia</a> (CC BY-SA).</footer>
 <script>
 // the engine stamps this page when it publishes it; if the live data names a newer page, fetch it fresh (GitHub Pages caches for 10 minutes)
-const PAGE_STAMP='20261001133901';
+const PAGE_STAMP='20261001134817';
 function pageCheck(d){try{if(!d||!d.pageStamp||PAGE_STAMP.indexOf('__')===0||d.pageStamp<=PAGE_STAMP)return;const k='lhc_pv_'+d.pageStamp;if(sessionStorage.getItem(k))return;sessionStorage.setItem(k,'1');const u=location.pathname+'?v='+d.pageStamp+location.hash;location.replace(u)}catch(e){}}
 (function(){
 const $=(s)=>document.querySelector(s);
@@ -607,7 +607,7 @@ function renderHomeAll(d){
   let h=hurtPanel(d);
   if(!SHOW){
   h+=luckCard(d);
-  const board0=(d.board||[]).filter(bb=>!/^Trades$/i.test(String(bb.where||''))&&!/^Trade - /i.test(String(bb.text||''))).map(bb=>Object.assign({},bb));try{const trS=SHOW?[]:sweetenAll(D,(d.trades||[]).filter(x=>!blank(x.get))).filter(x=>/^send now/i.test(String(x.timing||'')));const used={},usedMgr={};trS.sort((p,q)=>(num(q.myGain)||0)-(num(p.myGain)||0));trS.forEach(x=>{const give=String(x.give),get=String(x.get);const men=give.split(' + ').concat(get.split(' + '));if(men.some(n=>used[n]))return;if(usedMgr[String(x.partner)])return;const tp=(d.power||[]).find(pp=>pp.name===x.teamName);if(tp&&(PEND.length||CLAIMS.length)){const bw=bothWorlds(d,tp.team,give.split(' + '),get.split(' + '));if(!bw.every(w=>w.ok))return}men.forEach(n=>{used[n]=1});usedMgr[String(x.partner)]=1;if(board0.some(bb=>String(bb.text||'').indexOf(get)>=0&&String(bb.text||'').indexOf(give.split(' + ')[0])>=0))return;board0.push({push:1,score:60+Math.round((num(x.myGain)||0)*5),text:'Trade - send '+String(x.partner||'')+': give '+give+' · get '+get+' (+'+f1(x.myGain)+'/wk for you, '+(num(x.theirGain)>=0?'+':'')+f1(x.theirGain)+' them) - '+String(x.ask||''),when:'NOW',where:'Trades'})})}catch(e){}
+  const board0=(d.board||[]).filter(bb=>!/^Trades$/i.test(String(bb.where||''))&&!/^Trade - /i.test(String(bb.text||''))).map(bb=>Object.assign({},bb));try{const trS=SHOW?[]:sweetenAll(D,(d.trades||[]).filter(x=>!blank(x.get))).filter(x=>/^send now/i.test(String(x.timing||'')));const used={},usedMgr={};trS.sort((p,q)=>(num(q.myGain)||0)-(num(p.myGain)||0));trS.forEach(x=>{if(!x.sweet&&(num(x.theirGain0)||0)<0)return;const give=String(x.give),get=String(x.get);const men=give.split(' + ').concat(get.split(' + '));if(men.some(n=>used[n]))return;if(usedMgr[String(x.partner)])return;const tp=(d.power||[]).find(pp=>pp.name===x.teamName);if(tp&&(PEND.length||CLAIMS.length)){const bw=bothWorlds(d,tp.team,give.split(' + '),get.split(' + '));if(!bw.every(w=>w.ok))return}men.forEach(n=>{used[n]=1});usedMgr[String(x.partner)]=1;if(board0.some(bb=>String(bb.text||'').indexOf(get)>=0&&String(bb.text||'').indexOf(give.split(' + ')[0])>=0))return;board0.push({push:1,score:60+Math.round((num(x.myGain)||0)*5),text:'Trade - send '+String(x.partner||'')+': give '+give+' · get '+get+' (+'+f1(x.myGain)+'/wk for you, '+(num(x.theirGain)>=0?'+':'')+f1(x.theirGain)+' them) - '+String(x.ask||''),when:'NOW',where:'Trades'})})}catch(e){}
   try{const wv=board0.filter(bb=>/^Waivers$/i.test(String(bb.where||'')));const cut=[];board0.forEach((bb,i)=>{if(!/^Bench$/i.test(String(bb.where||'')))return;const t=String(bb.text||'');const m=/drop for ([^(]+?)\s*\(/.exec(t);if(!m)return;const y=m[1].trim(),dn=t.split(' (')[0].trim();const w=wv.find(w=>String(w.text||'').indexOf(y)>=0&&String(w.text||'').indexOf(dn)>=0);if(!w)return;if(/after this week/i.test(t)&&!/file after Sunday/i.test(String(w.text))){w.text=String(w.text)+' · file after Sunday: '+dn+"'s best week is now";w.when='NEXT WEEK'}cut.push(i)});for(let i=cut.length-1;i>=0;i--)board0.splice(cut[i],1)}catch(e){}
   {const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));const dow=et.getDay();const claimLands=dow<3?'Wednesday':'next Wednesday';const tradeLate=dow>=4||dow===0;board0.forEach(bb=>{const w=String(bb.where||''),t=String(bb.text||'');if(/^Waivers$/i.test(w)&&!/processes|free agent/i.test(t)){const wrow=(d.waivers||[]).find(x=>x.player&&t.indexOf(x.player)>=0);const cst=String(((wrow||{}).claim||{}).status||'');if(cst==='free'&&dow>=3&&dow<=4&&!/file after Sunday/i.test(t)){bb.text=t+' · free agent right now - add him and he is yours today (first come, first served)';bb.when='NOW'}else{bb.text=t+' · claim processes '+claimLands;if(dow>=3)bb.when='NEXT WEEK'}}else if(/^Trades$/i.test(w)&&!/lands/i.test(t)){bb.text=t+' · lands 2 days after they accept'+(tradeLate?' - next week\'s lineup':'');if(tradeLate)bb.when='NEXT WEEK'}})}
   try{const et=etNow();
@@ -622,8 +622,9 @@ function renderHomeAll(d){
   d=Object.assign({},d,{board:board0});
   const busy=[];PEND.forEach(t=>{busy.push.apply(busy,(t.ga||[]).concat(t.gb||[]))});CLAIMS.forEach(c=>{busy.push(c.add);if(c.drop)busy.push(c.drop)});
   const stale=b=>busy.some(n=>n&&String(b.text||'').indexOf(n)>=0);
-  const push=(d.board||[]).filter(b=>num(b.push)>=1&&!/^LIVE:/i.test(b.text||"")&&!stale(b));
-  const rest=(d.board||[]).filter(b=>!(num(b.push)>=1)&&!blank(b.text)&&!/^LIVE:/i.test(b.text||"")&&!stale(b));
+  const isTodayLock=b=>/^Today/.test(String(b.when||''))&&/lineup locks/i.test(String(b.text||''));
+  const push=(d.board||[]).filter(b=>(num(b.push)>=1||isTodayLock(b))&&!/^LIVE:/i.test(b.text||"")&&!stale(b));
+  const rest=(d.board||[]).filter(b=>!(num(b.push)>=1||isTodayLock(b))&&!blank(b.text)&&!/^LIVE:/i.test(b.text||"")&&!stale(b));
   const hid=(d.board||[]).filter(b=>!blank(b.text)&&stale(b)).length;
   h+='<section><h2>Do this</h2>';
   const ucl=b=>{const s=num(b.score)||0;return s>=85?'u1':(s>=40?'u2':'u3')};
@@ -1578,7 +1579,7 @@ function busyNames(){const b=[];PEND.forEach(t=>{b.push.apply(b,(t.ga||[]).conca
 function dealOK(R){if(!R)return false;const g=num(R.gainMe)||0,t=num(R.gainThem)||0;return !!(R.accept&&g>0&&g>t&&!R.frag)}
 function sweetenAll(d,tr){const me=myTeamId(d),mine=rosterOf(d,me),busy=busyNames();return tr.filter(x=>!busy.some(n=>(' + '+String(x.give)+' + '+String(x.get)+' + ').indexOf(' + '+n+' + ')>=0)).map(x=>{const key=[x.teamName,x.give,x.get,d.updatedIso||d.asof||'',PEND.length,CLAIMS.length].join('|');if(TRC[key]!==undefined)return TRC[key];
  const tp=(d.power||[]).find(p=>p.name===x.teamName);let out=null;
- if(tp){const theirs=rosterOf(d,tp.team),give=String(x.give).split(' + '),get=String(x.get).split(' + ');const fill=(gv,R,sw)=>Object.assign({},x,{give:gv.join(' + '),myGain:R.gainMe,lineupGain:R.gainMe,theirGain:R.gainThem,sweet:sw||'',bestIn:R.bestIn,ask:(sw?'Sweetened with '+sw+' - ':'')+'they would likely take it · best piece: '+R.bestIn+(R.bestSide==='get'?' (yours)':' (theirs)'),timing:'Send now'});
+ if(tp){const theirs=rosterOf(d,tp.team),give=String(x.give).split(' + '),get=String(x.get).split(' + ');const fill=(gv,R,sw)=>Object.assign({},x,{theirGain0:x.theirGain,give:gv.join(' + '),myGain:R.gainMe,lineupGain:R.gainMe,theirGain:R.gainThem,sweet:sw||'',bestIn:R.bestIn,ask:(sw?'Sweetened with '+sw+' - ':'')+'they would likely take it · best piece: '+R.bestIn+(R.bestSide==='get'?' (yours)':' (theirs)'),timing:(R.timing||[]).some(t=>/best stretch/i.test(t))?'Hold - '+(R.timing||[]).filter(t=>/best stretch/i.test(t)).join('; '):'Send now'});
   let R=null;try{R=tcEval(d,mine,theirs,give,get,'me')}catch(e){}
   if(dealOK(R))out=fill(give,R,'');
   else{const cands=mine.filter(r=>r.player&&/^BN/.test(String(r.slot||''))&&give.indexOf(r.player)<0&&busy.indexOf(r.player)<0).sort((a,b)=>(num(a.value)||0)-(num(b.value)||0)).slice(0,9);
@@ -1600,7 +1601,7 @@ window.sgFire=sgFire;window.confetti=confetti;window.toast=toast;function fxFire
 const FX=[{name:'fire',run:fxFire,wait:3900},{name:'confetti',run:()=>confetti(320,5000),wait:0}];
 function celebrate(msg){let i=0;try{i=(+localStorage.getItem('lhc_fx')||0)%FX.length}catch(e){}const fx=FX[i];try{fx.run()}catch(e){}try{localStorage.setItem('lhc_fx',String((i+1)%FX.length))}catch(e){}if(msg)setTimeout(()=>toast(msg,3200),fx.wait)}
 window.celebrate=celebrate;
-const PAGEV="Thu 9:39 AM";try{const pv=document.getElementById("pagev");if(pv&&PAGEV.indexOf("__")<0)pv.textContent="page "+PAGEV}catch(e){}
+const PAGEV="Thu 9:48 AM";try{const pv=document.getElementById("pagev");if(pv&&PAGEV.indexOf("__")<0)pv.textContent="page "+PAGEV}catch(e){}
 
 document.addEventListener('click',function(e){const a=e.target&&e.target.closest?e.target.closest('a[href]'):null;if(!a)return;const h=a.getAttribute('href')||'';if(!/^https?:/i.test(h))return;let host='';try{host=new URL(h).host}catch(x){}if(host===location.host)return;e.preventDefault();e.stopPropagation();if(confirm('Leave Let Him Cook and open '+(host||'this link')+'?'))window.open(h,'_blank','noopener')},true);
 
@@ -3293,7 +3294,7 @@ document.getElementById('app').addEventListener('click',e=>{const gx=e.target.cl
 window.addEventListener("error",e=>{try{const st=$("#stamp");if(st)st.textContent="page error: "+(e.message||"");}catch(x){}});
 window.addEventListener("hashchange",route);
 route(); load();
-window.__lhc={render:render,state:state,setD:v=>{D=v},getD:()=>D};   // test handle: server/rendertest.js renders every page headlessly before a save
+window.__lhc={render:render,state:state,setD:v=>{D=v},getD:()=>D,tcEval:tcEval,rosterOf:rosterOf,myTeamId:myTeamId,sweetenAll:sweetenAll};   // test handle: server/rendertest.js renders every page headlessly before a save
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)load()});
 setInterval(load,5*60*1000);
 })();
