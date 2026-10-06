@@ -2,7 +2,8 @@
 <style>body{font-family:system-ui,sans-serif;margin:16px;background:#f3f5f8;color:#111}textarea,input{width:100%;box-sizing:border-box;font-size:15px;padding:8px;margin-top:8px}button{padding:10px 14px;border-radius:10px;border:0;background:#2563eb;color:#fff;font-weight:700;margin:8px 6px 0 0}pre{white-space:pre-wrap;word-break:break-word;background:#fff;padding:10px;border-radius:8px;font-size:12px;margin-top:12px}</style></head><body>
 <h2>Let Him Cook - rescue console</h2><p>A bare line to the server. Works even when the main app will not load. Paste a command, or put the last good page back.</p>
 <input id="k" type="password" placeholder="server key (remembered on this phone)"><textarea id="c" rows="5" placeholder="command"></textarea>
-<button onclick="run()">Run</button><button onclick="restore()" style="background:#b91c1c">Restore last good page</button><button onclick="ping()" style="background:#555">Ping</button>
+<button onclick="run()">Run</button><button onclick="pasteCmd()" style="background:#555">Paste</button><button onclick="clearCmd()" style="background:#777">Clear</button><button onclick="restore()" style="background:#b91c1c">Restore last good page</button><button onclick="ping()" style="background:#555">Ping</button>
+<div style="margin-top:12px"><button onclick="copyOut()" style="background:#555;margin:0">Copy output</button><button onclick="copyCmd()" style="background:#777;margin:0 0 0 6px">Copy command</button><span id="cp" style="margin-left:8px;color:#555"></span></div>
 <pre id="o"></pre>
 <script>
 const API="https://157-230-82-39.sslip.io",PIN=687533592;const $=s=>document.querySelector(s);
@@ -10,6 +11,12 @@ try{$('#k').value=localStorage.getItem('lhc_cmd')||''}catch(e){}
 function post(cmd){const key=$('#k').value.trim();if(!key){$('#o').textContent='Enter the server key first (same one as the app).';return}if(!cmd)return;try{localStorage.setItem('lhc_cmd',key)}catch(e){}
 $('#o').textContent='Running...';const t0=Date.now();fetch(API+'/cmd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:key,pin:PIN,cmd:cmd})}).then(r=>r.text()).then(t=>{$('#o').textContent='$ '+cmd+'\n'+t+'\n('+Math.round((Date.now()-t0)/1000)+'s)'}).catch(e=>{$('#o').textContent='Failed: '+e})}
 function run(){post($('#c').value.trim())}
+function said(t){$('#cp').textContent=t;setTimeout(()=>{$('#cp').textContent=''},1800)}
+function copyText(t,what){if(!t){said('nothing to copy');return}navigator.clipboard.writeText(t).then(()=>said(what+' copied')).catch(()=>{const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');said(what+' copied')}catch(e){said('copy failed')}ta.remove()})}
+function copyOut(){copyText($('#o').textContent,'output')}
+function copyCmd(){copyText($('#c').value,'command')}
+function clearCmd(){$('#c').value='';$('#c').focus()}
+function pasteCmd(){navigator.clipboard.readText().then(t=>{$('#c').value=t;said('pasted')}).catch(()=>{$('#c').focus();said('long-press the box to paste')})}
 function ping(){post('echo pong; date')}
 function restore(){if(confirm('Put the last good copy of the app page back and save it?'))post('cd /home/lhc/fantasy && cp server/last_good_index.html dashboard_index.html && pwsh -NoProfile -File server/Save.ps1 dashboard_index.html && echo RESTORED - reload the app in 5 minutes')}
 </script></body></html>
